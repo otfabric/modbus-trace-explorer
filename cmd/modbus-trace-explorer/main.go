@@ -14,13 +14,16 @@ import (
 	_ "embed"
 	"flag"
 	"fmt"
+	"io"
 	"log/slog"
 	"os"
+	"path/filepath"
 
 	"github.com/wailsapp/wails/v3/pkg/application"
 	"github.com/wailsapp/wails/v3/pkg/events"
 
 	"github.com/otfabric/modbus-trace-explorer/frontend"
+	"github.com/otfabric/modbus-trace-explorer/internal/applog"
 	"github.com/otfabric/modbus-trace-explorer/internal/buildinfo"
 	"github.com/otfabric/modbus-trace-explorer/internal/engine"
 	"github.com/otfabric/modbus-trace-explorer/internal/gui"
@@ -65,10 +68,19 @@ func run(args []string) error {
 	if *debug {
 		level = slog.LevelDebug
 	}
-	log := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: level}))
+	// The log file (R23) lives with the settings; without it, stderr.
+	var out io.Writer = os.Stderr
+	if lf, err := applog.Open(filepath.Join(engine.DefaultConfigDir(), "logs", "modbus-trace-explorer.log")); err == nil {
+		defer func() { _ = lf.Close() }()
+		out = lf
+	}
+	log := applog.New(out, level)
 
-	eng := engine.New(engine.Options{Logger: log})
-	defer func() { _ = eng.Close() }()
+	eng, err := engine.New(engine.Options{Logger: log})
+	if err != nil {
+		return fmt.Errorf("the analysis cache: %w", err)
+	}
+	defer func() { _ = eng.Shutdown() }()
 	binding := gui.New(eng, flags.Args())
 
 	app := application.New(application.Options{

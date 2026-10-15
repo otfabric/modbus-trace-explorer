@@ -1,0 +1,61 @@
+{
+  "$defs": {
+    "service.AnalyzeConfig": {
+      "additionalProperties": false,
+      "properties": {
+        "flows": {
+          "anyOf": [
+            {
+              "items": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "server_ports": {
+          "anyOf": [
+            {
+              "items": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "servers": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "flows",
+        "server_ports",
+        "servers"
+      ],
+      "type": "object"
+    }
+  },
+  "$id": "https://github.com/otfabric/modbus-trace-explorer/docs/schema/analyze-config-1.schema.json",
+  "$ref": "#/$defs/service.AnalyzeConfig",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Generated from internal/service by internal/engine's TestSchemasUpToDate.",
+  "title": "Analysis choices"
+}

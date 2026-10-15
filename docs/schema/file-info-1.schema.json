@@ -1,0 +1,106 @@
+{
+  "$defs": {
+    "service.AnalyzeConfig": {
+      "additionalProperties": false,
+      "properties": {
+        "flows": {
+          "anyOf": [
+            {
+              "items": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "server_ports": {
+          "anyOf": [
+            {
+              "items": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "servers": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "flows",
+        "server_ports",
+        "servers"
+      ],
+      "type": "object"
+    },
+    "service.FileInfo": {
+      "additionalProperties": false,
+      "properties": {
+        "analyzed": {
+          "type": "boolean"
+        },
+        "choices": {
+          "$ref": "#/$defs/service.AnalyzeConfig"
+        },
+        "gzip": {
+          "type": "boolean"
+        },
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "paths": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "size": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "analyzed",
+        "gzip",
+        "id",
+        "name",
+        "paths",
+        "size"
+      ],
+      "type": "object"
+    }
+  },
+  "$id": "https://github.com/otfabric/modbus-trace-explorer/docs/schema/file-info-1.schema.json",
+  "$ref": "#/$defs/service.FileInfo",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Generated from internal/service by internal/engine's TestSchemasUpToDate.",
+  "title": "Open trace"
+}

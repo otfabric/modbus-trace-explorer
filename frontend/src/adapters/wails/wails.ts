@@ -5,10 +5,24 @@ import { Call, Clipboard, Events } from '@wailsio/runtime';
 import type { Platform } from '../../app/platform/platform';
 import { loadTheme, persistTheme } from '../../app/platform/themeStorage';
 import { ServiceError, toServiceError, type ErrorCode, type Service } from '../../app/service/service';
-import type { About, Overview, TimelinePage, TimelineQuery } from '../../app/service/types';
+import type {
+  About,
+  AnalyzeConfig,
+  Detail,
+  ExplorerEvent,
+  FileInfo,
+  FilterParse,
+  JobRef,
+  Overview,
+  RecentFile,
+  ScanResult,
+  TimelinePage,
+  TimelineQuery,
+} from '../../app/service/types';
 
 const BINDING = 'github.com/otfabric/modbus-trace-explorer/internal/gui.App';
 const OPEN_EVENT = 'explorer:open';
+const JOB_EVENT = 'explorer:event';
 
 interface ErrorBody {
   code: ErrorCode;
@@ -43,9 +57,29 @@ async function call<T>(method: string, ...args: unknown[]): Promise<T> {
 
 export class WailsService implements Service {
   about = () => call<About>('About');
-  // Opening a trace arrives with M1: until then nothing is open.
-  overview = async (): Promise<Overview | null> => null;
-  timeline = async (q: TimelineQuery): Promise<TimelinePage> => ({ offset: q.offset, rows: [], total: 0 });
+  open = (paths: string[]) => call<FileInfo>('Open', paths);
+  close = (id: string) => call<void>('Close', id);
+  recent = () => call<RecentFile[]>('Recent');
+  scan = (id: string) => call<JobRef>('Scan', id);
+  scanResult = (id: string) => call<ScanResult>('ScanResult', id);
+  analyze = (id: string, cfg: AnalyzeConfig) => call<JobRef>('Analyze', id, cfg);
+  cancelJob = (jobId: string) => call<void>('CancelJob', jobId);
+  overview = (id: string) => call<Overview>('Overview', id);
+  detail = (id: string, seq: number) => call<Detail>('Detail', id, seq);
+  parseFilter = (id: string, text: string) => call<FilterParse>('ParseFilter', id, text);
+
+  // A stale request is not cancelled on the Go side (Wails calls are not
+  // abortable); its answer is dropped here.
+  async timeline(id: string, q: TimelineQuery, signal?: AbortSignal): Promise<TimelinePage> {
+    signal?.throwIfAborted();
+    const page = await call<TimelinePage>('Timeline', id, q);
+    signal?.throwIfAborted();
+    return page;
+  }
+
+  subscribe(onEvent: (event: ExplorerEvent) => void): () => void {
+    return Events.On(JOB_EVENT, (event) => onEvent(event.data as ExplorerEvent));
+  }
 }
 
 export class WailsPlatform implements Platform {

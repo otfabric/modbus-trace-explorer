@@ -20,9 +20,14 @@ import (
 	"github.com/otfabric/modbus-trace-explorer/internal/service"
 )
 
-// OpenEvent is the name of the Wails event that carries the paths of trace
-// files to open ([]string), from a drop or from "open with".
-const OpenEvent = "explorer:open"
+// Wails events the window listens to.
+const (
+	// OpenEvent carries the paths of trace files to open ([]string), from
+	// a drop or from "open with".
+	OpenEvent = "explorer:open"
+	// JobEvent carries a service.Event: job progress and completion.
+	JobEvent = "explorer:event"
+)
 
 // TraceExtensions are the file types the application opens, also the
 // operating system's file associations.
@@ -35,6 +40,8 @@ type App struct {
 
 	mu      sync.Mutex
 	pending []string // paths handed over before the frontend asked for them
+	cancel  context.CancelFunc
+	done    chan struct{}
 }
 
 // New creates the Wails service for svc. initial are the trace paths of
@@ -60,8 +67,99 @@ func MarshalError(err error) []byte {
 	return b
 }
 
+// ServiceStartup starts forwarding the engine's events to the window.
+func (a *App) ServiceStartup(_ context.Context, _ application.ServiceOptions) error {
+	ctx, cancel := context.WithCancel(context.Background())
+	events, err := a.svc.Subscribe(ctx)
+	if err != nil {
+		cancel()
+		return err
+	}
+	done := make(chan struct{})
+	a.mu.Lock()
+	a.cancel, a.done = cancel, done
+	a.mu.Unlock()
+	go func() {
+		defer close(done)
+		for ev := range events {
+			if app := application.Get(); app != nil {
+				app.Event.Emit(JobEvent, ev)
+			}
+		}
+	}()
+	return nil
+}
+
+// ServiceShutdown stops forwarding events.
+func (a *App) ServiceShutdown() error {
+	a.mu.Lock()
+	cancel, done := a.cancel, a.done
+	a.cancel, a.done = nil, nil
+	a.mu.Unlock()
+	if cancel != nil {
+		cancel()
+		<-done
+	}
+	return nil
+}
+
 // About returns the versions of the application and its libraries.
 func (a *App) About(ctx context.Context) (service.About, error) { return a.svc.About(ctx) }
+
+// Open prepares a trace. The paths must be ones the operating system
+// handed over (dialog, drop, "open with", command line) or from the recent
+// files list; they are checked again here.
+func (a *App) Open(ctx context.Context, paths []string) (service.FileInfo, error) {
+	usable := Usable(paths)
+	if len(usable) != len(paths) || len(paths) == 0 {
+		return service.FileInfo{}, service.Errorf(service.CodeNotFound, "the trace file is not there (or is not a regular file)")
+	}
+	return a.svc.Open(ctx, usable)
+}
+
+// Close releases an open trace.
+func (a *App) Close(ctx context.Context, id string) error { return a.svc.Close(ctx, id) }
+
+// Recent lists the recently opened traces.
+func (a *App) Recent(ctx context.Context) ([]service.RecentFile, error) { return a.svc.Recent(ctx) }
+
+// Scan starts the first pass.
+func (a *App) Scan(ctx context.Context, id string) (service.JobRef, error) {
+	return a.svc.Scan(ctx, id)
+}
+
+// ScanResult returns the Flows step's content.
+func (a *App) ScanResult(ctx context.Context, id string) (service.ScanResult, error) {
+	return a.svc.ScanResult(ctx, id)
+}
+
+// Analyze starts the analysis.
+func (a *App) Analyze(ctx context.Context, id string, cfg service.AnalyzeConfig) (service.JobRef, error) {
+	return a.svc.Analyze(ctx, id, cfg)
+}
+
+// CancelJob cancels a job.
+func (a *App) CancelJob(ctx context.Context, id string) error { return a.svc.CancelJob(ctx, id) }
+
+// Overview returns the file strip.
+func (a *App) Overview(ctx context.Context, id string) (service.Overview, error) {
+	return a.svc.Overview(ctx, id)
+}
+
+// Timeline returns a window of the timeline.
+func (a *App) Timeline(ctx context.Context, id string, q service.TimelineQuery) (service.TimelinePage, error) {
+	return a.svc.Timeline(ctx, id, q)
+}
+
+// Detail returns one row's detail.
+func (a *App) Detail(ctx context.Context, id string, seq uint64) (service.Detail, error) {
+	return a.svc.Detail(ctx, id, seq)
+}
+
+// ParseFilter parses the filter box.
+func (a *App) ParseFilter(ctx context.Context, id, text string) (service.FilterParse, error) {
+	return a.svc.ParseFilter(ctx, id, text)
+}
 
 // PendingFiles returns, once, the trace paths the operating system handed
 // over before the window was ready (command line, "open with" at launch).

@@ -1,0 +1,91 @@
+{
+  "$defs": {
+    "service.Error": {
+      "additionalProperties": false,
+      "properties": {
+        "code": {
+          "type": "string"
+        },
+        "message": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "code",
+        "message"
+      ],
+      "type": "object"
+    },
+    "service.Event": {
+      "additionalProperties": false,
+      "properties": {
+        "job": {
+          "$ref": "#/$defs/service.JobState"
+        },
+        "kind": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind"
+      ],
+      "type": "object"
+    },
+    "service.JobState": {
+      "additionalProperties": false,
+      "properties": {
+        "error": {
+          "$ref": "#/$defs/service.Error"
+        },
+        "file": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "kind": {
+          "type": "string"
+        },
+        "phase": {
+          "type": "string"
+        },
+        "rate": {
+          "type": "integer"
+        },
+        "read": {
+          "type": "integer"
+        },
+        "rows": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "state": {
+          "type": "string"
+        },
+        "total": {
+          "type": "integer"
+        },
+        "warning": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "file",
+        "id",
+        "kind",
+        "phase",
+        "rate",
+        "read",
+        "rows",
+        "state",
+        "total"
+      ],
+      "type": "object"
+    }
+  },
+  "$id": "https://github.com/otfabric/modbus-trace-explorer/docs/schema/event-1.schema.json",
+  "$ref": "#/$defs/service.Event",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Generated from internal/service by internal/engine's TestSchemasUpToDate.",
+  "title": "Job event"
+}

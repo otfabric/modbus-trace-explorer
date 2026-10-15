@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent, type ReactNode, type WheelEvent } from 'react';
 import { DotIcon, ErrorIcon, InfoIcon, PlugIcon, PlugOffIcon, ReadIcon, WarningIcon, WriteIcon } from '../icons';
-import type { Service } from '../service/service';
-import type { Filter, Order, Row } from '../service/types';
+import type { Filter, Order, Row, TimelinePage, TimelineQuery } from '../service/types';
 import { formatCount, formatFunction, formatLatency, formatTime, type TimeMode } from '../state/format';
 import { rankAt, reveal, scaled, scrollFor, spacerHeight, visibleRows, type Geometry } from './scroll';
 
@@ -10,13 +9,15 @@ export const ROW_HEIGHT = 24;
 const MARGIN = 40;
 
 interface Props {
-  service: Service;
+  /** Fetches a window of the timeline (Service.timeline for the open trace). */
+  fetchPage: (q: TimelineQuery, signal: AbortSignal) => Promise<TimelinePage>;
   filter: Filter;
   order: Order;
   desc: boolean;
   timeMode: TimeMode;
   firstNs: number;
-  selected: number | null;
+  /** The selected row (by seq), highlighted wherever it is. */
+  selectedSeq: number | null;
   onSelect: (rank: number, row: Row) => void;
   onTotal?: (total: number) => void;
 }
@@ -74,7 +75,7 @@ function ResultCell({ row }: { row: Row }): ReactNode {
  * visible rows and a margin are fetched; a change of filter or order aborts
  * the request in flight.
  */
-export function TimelineTable({ service, filter, order, desc, timeMode, firstNs, selected, onSelect, onTotal }: Props) {
+export function TimelineTable({ fetchPage, filter, order, desc, timeMode, firstNs, selectedSeq, onSelect, onTotal }: Props) {
   const scroller = useRef<HTMLDivElement>(null);
   const [viewport, setViewport] = useState(600);
   const [first, setFirst] = useState(0);
@@ -104,6 +105,7 @@ export function TimelineTable({ service, filter, order, desc, timeMode, firstNs,
   useEffect(() => {
     setFirst(0);
     firstRef.current = 0;
+    current.current = null;
     programmatic.current = true;
     if (scroller.current) scroller.current.scrollTop = 0;
   }, [queryKey]);
@@ -116,8 +118,7 @@ export function TimelineTable({ service, filter, order, desc, timeMode, firstNs,
     if (win.key === queryKey && covered) return;
     const ctl = new AbortController();
     const offset = Math.max(0, first - MARGIN);
-    service
-      .timeline({ filter, order, desc, offset, limit: visible + 2 * MARGIN }, ctl.signal)
+    fetchPage({ filter, order, desc, offset, limit: visible + 2 * MARGIN }, ctl.signal)
       .then((page) => {
         setWin({ ...page, key: queryKey });
         setError(null);
@@ -129,7 +130,7 @@ export function TimelineTable({ service, filter, order, desc, timeMode, firstNs,
     return () => ctl.abort();
     // win is deliberately not a dependency: a new window must not refetch itself.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [service, queryKey, first, visible]);
+  }, [fetchPage, queryKey, first, visible]);
 
   const moveTo = useCallback(
     (rank: number) => {
@@ -167,12 +168,13 @@ export function TimelineTable({ service, filter, order, desc, timeMode, firstNs,
     }
   };
 
-  // The selection as of the last key, so that key repeat does not read a
-  // selection React has not rendered yet.
-  const current = useRef<number | null>(selected);
+  // The selected rank as of the last key or click, so that key repeat does
+  // not read a selection React has not rendered yet. A new filter or order
+  // starts without one.
+  const current = useRef<number | null>(null);
   useEffect(() => {
-    current.current = selected;
-  }, [selected]);
+    if (selectedSeq === null) current.current = null;
+  }, [selectedSeq]);
   const select = (rank: number) => {
     const clamped = Math.max(0, Math.min(rank, win.total - 1));
     current.current = clamped;
@@ -244,10 +246,14 @@ export function TimelineTable({ service, filter, order, desc, timeMode, firstNs,
                 key={rank}
                 role="row"
                 aria-rowindex={rank + 2}
-                aria-selected={rank === selected}
-                onClick={() => row && onSelect(rank, row)}
+                aria-selected={row !== undefined && row.seq === selectedSeq}
+                onClick={() => {
+                  if (!row) return;
+                  current.current = rank;
+                  onSelect(rank, row);
+                }}
                 className={`${GRID} h-6 cursor-default items-center gap-x-3 border-b border-line/60 px-3 ${
-                  rank === selected ? 'bg-accent-soft text-accent-strong' : 'hover:bg-surface'
+                  row !== undefined && row.seq === selectedSeq ? 'bg-accent-soft text-accent-strong' : 'hover:bg-surface'
                 } ${row?.class === 'write' ? 'border-l-2 border-l-wire' : 'border-l-2 border-l-transparent'}`}
               >
                 {row ? (

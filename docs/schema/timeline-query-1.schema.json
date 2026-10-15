@@ -1,0 +1,116 @@
+{
+  "$defs": {
+    "service.Filter": {
+      "additionalProperties": false,
+      "properties": {
+        "classes": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "clients": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "conns": {
+          "items": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "type": "array"
+        },
+        "end": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "exceptions": {
+          "description": "base64",
+          "type": "string"
+        },
+        "flags": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "from_ns": {
+          "type": "integer"
+        },
+        "functions": {
+          "description": "base64",
+          "type": "string"
+        },
+        "not_flags": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "servers": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "space": {
+          "type": "string"
+        },
+        "start": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "statuses": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "to_ns": {
+          "type": "integer"
+        },
+        "units": {
+          "description": "base64",
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "service.TimelineQuery": {
+      "additionalProperties": false,
+      "properties": {
+        "desc": {
+          "type": "boolean"
+        },
+        "filter": {
+          "$ref": "#/$defs/service.Filter"
+        },
+        "limit": {
+          "type": "integer"
+        },
+        "offset": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "order": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "desc",
+        "filter",
+        "limit",
+        "offset",
+        "order"
+      ],
+      "type": "object"
+    }
+  },
+  "$id": "https://github.com/otfabric/modbus-trace-explorer/docs/schema/timeline-query-1.schema.json",
+  "$ref": "#/$defs/service.TimelineQuery",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Generated from internal/service by internal/engine's TestSchemasUpToDate.",
+  "title": "Timeline query"
+}

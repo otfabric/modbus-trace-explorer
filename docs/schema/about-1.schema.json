@@ -1,0 +1,41 @@
+{
+  "$defs": {
+    "service.About": {
+      "additionalProperties": false,
+      "properties": {
+        "arch": {
+          "type": "string"
+        },
+        "go": {
+          "type": "string"
+        },
+        "go_modbus_trace": {
+          "type": "string"
+        },
+        "os": {
+          "type": "string"
+        },
+        "version": {
+          "type": "string"
+        },
+        "wails": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "arch",
+        "go",
+        "go_modbus_trace",
+        "os",
+        "version",
+        "wails"
+      ],
+      "type": "object"
+    }
+  },
+  "$id": "https://github.com/otfabric/modbus-trace-explorer/docs/schema/about-1.schema.json",
+  "$ref": "#/$defs/service.About",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Generated from internal/service by internal/engine's TestSchemasUpToDate.",
+  "title": "About"
+}

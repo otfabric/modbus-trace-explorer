@@ -35,7 +35,12 @@ func TestPendingAndErrors(t *testing.T) {
 	dir := t.TempDir()
 	f := filepath.Join(dir, "a.pcapng")
 	_ = os.WriteFile(f, []byte("x"), 0o600)
-	a := New(engine.New(engine.Options{}), []string{f})
+	eng, err := engine.New(engine.Options{CacheDir: t.TempDir(), ConfigDir: t.TempDir()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = eng.Shutdown() }()
+	a := New(eng, []string{f})
 	a.Handed([]string{f}) // no application running: kept
 	if p := a.PendingFiles(); len(p) != 2 {
 		t.Errorf("pending %v", p)
