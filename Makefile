@@ -14,9 +14,15 @@ export GOWORK := off
 GO_MOD_VERSION := $(shell sed -nE 's/^go ([0-9]+\.[0-9]+).*/\1/p' go.mod | head -n1)
 GOFMT_CI = $(shell GOTOOLCHAIN=go$(GO_MOD_VERSION).0 go env GOROOT)/bin/gofmt
 
-# The webview bindings are built for the SDK's macOS version; link for the same minimum.
+# macOS: compile the cgo parts (the webview bindings) and link for the same
+# minimum. Without the flags, clang builds the C objects for the SDK's own
+# version (27.0 with Xcode 27) while Go links for 11.0, and the linker warns
+# about every object file. 13.0 is Wails v3's minimum and the bundle's
+# LSMinimumSystemVersion.
 ifeq ($(shell uname -s),Darwin)
 export MACOSX_DEPLOYMENT_TARGET ?= 13.0
+export CGO_CFLAGS ?= -O2 -g -mmacosx-version-min=$(MACOSX_DEPLOYMENT_TARGET)
+export CGO_LDFLAGS ?= -mmacosx-version-min=$(MACOSX_DEPLOYMENT_TARGET)
 endif
 
 GUI_NAME = modbus-trace-explorer

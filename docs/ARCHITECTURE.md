@@ -201,7 +201,7 @@ Copied and adapted from the Explorer (section 15). Window title "Modbus Trace Ex
 | "Open with" | `events.Common.ApplicationOpenedWithFile` with `Filename()`. macOS: the bundle's `CFBundleDocumentTypes` (`packaging/macos/Info.plist`, `.pcap`, `.pcapng`, `.cap`, role Viewer); Windows and Linux: `application.Options.FileAssociations`, matched against the command line |
 | Command line | `modbus-trace-explorer trace.pcapng ...`, the arguments after the flags |
 
-Seen working at run time on macOS *(M0: not yet; the application was built but not started in a window during M0)*; the A15 smoke test (M4) starts it on every platform. If file drop proves unreliable in a WebView, the dialog and the recent files remain the guaranteed paths.
+Seen working at run time on macOS (WKWebView) by the user on 2026-10-16: a `.pcapng` dropped on the empty state reached `Handed` and the window. Windows and Linux are checked by hand in M1 and by the A15 smoke test (M4). If file drop proves unreliable in a WebView, the dialog and the recent files remain the guaranteed paths.
 
 ## 13. Security and privacy
 

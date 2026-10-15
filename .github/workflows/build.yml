@@ -113,6 +113,10 @@ jobs:
         env:
           MACOSX_DEPLOYMENT_TARGET: "13.0"
         run: |
+          if [ "${{ matrix.os }}" = darwin ]; then
+            # As the Makefile: cgo objects and the link for the same minimum.
+            export CGO_CFLAGS="-O2 -g -mmacosx-version-min=13.0" CGO_LDFLAGS="-mmacosx-version-min=13.0"
+          fi
           flags="$LDFLAGS"
           exe=modbus-trace-explorer
           if [ "${{ matrix.os }}" = windows ]; then
