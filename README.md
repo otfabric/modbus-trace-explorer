@@ -8,7 +8,17 @@ A desktop tool to understand Modbus/TCP traffic recorded by someone else. Open a
 
 It does not capture live (use tcpdump or Wireshark), never talks to devices and never writes to Modbus. All trace understanding is in the library [go-modbus-trace](https://github.com/otfabric/go-modbus-trace), whose CLI `mbtracectl` is the headless way to do the same on a gateway or in CI.
 
-**Status: not implemented yet.** This repository starts from its handoff documents. Start with [AGENTS.md](AGENTS.md), then [docs/REQUIREMENTS.md](docs/REQUIREMENTS.md), [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), [docs/UX.md](docs/UX.md), [docs/BRANDING.md](docs/BRANDING.md) and [docs/PROPOSAL-REVIEW.md](docs/PROPOSAL-REVIEW.md). `modbus-capture-claude-proposal.md` is the superseded original proposal.
+**Status: milestone M0 of M4** (the shell, a mock engine and the measurements that decide the index; nothing opens a trace yet). Start with [AGENTS.md](AGENTS.md), then [docs/REQUIREMENTS.md](docs/REQUIREMENTS.md), [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), [docs/UX.md](docs/UX.md), [docs/BRANDING.md](docs/BRANDING.md) and [docs/PROPOSAL-REVIEW.md](docs/PROPOSAL-REVIEW.md). `modbus-capture-claude-proposal.md` is the superseded original proposal.
+
+## Development
+
+```sh
+make frontend-install    # once: npm ci
+make check               # Go and frontend checks
+make build-gui           # ./bin/modbus-trace-explorer (cgo; the platform's webview)
+cd frontend && npm run dev   # the user interface over the mock engine, in a browser (?rows=10000000, ?empty)
+make spike               # the M0 index measurements (SPIKE_ROWS, default 10,000,000)
+```
 
 ## License
 
