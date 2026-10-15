@@ -51,7 +51,7 @@ Facts used to justify dropping live capture (no longer load-bearing): Npcap's fr
 | Throughput and memory targets (L23, R21) | Library L4: met (Scan 760 MB/s, Analyze 207 MB/s); App M0: index measured (ARCHITECTURE section 5), M1 measures end to end |
 | SQLite versus columnar index budgets; keyset paging with row values in the driver's SQLite | App M0: measured; columnar chosen by the user on 2026-10-16 (ARCHITECTURE section 5) |
 | Maximum scrollable element height in WKWebView, WebView2 and WebKitGTK; the scaled-scroll table | App M0: the table caps its spacer at 4,000,000 px, below every engine's limit; checked in Chromium; the three WebViews in M1 |
-| Wails v3 beta.29 file-drop and open-with APIs | App M0: found in its source and wired (ARCHITECTURE section 12); run-time check in M1 |
+| Wails v3 beta.29 file-drop and open-with APIs | App M0: found in its source and wired (ARCHITECTURE section 12); file drop seen working on macOS (2026-10-16); Windows and Linux in M1 |
 | That the static Linux CLI runs unchanged on Debian 11, 12 and 13 on all three architectures (expected from `CGO_ENABLED=0`; to be tested like the Explorer's A12) | Library L1/L4 |
 
 ## Risks worth knowing
