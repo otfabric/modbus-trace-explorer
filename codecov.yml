@@ -1,0 +1,12 @@
+# Codecov configuration for modbus-trace-explorer.
+# CI uploads the profile of the packages `make coverage-check` measures (the
+# engine, the store and the service; the Wails shell needs a window).
+coverage:
+  status:
+    project:
+      default:
+        target: 85%
+        threshold: 1%
+    patch:
+      default:
+        target: 70%

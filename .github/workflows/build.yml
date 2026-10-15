@@ -1,0 +1,153 @@
+# Checks the code and builds the desktop application for every platform.
+# CI calls it on each push; the release workflow (M4) will call it to make a
+# release, as the SunSpec Explorer's does.
+#
+# Every job runs on a runner of the architecture it builds for. Nothing is
+# emulated (no QEMU).
+name: Build
+
+on:
+  workflow_call:
+    inputs:
+      version:
+        description: Version to build, without the leading "v" (for example 0.1.0)
+        required: true
+        type: string
+
+# Go: every job uses the current stable release, not the version in go.mod.
+# go.mod names the oldest Go the code builds with; release binaries should
+# carry the newest standard library, and tools installed with "@latest"
+# (govulncheck) need a current Go.
+env:
+  GOWORK: "off"
+  VERSION: ${{ inputs.version }}
+  LDFLAGS: -s -w -X github.com/otfabric/modbus-trace-explorer/internal/buildinfo.Version=${{ inputs.version }}
+
+jobs:
+  frontend:
+    name: Frontend (typecheck, test, build)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: make frontend-install
+      - run: make frontend-check
+      - run: make frontend
+      - name: No external URLs in the bundle (A12)
+        run: make frontend-urls
+      - uses: actions/upload-artifact@v7
+        with:
+          name: frontend-dist
+          path: frontend/dist
+          include-hidden-files: true
+          retention-days: 7
+
+  checks:
+    name: Go (tests, coverage, lint, vulnerabilities)
+    needs: frontend
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version: stable
+      - uses: actions/download-artifact@v8
+        with:
+          name: frontend-dist
+          path: frontend/dist
+      - name: GTK4 and WebKitGTK 6.0 (the Wails shell compiles here too)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends libgtk-4-dev libwebkitgtk-6.0-dev pkg-config
+      - run: make mod-check
+      - run: go vet ./...
+      - run: make test
+      - run: make coverage-check
+      - name: golangci-lint (includes the network and Modbus bans)
+        uses: golangci/golangci-lint-action@v9
+        with:
+          version: latest
+      - name: govulncheck
+        run: |
+          go install golang.org/x/vuln/cmd/govulncheck@latest
+          govulncheck ./...
+
+  gui:
+    name: Desktop ${{ matrix.os }}/${{ matrix.arch }}
+    needs: frontend
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: darwin, arch: arm64, runner: macos-latest }
+          - { os: darwin, arch: amd64, runner: macos-15-intel }
+          - { os: windows, arch: amd64, runner: windows-latest }
+          # Best effort (R18): never blocks a build or a release.
+          - { os: windows, arch: arm64, runner: windows-11-arm, experimental: true }
+          - { os: linux, arch: amd64, runner: ubuntu-24.04 }
+          - { os: linux, arch: arm64, runner: ubuntu-24.04-arm }
+    runs-on: ${{ matrix.runner }}
+    continue-on-error: ${{ matrix.experimental || false }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version: stable
+      - uses: actions/download-artifact@v8
+        with:
+          name: frontend-dist
+          path: frontend/dist
+      - name: GTK4 and WebKitGTK 6.0
+        if: matrix.os == 'linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends libgtk-4-dev libwebkitgtk-6.0-dev pkg-config
+      - name: Build
+        env:
+          MACOSX_DEPLOYMENT_TARGET: "13.0"
+        run: |
+          flags="$LDFLAGS"
+          exe=modbus-trace-explorer
+          if [ "${{ matrix.os }}" = windows ]; then
+            flags="$flags -H windowsgui"   # no console window
+            exe=modbus-trace-explorer.exe
+          fi
+          mkdir -p out
+          go build -tags production -trimpath -ldflags "$flags" -o "out/$exe" ./cmd/modbus-trace-explorer
+          go vet ./cmd/modbus-trace-explorer ./internal/gui
+          "out/$exe" --version
+      - name: Package (macOS application bundle, ad-hoc signed)
+        if: matrix.os == 'darwin'
+        run: |
+          packaging/macos/bundle.sh out/modbus-trace-explorer "$VERSION" out
+          ditto -c -k --keepParent "out/Modbus Trace Explorer.app" "modbus-trace-explorer-$VERSION-darwin-${{ matrix.arch }}.zip"
+      - name: Package (Windows)
+        if: matrix.os == 'windows'
+        shell: pwsh
+        run: |
+          $name = "modbus-trace-explorer-$env:VERSION-windows-${{ matrix.arch }}"
+          New-Item -ItemType Directory $name | Out-Null
+          Copy-Item out/modbus-trace-explorer.exe, LICENSE $name
+          Compress-Archive -Path $name -DestinationPath "$name.zip"
+      - name: Package (Linux)
+        if: matrix.os == 'linux'
+        run: |
+          name=modbus-trace-explorer-$VERSION-linux-${{ matrix.arch }}
+          mkdir "$name"
+          cp out/modbus-trace-explorer LICENSE "$name/"
+          tar czf "$name.tar.gz" "$name"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: gui-${{ matrix.os }}-${{ matrix.arch }}
+          path: |
+            modbus-trace-explorer-*.zip
+            modbus-trace-explorer-*.tar.gz
+          if-no-files-found: error
+          retention-days: 7

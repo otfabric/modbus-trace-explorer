@@ -1,0 +1,58 @@
+version: "2"
+
+linters:
+  default: none
+  enable:
+    - errcheck       # unchecked errors
+    - govet          # go vet checks
+    - ineffassign    # assigned but never used
+    - staticcheck    # comprehensive static analysis (includes gosimple + unused)
+    - misspell       # common spelling mistakes
+    - godot          # comment punctuation
+    - nilerr         # return nil instead of err
+    - exhaustive     # exhaustive switch on enums
+    - depguard       # no network packages, no Modbus I/O
+    - forbidigo      # no dialing
+  settings:
+    exhaustive:
+      default-signifies-exhaustive: true
+    depguard:
+      rules:
+        local-only:
+          list-mode: lax
+          files:
+            - "!$test"
+          deny:
+            - pkg: net/http
+              desc: "the application makes no network connections (R17)"
+            - pkg: net/rpc
+              desc: "the application makes no network connections (R17)"
+            - pkg: github.com/otfabric/go-modbus$
+              desc: "no Modbus I/O: the application reads traces only"
+    forbidigo:
+      analyze-types: true
+      forbid:
+        - pattern: ^net\.(Dial|DialTimeout|DialTCP|DialUDP|DialIP|DialUnix|Listen|ListenTCP|ListenUDP|ListenPacket)$
+          msg: "the application makes no network connections (R17)"
+        - pattern: ^net\.(Dialer|Resolver|ListenConfig)$
+          msg: "the application makes no network connections (R17)"
+  exclusions:
+    rules:
+      - path: _test\.go$
+        linters:
+          - forbidigo
+          - depguard
+
+formatters:
+  enable:
+    - gofmt
+    - goimports
+
+issues:
+  max-issues-per-linter: 0
+  max-same-issues: 0
+  new: false
+
+run:
+  timeout: 5m
+  tests: true

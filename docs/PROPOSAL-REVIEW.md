@@ -43,15 +43,15 @@ Facts used to justify dropping live capture (no longer load-bearing): Npcap's fr
 
 | Item | Where it is settled |
 |---|---|
-| Whether the gopacket fork (or any dependency) is CGO-free on all seven targets, has a usable pcapng writer, and beats ~500 lines of own reassembly | Library L0 |
+| Whether the gopacket fork (or any dependency) is CGO-free on all seven targets, has a usable pcapng writer, and beats ~500 lines of own reassembly | Library L0: settled, own code (library DECISIONS D1–D3) |
 | MODBUS Messaging on TCP/IP Implementation Guide V1.0b (not in the local checkouts); framing rules here come from the Application Protocol spec and practice | Library L0 |
-| modbusctl memory per MBCAP sample (to calibrate the report's replay estimate) | Library L0 |
-| `tshark` field names for the oracle test | Library L3/L4 |
+| modbusctl memory per MBCAP sample (to calibrate the report's replay estimate) | Library L0: settled (D6) |
+| `tshark` field names for the oracle test | Library L4: settled (TESTING section 4) |
 | tcpdump writes classic pcap and Wireshark/dumpcap write pcapng by default (general knowledge, not checked here); the readers support both either way | Library L1 |
-| Throughput and memory targets (L23, R21) | Library L0/L4, App M0 |
-| SQLite versus columnar index budgets; keyset paging with row values in the driver's SQLite | App M0 |
-| Maximum scrollable element height in WKWebView, WebView2 and WebKitGTK; the scaled-scroll table | App M0 |
-| Wails v3 beta.29 file-drop and open-with APIs | App M0 |
+| Throughput and memory targets (L23, R21) | Library L4: met (Scan 760 MB/s, Analyze 207 MB/s); App M0: index measured (ARCHITECTURE section 5), M1 measures end to end |
+| SQLite versus columnar index budgets; keyset paging with row values in the driver's SQLite | App M0: measured; columnar chosen by the user on 2026-10-16 (ARCHITECTURE section 5) |
+| Maximum scrollable element height in WKWebView, WebView2 and WebKitGTK; the scaled-scroll table | App M0: the table caps its spacer at 4,000,000 px, below every engine's limit; checked in Chromium; the three WebViews in M1 |
+| Wails v3 beta.29 file-drop and open-with APIs | App M0: found in its source and wired (ARCHITECTURE section 12); run-time check in M1 |
 | That the static Linux CLI runs unchanged on Debian 11, 12 and 13 on all three architectures (expected from `CGO_ENABLED=0`; to be tested like the Explorer's A12) | Library L1/L4 |
 
 ## Risks worth knowing

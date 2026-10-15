@@ -1,6 +1,6 @@
 # OT Fabric Modbus Trace Explorer: agent handoff
 
-Status (2026-10-15): **nothing is implemented yet.** This repository starts from these documents. This file is the entry point for Claude Code and other agents. Read it fully, then the documents it points to, before writing code. The library this application depends on, `otfabric/go-modbus-trace`, is built in its own repository from its own handoff documents; the contract between the two is in `docs/ARCHITECTURE.md` section 3.
+Status (2026-10-16): **M0 is implemented**: repository scaffolding and CI from the SunSpec Explorer, the Wails shell (branding, file drop, "open with", the command line), the frontend shell with the mock Service and the scaled-scroll timeline table, and the store and table spikes with their decisions in `docs/ARCHITECTURE.md` sections 5, 11 and 16. M1 (open, scan, analyze into the index, timeline, detail, filters) is next; the library it needs exists (go-modbus-trace L0–L4). This file is the entry point for Claude Code and other agents. Read it fully, then the documents it points to, before writing code. The library this application depends on, `otfabric/go-modbus-trace`, is built in its own repository from its own handoff documents; the contract between the two is in `docs/ARCHITECTURE.md` section 3.
 
 ## What this is
 
@@ -16,14 +16,14 @@ It does **not** capture live (tcpdump and Wireshark do that better), does not ta
 4. `docs/BRANDING.md`: OT Fabric visual identity, tokens, icon rules, accessibility numbers.
 5. `docs/PROPOSAL-REVIEW.md`: why the original "Modbus Capture" proposal was replaced, what was verified, what is still unverified.
 6. `modbus-capture-claude-proposal.md` is the **superseded** original proposal (live capture, daemon, browser mode). Do not follow it; it is kept for history.
-7. Sibling checkouts to read (read-only): `sunspec-explorer/` (the reference application: frontend shell, Wails shell, CI, packaging; commit 915d2c3 / tag v0.0.3), `go-modbus-trace/` (the library, when it exists), `go-modbus-capture/docs/` and `modbusctl/` (what the MBCAP export feeds), `website/` (branding source).
+7. Sibling checkouts to read (read-only): `sunspec-explorer/` (the reference application: frontend shell, Wails shell, CI, packaging; commit 915d2c3 / tag v0.0.3), `go-modbus-trace/` (the library: L0–L4 done, v0.1.0 pending), `go-modbus-capture/docs/` and `modbusctl/` (what the MBCAP export feeds), `website/` (branding source).
 
 ## Decisions that are settled (do not relitigate without asking the user)
 
 - **No live capture** (user decision 2026-10-15). Input is a trace file. There is no capture backend, no privilege model, no Npcap/BPF, no recording.
 - **One artifact**: `modbus-trace-explorer`, the Wails desktop GUI (cgo). **No daemon and no browser mode in v0.1.** Headless and remote use is the CLI `mbtracectl` from the library (on a gateway: `mbtracectl export mbcap` or `summary` on the trace there). The frontend still talks to a TypeScript `Service` and `Platform` interface so a web build could be added later; do not build one now.
 - **The engine is a separate library** (`go-modbus-trace`). The application contains no pcap parsing, reassembly, framing, decoding or pairing code. It orchestrates, indexes, queries and presents. If the library lacks something the application needs, record it in `docs/ARCHITECTURE.md` section 3 and ask the user; do not reimplement it here.
-- **The trace file is the source of truth; the index is a disposable cache.** The application stores compact rows with provenance references in a SQLite cache. Raw bytes, ADU details and address values are re-read from the trace on demand through the library. **Exports always re-stream the trace through the library**, never from the index, so the GUI and `mbtracectl` produce identical files.
+- **The trace file is the source of truth; the index is a disposable cache.** The application stores compact rows with provenance references in a columnar cache of memory-mapped column files (decided 2026-10-16 from the M0 spike). Raw bytes, ADU details and address values are re-read from the trace on demand through the library. **Exports always re-stream the trace through the library**, never from the index, so the GUI and `mbtracectl` produce identical files.
 - **Read-only on inputs**: the application never modifies, moves or deletes a trace. Outputs are written to a temporary file next to the destination and renamed on success.
 - **MBCAP is the only replay format** and is produced only by the library through go-modbus-capture. Captures hold reads only; writes and vendor functions stay visible in the UI but are never exported (the export dialog shows what is excluded and why).
 - **Raw data is authoritative.** The UI shows raw words, bits and hex. Zero-based PDU addresses are primary; a 1-based/reference label is a display toggle. No type decoding (float, scaling, strings) in v0.1; it is a later display profile.
@@ -31,7 +31,7 @@ It does **not** capture live (tcpdump and Wireshark do that better), does not ta
 - **Two repositories, one convention set**: copy conventions and shell code from `sunspec-explorer` (listed below). Do not extract a shared module now; keep the list of copied files in `docs/ARCHITECTURE.md` section 15 so a later extraction is possible.
 - **Releases are unsigned for now** (no macOS or Windows signing identity): SHA-256 checksums, CI build provenance attestations, documented Gatekeeper/SmartScreen steps.
 - **Branding**: dark theme by default, tokens from `docs/BRANDING.md`, fonts bundled via fontsource. The application's own icon is the **Modbus protocol icon** (`website/public/icons/go-modbus.svg`), per the rule that each OT Fabric GUI uses its protocol's icon.
-- **Name** (user decision 2026-10-15): **Modbus Trace Explorer**; repository and GUI binary `modbus-trace-explorer`; library `go-modbus-trace`; CLI `mbtracectl` (proposed).
+- **Name** (user decision 2026-10-15): **Modbus Trace Explorer**; repository and GUI binary `modbus-trace-explorer`; library `go-modbus-trace`; CLI `mbtracectl`.
 
 ## Hard rules
 
@@ -41,7 +41,7 @@ It does **not** capture live (tcpdump and Wireshark do that better), does not ta
 - Never hold all rows in memory: the UI shows a virtualized window, the Go side pages from the index. Never send a whole trace to the frontend.
 - The cache directory is created 0700, files 0600; the cache is safe to delete at any time.
 - `go.mod` must never contain a `replace` directive or a local path for `go-modbus-trace`; use an uncommitted `go.work` for local library development. CI fails on `replace`.
-- No cgo in `internal/` except what the Wails GUI strictly needs under `cmd/modbus-trace-explorer` and `internal/gui`. SQLite must be a pure-Go driver (`modernc.org/sqlite`) unless the M0 measurement proves it unusable.
+- No cgo in `internal/` except what the Wails GUI strictly needs under `cmd/modbus-trace-explorer` and `internal/gui`. The index is the application's own column files (no SQLite; `docs/ARCHITECTURE.md` section 5).
 - Pin the Wails v3 beta version in `go.mod` (beta.29 on 2026-10-15); it is a prerelease and APIs may still change. Align `@wailsio/runtime` with it.
 - Do not commit unless the user asks. When committing, follow the user's commit conventions.
 
@@ -56,7 +56,7 @@ cmd/modbus-trace-explorer/   Wails GUI main (cgo); app icon; Windows resources
 internal/gui/                Wails service binding, event forwarding, native dialogs (Wails only here)
 internal/service/            Service interface, DTOs, errors (no Wails import)
 internal/engine/             jobs (import, address history, export), orchestration over go-modbus-trace
-internal/store/              SQLite cache: schema, batched writer, queries, cache manager
+internal/store/              columnar cache: column files, writers, selection vectors, cache manager
 internal/buildinfo/
 frontend/                    React + TypeScript + Tailwind v4; one build (dist/wails); src/app/{components,state,service,platform}, src/adapters/wails, a mock Service with fixture data
 packaging/                   macOS bundle, icons, later installers
@@ -73,7 +73,7 @@ docs/                        the documents above, schema/ (JSON Schema of the ap
 
 ## Open questions
 
-None blocking. For the M0 spike to decide with evidence: SQLite driver and schema versus a columnar in-memory index (budgets in `docs/ARCHITECTURE.md` section 5); the scaled-scroll table (browsers cap the height of a scrollable element, so a plain virtualized list does not reach 10 million rows; section 11); Wails file-drop and open-with support.
+None blocking. Decided by the user on 2026-10-16 from the M0 spike: **a columnar index** (memory-mapped column files, no SQLite; `docs/ARCHITECTURE.md` section 5). Settled by M0: the scaled-scroll table (section 11) and the Wails file-drop and open-with APIs (section 12); their run-time checks in the three WebViews follow in M1.
 
 ## Milestones (details in docs/ARCHITECTURE.md section 16)
 
