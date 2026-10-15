@@ -1,10 +1,14 @@
-import { useCallback, useEffect, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
+import { DetailPane } from './components/DetailPane';
 import { EmptyState } from './components/EmptyState';
+import { FilterBar } from './components/FilterBar';
+import { FlowsStep } from './components/FlowsStep';
 import { Header } from './components/Header';
-import { Chip } from './components/ui';
+import { ImportProgress } from './components/ImportProgress';
 import {
   AddressIcon,
   DeviceIcon,
+  ErrorIcon,
   ExportIcon,
   PatternIcon,
   PlugIcon,
@@ -13,8 +17,8 @@ import {
   WarningIcon,
 } from './icons';
 import type { Platform } from './platform/platform';
-import type { Service } from './service/service';
-import type { Filter, FunctionClass, Order, Overview, Row, Status } from './service/types';
+import { toServiceError, type Service } from './service/service';
+import type { AnalyzeConfig, Detail, FileInfo, Filter, JobState, Order, Overview, RecentFile, ScanResult, TimelineQuery } from './service/types';
 import { formatBytes, formatCount, formatDuration, formatTime, type TimeMode } from './state/format';
 import { useTheme } from './state/useTheme';
 import { TimelineTable } from './table/TimelineTable';
@@ -35,7 +39,16 @@ const VIEWS: { key: string; label: string; icon: ReactNode }[] = [
 
 const TIME_MODES: TimeMode[] = ['local', 'utc', 'relative'];
 
-function FileStrip({ ov }: { ov: Overview }) {
+/** Where the user is: no trace, importing it, or looking at it. */
+type Phase =
+  | { kind: 'empty' }
+  | { kind: 'scanning'; file: FileInfo; job: JobState | null; jobId: string }
+  | { kind: 'flows'; file: FileInfo; result: ScanResult; warning?: string }
+  | { kind: 'analyzing'; file: FileInfo; job: JobState | null; jobId: string; result?: ScanResult }
+  | { kind: 'ready'; file: FileInfo; warning?: string };
+
+function FileStrip({ ov, onQuality }: { ov: Overview; onQuality: () => void }) {
+  const badge = { ok: 'Quality: OK', warnings: `Quality: ${ov.quality_count} warnings`, problems: `Quality: ${ov.quality_count} problems` }[ov.quality];
   return (
     <div className="flex shrink-0 flex-wrap items-center gap-x-6 gap-y-1 border-b border-line px-4 py-2 font-mono text-[13px]">
       <span className="text-fg-strong">{ov.file}</span>
@@ -46,13 +59,20 @@ function FileStrip({ ov }: { ov: Overview }) {
       <span>{formatCount(ov.devices)} devices</span>
       <span>{formatCount(ov.transactions)} transactions</span>
       <span>{formatCount(ov.connections)} connections</span>
-      <span className="ml-auto flex items-center gap-2">
-        {ov.quality !== 'ok' && (
+      <span className="ml-auto flex items-center gap-3">
+        {ov.trace_missing && (
           <span className="inline-flex items-center gap-1 text-wire">
-            <WarningIcon size={14} />
-            Quality: {ov.quality_count} {ov.quality}
+            <WarningIcon size={14} /> The trace is not at its path: detail is not available
           </span>
         )}
+        <button
+          type="button"
+          onClick={onQuality}
+          className={`inline-flex items-center gap-1 hover:underline ${ov.quality === 'problems' ? 'text-danger' : ov.quality === 'warnings' ? 'text-wire' : 'text-muted'}`}
+        >
+          {ov.quality === 'ok' ? <QualityIcon size={14} /> : <WarningIcon size={14} />}
+          {badge}
+        </button>
         <span className="inline-flex items-center gap-1 text-muted" title="Exports arrive with M3">
           <ExportIcon size={14} /> Export
         </span>
@@ -61,89 +81,205 @@ function FileStrip({ ov }: { ov: Overview }) {
   );
 }
 
-/** Quick filters for the M0 shell; the filter bar with chips and text grammar (R7) comes with M1. */
-function QuickFilters({ filter, onChange, total }: { filter: Filter; onChange: (f: Filter) => void; total: number }) {
-  const classes: FunctionClass[] = ['read', 'write'];
-  const statuses: Status[] = ['exception', 'unanswered'];
-  const toggle = <T,>(list: T[] | undefined, v: T) => (list?.includes(v) ? list.filter((x) => x !== v) : [...(list ?? []), v]);
-  return (
-    <div className="flex shrink-0 flex-wrap items-center gap-2 border-b border-line px-4 py-2 text-[13px]">
-      {classes.map((c) => (
-        <button key={c} type="button" aria-pressed={filter.classes?.includes(c) ?? false} onClick={() => onChange({ ...filter, classes: toggle(filter.classes, c) })}>
-          <Chip tone={filter.classes?.includes(c) ? 'accent' : 'neutral'}>class:{c}</Chip>
-        </button>
-      ))}
-      {statuses.map((s) => (
-        <button key={s} type="button" aria-pressed={filter.statuses?.includes(s) ?? false} onClick={() => onChange({ ...filter, statuses: toggle(filter.statuses, s) })}>
-          <Chip tone={filter.statuses?.includes(s) ? 'accent' : 'neutral'}>status:{s}</Chip>
-        </button>
-      ))}
-      <span className="ml-auto font-mono text-muted">{formatCount(total)} rows</span>
-    </div>
-  );
-}
-
 export function App({ service, platform }: AppProps) {
   const [theme, toggleTheme] = useTheme(platform);
+  const [phase, setPhase] = useState<Phase>({ kind: 'empty' });
+  const [error, setError] = useState<string | null>(null);
+  const [recent, setRecent] = useState<RecentFile[]>([]);
   const [overview, setOverview] = useState<Overview | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
   const [view, setView] = useState('timeline');
   const [filter, setFilter] = useState<Filter>({});
   const [order, setOrder] = useState<Order>('time');
   const [desc, setDesc] = useState(false);
   const [timeMode, setTimeMode] = useState<TimeMode>('local');
-  const [selected, setSelected] = useState<{ rank: number; row: Row } | null>(null);
+  const [selected, setSelected] = useState<number | null>(null);
+  const [detail, setDetail] = useState<Detail | null>(null);
+  const [detailError, setDetailError] = useState<string | null>(null);
+  const [showDetail, setShowDetail] = useState(true);
   const [total, setTotal] = useState(0);
+  const filterBox = useRef<HTMLInputElement>(null);
+  const phaseRef = useRef(phase);
+  phaseRef.current = phase;
 
-  const refresh = useCallback(() => {
-    service.overview().then(setOverview, () => setOverview(null));
-  }, [service]);
-  useEffect(refresh, [refresh]);
-
-  const opened = useCallback(
-    (paths: string[]) => {
-      if (paths.length === 0) return;
-      // Opening and analysing a trace arrive with M1; the shell shows what it was given.
-      setNotice(`Opening traces arrives with M1. Received: ${paths.join(', ')}`);
-      refresh();
-    },
-    [refresh],
-  );
-  useEffect(() => platform.onOpen(opened), [platform, opened]);
-
-  const onSelect = useCallback((rank: number, row: Row) => setSelected({ rank, row }), []);
+  const fail = useCallback((err: unknown) => {
+    setError(toServiceError(err).message);
+    setPhase({ kind: 'empty' });
+  }, []);
 
   useEffect(() => {
+    service.recent().then(setRecent, () => setRecent([]));
+  }, [service, phase.kind]);
+
+  // A trace is ready: its overview, and a fresh view state.
+  const ready = useCallback(
+    (file: FileInfo, warning?: string) => {
+      setFilter({});
+      setSelected(null);
+      setDetail(null);
+      setPhase({ kind: 'ready', file, warning });
+      service.overview(file.id).then(setOverview, fail);
+    },
+    [service, fail],
+  );
+
+  const open = useCallback(
+    async (paths: string[]) => {
+      if (paths.length === 0) return;
+      setError(null);
+      try {
+        const cur = phaseRef.current;
+        if (cur.kind !== 'empty') await service.close(cur.file.id).catch(() => {});
+        const file = await service.open(paths);
+        if (file.analyzed) {
+          ready(file);
+          return;
+        }
+        setOverview(null);
+        const ref = await service.scan(file.id);
+        setPhase({ kind: 'scanning', file, job: null, jobId: ref.id });
+      } catch (err) {
+        fail(err);
+      }
+    },
+    [service, ready, fail],
+  );
+
+  // Job events drive the import.
+  useEffect(
+    () =>
+      service.subscribe((ev) => {
+        const job = ev.job;
+        const cur = phaseRef.current;
+        if (!job || (cur.kind !== 'scanning' && cur.kind !== 'analyzing') || job.id !== cur.jobId) return;
+        if (job.state === 'running') {
+          setPhase({ ...cur, job });
+          return;
+        }
+        if (job.state === 'failed') {
+          fail(new Error(job.error?.message ?? 'the job failed'));
+          return;
+        }
+        if (cur.kind === 'scanning') {
+          if (job.state === 'canceled') {
+            setPhase({ kind: 'empty' });
+            return;
+          }
+          service.scanResult(cur.file.id).then((result) => setPhase({ kind: 'flows', file: cur.file, result, warning: job.warning }), fail);
+          return;
+        }
+        if (job.state === 'canceled') {
+          if (cur.result) setPhase({ kind: 'flows', file: cur.file, result: cur.result });
+          else setPhase({ kind: 'empty' });
+          return;
+        }
+        ready({ ...cur.file, analyzed: true }, job.warning);
+      }),
+    [service, ready, fail],
+  );
+
+  useEffect(() => platform.onOpen((paths) => void open(paths)), [platform, open]);
+
+  const analyze = async (file: FileInfo, result: ScanResult, cfg: AnalyzeConfig) => {
+    try {
+      const ref = await service.analyze(file.id, cfg);
+      setPhase({ kind: 'analyzing', file, job: null, jobId: ref.id, result });
+    } catch (err) {
+      setError(toServiceError(err).message);
+    }
+  };
+
+  const fileId = phase.kind === 'ready' ? phase.file.id : '';
+  const fetchPage = useCallback((q: TimelineQuery, signal: AbortSignal) => service.timeline(fileId, q, signal), [service, fileId]);
+
+  // The detail pane follows the selection.
+  useEffect(() => {
+    if (selected === null || !fileId) {
+      setDetail(null);
+      return;
+    }
+    let live = true;
+    setDetailError(null);
+    service.detail(fileId, selected).then(
+      (d) => live && setDetail(d),
+      (err: unknown) => live && setDetailError(toServiceError(err).message),
+    );
+    return () => {
+      live = false;
+    };
+  }, [service, fileId, selected]);
+
+  // UX.md section 9.
+  useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.target instanceof HTMLInputElement) return;
-      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'o') {
+      const typing = e.target instanceof HTMLInputElement;
+      const mod = e.metaKey || e.ctrlKey;
+      if (mod && e.key.toLowerCase() === 'o') {
         e.preventDefault();
-        void platform.chooseTraces().then(opened);
-      } else if (!e.metaKey && !e.ctrlKey && /^[1-6]$/.test(e.key)) {
+        void platform.chooseTraces().then(open);
+      } else if ((mod && e.key.toLowerCase() === 'f') || (!typing && e.key === '/')) {
+        e.preventDefault();
+        filterBox.current?.focus();
+      } else if (typing || mod) {
+        return;
+      } else if (/^[1-6]$/.test(e.key)) {
         setView(VIEWS[Number(e.key) - 1]?.key ?? 'timeline');
-      } else if (!e.metaKey && !e.ctrlKey && e.key.toLowerCase() === 't') {
+      } else if (e.key.toLowerCase() === 't') {
         setTimeMode((m) => TIME_MODES[(TIME_MODES.indexOf(m) + 1) % TIME_MODES.length] ?? 'local');
+      } else if (e.key.toLowerCase() === 'd') {
+        setShowDetail((v) => !v);
       }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [platform, opened]);
+  }, [platform, open]);
 
-  return (
-    <div className="flex h-full flex-col">
-      <Header theme={theme} onToggleTheme={toggleTheme} />
-      {overview === null ? (
-        <EmptyState onOpen={() => void platform.chooseTraces().then(opened)} notice={notice} />
-      ) : (
+  const cancelJob = () => {
+    if (phase.kind === 'scanning' || phase.kind === 'analyzing') void service.cancelJob(phase.jobId);
+  };
+
+  let body: ReactNode;
+  switch (phase.kind) {
+    case 'empty':
+      body = <EmptyState onOpen={() => void platform.chooseTraces().then(open)} onOpenRecent={(p) => void open(p)} recent={recent} error={error} />;
+      break;
+    case 'scanning':
+      body = <ImportProgress title="Scanning the trace" name={phase.file.name} job={phase.job} onCancel={cancelJob} />;
+      break;
+    case 'analyzing':
+      body = <ImportProgress title="Analysing the selected flows" name={phase.file.name} job={phase.job} onCancel={cancelJob} />;
+      break;
+    case 'flows':
+      body = (
+        <FlowsStep
+          name={phase.file.name}
+          result={phase.result}
+          warning={phase.warning ?? error ?? undefined}
+          onAnalyze={(cfg) => void analyze(phase.file, phase.result, cfg)}
+          onCancel={() => {
+            void service.close(phase.file.id);
+            setPhase({ kind: 'empty' });
+          }}
+        />
+      );
+      break;
+    case 'ready':
+      body = (
         <>
-          <FileStrip ov={overview} />
-          <QuickFilters
+          {overview && <FileStrip ov={overview} onQuality={() => setView('quality')} />}
+          {phase.warning && (
+            <p role="alert" className="flex shrink-0 items-center gap-2 border-b border-line px-4 py-1 text-wire">
+              <WarningIcon size={14} /> {phase.warning}
+            </p>
+          )}
+          <FilterBar
+            ref={filterBox}
             filter={filter}
+            total={total}
+            parse={(text) => service.parseFilter(phase.file.id, text)}
             onChange={(f) => {
               setFilter(f);
               setSelected(null);
             }}
-            total={total}
           />
           <div className="flex min-h-0 flex-1">
             <nav aria-label="Views" className="flex w-44 shrink-0 flex-col gap-0.5 border-r border-line p-2">
@@ -166,55 +302,69 @@ export function App({ service, platform }: AppProps) {
             <main className="flex min-w-0 flex-1 flex-col">
               {view === 'timeline' ? (
                 <TimelineTable
-                  service={service}
+                  fetchPage={fetchPage}
                   filter={filter}
                   order={order}
                   desc={desc}
                   timeMode={timeMode}
-                  firstNs={overview.first_ns}
-                  selected={selected?.rank ?? null}
-                  onSelect={onSelect}
+                  firstNs={overview?.first_ns ?? 0}
+                  selectedSeq={selected}
+                  onSelect={(_rank, row) => setSelected(row.seq)}
                   onTotal={setTotal}
                 />
               ) : (
                 <p className="p-6 text-muted">This view arrives with M2.</p>
               )}
             </main>
-            <aside aria-label="Detail" className="w-80 shrink-0 overflow-y-auto border-l border-line p-4 text-[13px]">
-              {selected ? (
-                <div className="flex flex-col gap-2">
-                  <span className="ot-label">Row {formatCount(selected.rank + 1)}</span>
-                  <p className="text-fg-strong">{selected.row.summary}</p>
-                  <p>{selected.row.result}</p>
-                  <p className="text-muted">The detail pane (fields, raw bytes, packets) arrives with M1.</p>
-                </div>
-              ) : (
-                <p className="text-muted">Select a row.</p>
-              )}
-            </aside>
+            {showDetail && (
+              <aside aria-label="Detail" className="flex w-96 shrink-0 flex-col border-l border-line">
+                <DetailPane
+                  detail={detail}
+                  error={detailError}
+                  loading={selected !== null}
+                  timeMode={timeMode}
+                  firstNs={overview?.first_ns ?? 0}
+                  copy={(t) => void platform.copyText(t)}
+                />
+              </aside>
+            )}
           </div>
-          <footer className="flex h-7 shrink-0 items-center gap-4 border-t border-line px-4 font-mono text-[12px] text-muted">
-            <span>{formatCount(total)} rows</span>
-            <button type="button" className="hover:text-accent" onClick={() => setTimeMode((m) => TIME_MODES[(TIME_MODES.indexOf(m) + 1) % 3] ?? 'local')}>
-              time: {timeMode}
-            </button>
-            <button
-              type="button"
-              className="hover:text-accent"
-              onClick={() => {
-                if (order === 'time' && !desc) setOrder('latency');
-                else if (order === 'latency' && !desc) setDesc(true);
-                else {
-                  setOrder('time');
-                  setDesc(false);
-                }
-              }}
-            >
-              order: {order}
-              {desc ? ' (descending)' : ''}
-            </button>
-          </footer>
         </>
+      );
+      break;
+  }
+
+  return (
+    <div className="flex h-full flex-col">
+      <Header theme={theme} onToggleTheme={toggleTheme} />
+      {body}
+      {phase.kind === 'ready' && (
+        <footer className="flex h-7 shrink-0 items-center gap-4 border-t border-line px-4 font-mono text-[12px] text-muted">
+          <span>{formatCount(total)} rows</span>
+          <button type="button" className="hover:text-accent" onClick={() => setTimeMode((m) => TIME_MODES[(TIME_MODES.indexOf(m) + 1) % 3] ?? 'local')}>
+            time: {timeMode}
+          </button>
+          <button
+            type="button"
+            className="hover:text-accent"
+            onClick={() => {
+              if (order === 'time' && !desc) setOrder('latency');
+              else if (order === 'latency' && !desc) setDesc(true);
+              else {
+                setOrder('time');
+                setDesc(false);
+              }
+            }}
+          >
+            order: {order}
+            {desc ? ' (descending)' : ''}
+          </button>
+          {error && (
+            <span className="inline-flex items-center gap-1 text-danger">
+              <ErrorIcon size={12} /> {error}
+            </span>
+          )}
+        </footer>
       )}
     </div>
   );

@@ -1,0 +1,328 @@
+{
+  "$defs": {
+    "service.ADUDetail": {
+      "additionalProperties": false,
+      "properties": {
+        "fields": {
+          "anyOf": [
+            {
+              "items": {
+                "$ref": "#/$defs/service.Field"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "first_ns": {
+          "type": "integer"
+        },
+        "hex": {
+          "type": "string"
+        },
+        "last_ns": {
+          "type": "integer"
+        },
+        "name": {
+          "type": "string"
+        },
+        "packets": {
+          "anyOf": [
+            {
+              "items": {
+                "$ref": "#/$defs/service.PacketRef"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "warnings": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "fields",
+        "hex",
+        "name",
+        "packets",
+        "warnings"
+      ],
+      "type": "object"
+    },
+    "service.ConnDetail": {
+      "additionalProperties": false,
+      "properties": {
+        "client": {
+          "type": "string"
+        },
+        "close": {
+          "type": "string"
+        },
+        "id": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "open": {
+          "type": "string"
+        },
+        "role_confidence": {
+          "type": "number"
+        },
+        "role_source": {
+          "type": "string"
+        },
+        "server": {
+          "type": "string"
+        },
+        "transactions": {
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "client",
+        "close",
+        "id",
+        "open",
+        "role_confidence",
+        "role_source",
+        "server",
+        "transactions"
+      ],
+      "type": "object"
+    },
+    "service.Detail": {
+      "additionalProperties": false,
+      "properties": {
+        "conn": {
+          "$ref": "#/$defs/service.ConnDetail"
+        },
+        "extra": {},
+        "mbcap": {
+          "type": "string"
+        },
+        "notes": {
+          "anyOf": [
+            {
+              "items": {
+                "$ref": "#/$defs/service.Note"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "request": {
+          "$ref": "#/$defs/service.ADUDetail"
+        },
+        "response": {
+          "$ref": "#/$defs/service.ADUDetail"
+        },
+        "row": {
+          "$ref": "#/$defs/service.Row"
+        },
+        "text": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "notes",
+        "row",
+        "text"
+      ],
+      "type": "object"
+    },
+    "service.Field": {
+      "additionalProperties": false,
+      "properties": {
+        "hex": {
+          "type": "string"
+        },
+        "length": {
+          "type": "integer"
+        },
+        "name": {
+          "type": "string"
+        },
+        "offset": {
+          "type": "integer"
+        },
+        "value": {
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "length",
+        "name",
+        "offset"
+      ],
+      "type": "object"
+    },
+    "service.Note": {
+      "additionalProperties": false,
+      "properties": {
+        "code": {
+          "type": "string"
+        },
+        "kind": {
+          "type": "string"
+        },
+        "meaning": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "code",
+        "kind",
+        "meaning"
+      ],
+      "type": "object"
+    },
+    "service.PacketRef": {
+      "additionalProperties": false,
+      "properties": {
+        "display_filter": {
+          "type": "string"
+        },
+        "frame": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "interface": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "offset": {
+          "type": "integer"
+        },
+        "part": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "payload_length": {
+          "type": "integer"
+        },
+        "payload_offset": {
+          "type": "integer"
+        },
+        "t_ns": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "display_filter",
+        "frame",
+        "interface",
+        "offset",
+        "part",
+        "payload_length",
+        "payload_offset"
+      ],
+      "type": "object"
+    },
+    "service.Row": {
+      "additionalProperties": false,
+      "properties": {
+        "class": {
+          "type": "string"
+        },
+        "client": {
+          "type": "string"
+        },
+        "conn": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "exception": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "fc": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "flags": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "kind": {
+          "type": "string"
+        },
+        "latency_ns": {
+          "type": "integer"
+        },
+        "result": {
+          "type": "string"
+        },
+        "seq": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "server": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        },
+        "summary": {
+          "type": "string"
+        },
+        "t_ns": {
+          "type": "integer"
+        },
+        "tid": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "unit": {
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "client",
+        "conn",
+        "flags",
+        "kind",
+        "result",
+        "seq",
+        "server",
+        "summary",
+        "t_ns"
+      ],
+      "type": "object"
+    }
+  },
+  "$id": "https://github.com/otfabric/modbus-trace-explorer/docs/schema/detail-1.schema.json",
+  "$ref": "#/$defs/service.Detail",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Generated from internal/service by internal/engine's TestSchemasUpToDate.",
+  "title": "Row detail"
+}

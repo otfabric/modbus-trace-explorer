@@ -1,6 +1,6 @@
 # Architecture
 
-Status (2026-10-16): **M0 is implemented** (shell, mock, spikes; section 16). Statements about M1 and later are *proposed behavior* unless marked *(verified)* (checked in the local checkouts of sunspec-explorer v0.0.3, go-modbus-capture v0.0.2, modbusctl v3.2.0, go-modbus v1.7.1 and go-modbus-trace at main `119d699` on 2026-10-15/16) or *(unverified)* with the milestone that must check them.
+Status (2026-10-16): **M0 and M1 are implemented** (section 16). Statements about M1 and later are *proposed behavior* unless marked *(verified)* (checked in the local checkouts of sunspec-explorer v0.0.3, go-modbus-capture v0.0.2, modbusctl v3.2.0, go-modbus v1.7.1 and go-modbus-trace at main `119d699` on 2026-10-15/16) or *(unverified)* with the milestone that must check them.
 
 ## 1. Artifact and layering
 
@@ -22,7 +22,7 @@ React UI  --(TS Service, Platform)-->  Wails bindings  -->  internal/gui  -->  i
 
 ## 2. The Service interface
 
-Illustrative; the exact DTOs are defined in M0/M1 and published as JSON Schemas (R22).
+*(M1: implemented for opening, importing, the timeline, the detail and the filter text: `internal/service/service.go` is the authority, its DTOs have JSON Schemas in `docs/schema/` generated from the Go types and checked against the engine's real output, and `frontend/src/app/service/types.ts` mirrors them. The views (M2), exports and settings (M3) follow.)* The original sketch, kept for the parts still to come:
 
 ```go
 type Service interface {
@@ -127,25 +127,26 @@ Reading the numbers against the budgets (R21): rows of 145 bytes put a SQLite in
 
 Not measured yet (M1, on the real index): memory-mapped scans under memory pressure, Windows file mapping, the selection cache's memory for very selective and very broad filters, and import from the library's events end to end (the library's `Analyze` runs at about 200 MB/s on one core, so the index build is not the bottleneck).
 
-Budgets (R21; the M0 numbers are above): index at most 25% of the trace size; at most about 110 bytes per timeline row plus its provenance references (8 to 24 bytes); 10 million rows paged, filtered and sorted in under 150 ms at the 95th percentile; page cache bounded (64 MiB).
+Budgets (R21; the M0 numbers are above, the M1 numbers below): index at most 40% of the trace size (restated by the user on 2026-10-16 from the M1 measurements; proposed was 25%); at most about 110 bytes per timeline row plus its provenance references (8 to 24 bytes); 10 million rows paged, filtered and sorted in under 150 ms at the 95th percentile; page cache bounded (64 MiB).
 
-Layout (names indicative), one directory per trace: `os.UserCacheDir()/modbus-trace-explorer/<fingerprint>/`.
+Layout as built in M1 (`internal/store`), one directory per trace fingerprint, `os.UserCacheDir()/modbus-trace-explorer/ix-<fingerprint>/`, written as `ix-<fingerprint>.partial/` and renamed when complete:
 
 | File | Content |
 |---|---|
-| `meta.json` | format version, library version, event-semantics version, quick fingerprint, full SHA-256, path at import, import status (`complete`, written last), remembered choices (flows, server ports, overrides) |
-| `summary.json` | the library's file summary (interfaces, link types, drops, counters) |
-| `flows.json` | the scan's flow table with the user's selection and overrides |
-| `devices.json`, `clients.json`, `conns.json` | dictionaries: id to server address, port and unit, label; id to client address; connections with endpoints, epoch, open/close, role source, first/last time, transactions, bytes, flags |
-| `col/<name>.bin` | the timeline rows, one fixed-width little-endian column per field, row `i` at offset `i * width`: `seq` (u32), `kind` (u8: txn, conn_open, conn_close, gap, resync, note), `t_ns` (i64: request first packet, or the event time), `t_end_ns` (i64), `conn` (u32), `device` (u16), `client` (u16), `unit` (u8), `tid` (u16), `fc` (u8), `sub` (u16), `class` (u8), `status` (u8), `exc` (u8), `flags` (u32 bitmask), `space` (u8), `start`, `count`, `wstart`, `wcount` (u16), `lat_us` (u32), `mbcap_reason` (u8), `req_ref`/`resp_ref` (u64 each: the offset of the first packet's record; the rest of the provenance is re-read from the trace), `extra` (u32 offset into `extra.jsonl` for non-transaction kinds) |
-| `perm/time.bin`, `perm/latency.bin` | u32 row numbers in time order (`t_ns`, then `seq`) and in latency order (`lat_us`, then `seq`), written at the end of the import |
-| `device_stats.json`, `patterns.json`, `coverage.json`, `quality.json` | analyzer results from the library |
+| `meta.json` | format version, library version, event-semantics version, fingerprint, paths at import, rows, first and last time, remembered choices (`service.AnalyzeConfig`), `complete` (written last) |
+| `summary.json`, `conns.json` | the library's file summary; every connection as last seen (`model.Connection`) |
+| `devices.json`, `clients.json`, `summaries.json`, `extra.json` | dictionaries: device entries (server endpoint and unit; an entry with the server only, marked `#`, stands for a whole server and carries its connection, gap and resync rows, so a server filter keeps them; entry 0 is "none" for notes), client addresses, the transactions' summary texts (deduplicated, at most 1,048,576), and the small JSON of every row that is not a transaction |
+| `col/<name>.bin` | one fixed-width little-endian column per field, row `i` at offset `i * width`: `kind` (u8), `t_ns` (i64), `conn` (u32), `device`, `client`, `tid` (u16), `fc` (u8), `sub` (u16, 0xFFFF none), `class`, `status`, `exc` (u8), `flags` (u32 bitmask), `space` (u8), `start`, `count`, `wstart`, `wcount` (u16), `lat_us` (u32, 0xFFFFFFFF none), `mbcap` (u8: the `Classify` reason), `summary` (u32: a transaction's summary, another row's extra data), `refs` (u64: the offset of the row's provenance in `refs.bin`). 55 bytes a row |
+| `refs.bin` | every row's provenance: the request's and the response's frame references (part, frame, file offset, interface, time, payload offset and length), varint-encoded as differences to the previous reference of the row and to the row's time, about 26 bytes a transaction |
+| `perm/time.bin`, `perm/latency.bin` | u32 row numbers in time order (`t_ns`, then row) and in latency order (`lat_us`, then row), sorted at the end of the import with the columns mapped, so sorting takes 4 bytes a row of heap |
 
 Raw ADU bytes and decoded text are **not** stored; the row summary string is built on demand for the rows being displayed. The columns are memory-mapped for queries (`syscall.Mmap` on macOS and Linux, `golang.org/x/sys/windows` file mappings on Windows); without a mapping they are read in chunks.
 
 `mbcap_reason` is the library's `Classify` result for the baseline export (exceptions on, no change-only), stored at import. It makes the export preview a count over one column instead of a pass over the trace. Options that change the outcome (exceptions off, change-only) are applied to the preview arithmetically, and "up to" is shown where it cannot be exact.
 
-Cache management: a small `index.json` in the cache root lists the trace directories with their last-used time for LRU eviction against the size cap; a library, format or semantics version mismatch invalidates a directory; "Clear cache" removes everything. Directories 0700, files 0600. The cache never contains packet bytes, only references.
+Cache management (M1): the fingerprint is a SHA-256 over the store's format version, the library version and its event semantics, and per file the size, modification time and the first and last MiB; a change to any gives a new directory, so a stale index is never read. A small `index.json` in the cache root lists the entries (`ix-<fingerprint>` indexes and `gz-<fingerprint>` decompressed traces) with their last use; eviction removes the least recently used entries that are not held by an open trace until the cache is under its cap (default 2 GiB); "Clear cache" removes everything not in use; partial entries left by a crash are removed at start. Directories 0700, files 0600. The cache never contains packet bytes, only references (a decompressed gzip trace is a copy of the user's file, kept as an entry of its own).
+
+**M1 measurements** (Apple M1, `make scale`, Go 1.27.2): a generated trace of 1,000,000 transactions (272 MiB, 40 connections, no ACK-only packets) opens, scans, analyses and indexes in 3.5 s, **82 MB/s end to end** (R21: 50); the index is 85 MiB, **89 bytes a row, 31% of that trace**; the Go heap after the import is 1 MiB. Queries: first page 0.19 ms, last page 0.15 ms, a new filter (a scan of the columns) 2.7 ms, a filter on unit and function at a rank in the middle 10 ms, latency order 6 ms. A real capture of small polls (`MTE_TRACE`, 330 KB, 1,327 transactions, about 250 bytes a transaction) gives 91 bytes a row, **37% of the trace**. The proposed 25% was therefore not met for traces of small polls: the provenance needed to re-read a row's bytes (two packets) and the row's own fields take about 80 bytes whatever the payload size, and the ratio falls with larger payloads and ACK packets (estimated, not measured: about 15% for a pcapng capture with ACK packets and 125-register reads). The user restated the budget as 40% on 2026-10-16; narrower columns stay an option if a real trace needs them.
 
 ## 6. Queries and paging
 
@@ -236,6 +237,7 @@ Copied at commit 915d2c3 (tag v0.0.3), adapted, and listed here so a later extra
 | | `codecov.yml`, `LICENSE`, `.gitignore` | same | coverage packages; dist and `go.work` ignored |
 | | `.github/workflows/build.yml`, `ci.yml` | same | no daemon or image jobs; the release workflow follows in M4 |
 | Wails shell | `cmd/modbus-trace-explorer/main.go` | `cmd/sunspec-explorer/main.go` | file drop and "open with" |
+| Library code | `internal/schemagen/` | go-modbus-trace `internal/schemagen` at main 5fc5583 | none (copied: it is internal there) |
 | | `internal/gui/app.go` | `internal/gui/app.go` | trace dialogs and handed-over paths instead of sessions and TLS |
 | | `internal/buildinfo/buildinfo.go` | same | any module's version |
 | | `frontend/embed.go` | same | one build (no web build) |
@@ -260,6 +262,8 @@ Copied at commit 915d2c3 (tag v0.0.3), adapted, and listed here so a later extra
 | M2 | Devices, Conversations, Patterns, Addresses, Quality; schemas | C5, C6 (library L4 analyzers) | A7, A8, A18, A4 on the real index |
 | M3 | MBCAP/timeline/sub-trace exports, preview, replay hand-off, settings | C7-C9 (library L3, L4) | A9, A10, A16 |
 | M4 | Packaging (unsigned), documentation, polish, optional `.mbcap` viewer (R24) | - | A15, A17; R25 delivered; first release |
+
+**M1 outcome** (2026-10-16): opening (dialog, drop, "open with", command line, recent files), gzip decompression into the cache with a free-space check before and while writing, the scan job and the Flows step (Modbus flows preselected, server ports prefilled, a role override per flow as an endpoint override, TLS and "no Modbus" explained), the analysis job into the columnar index with progress and cancel, the cache lifecycle (fingerprint, reuse, LRU, clear, partial cleanup, permissions), the overview strip with the quality badge, the timeline over the real index (paging by rank, time and latency order, both directions), the filter text grammar of UX.md section 6 parsed in Go with chips and error chips, the detail pane (summary in words, request and response fields with byte ranges, the hex dump with field highlighting, the packets with Wireshark filters, notes with meanings and the MBCAP classification), the rotating log file (R23), JSON Schemas for every DTO validated against real engine output (R22, A18), and tests for A1–A3, A5, A6, A11, A13 with the library's `tracetest`. Not in M1 (see REQUIREMENTS.md statuses): the native menu and remembered window geometry, the filter popover, "go to time/frame", the capture-facts popover of the file strip, "Copy diagnostics"; the Quality view and the other views are M2.
 
 **M0 outcome** (2026-10-16): scaffolding and CI copied from the SunSpec Explorer (section 15); the Wails shell with branding, the Modbus app icon, file drop, "open with" and command-line paths (section 12); the frontend shell (header, empty state, file strip, view rail, detail pane, status bar, keyboard map for views and time modes) over a mock Service with a generated 10-million-row dataset; the scaled-scroll timeline table (section 11); the store spike with a recommendation (section 5); the A12 dependency test and the bundle URL check; the A14 skeleton (no color outside `tokens.css`, contrast of every token pair the application uses). Decided with the user: the columnar index (section 5). Open: the WebView checks in the running application (M1).
 

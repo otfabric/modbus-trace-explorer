@@ -1,13 +1,16 @@
-import { DropIcon, OpenFileIcon } from '../icons';
+import { DropIcon, ErrorIcon, OpenFileIcon } from '../icons';
+import type { RecentFile } from '../service/types';
 import { Button } from './ui';
 
 interface Props {
   onOpen: () => void;
-  notice: string | null;
+  onOpenRecent: (paths: string[]) => void;
+  recent: RecentFile[];
+  error: string | null;
 }
 
-/** UX.md section 2: what to open, how, and where recordings come from. */
-export function EmptyState({ onOpen, notice }: Props) {
+/** UX.md section 2: what to open, how, the recent files, and where recordings come from. */
+export function EmptyState({ onOpen, onOpenRecent, recent, error }: Props) {
   return (
     <main className="flex flex-1 items-center justify-center p-8">
       <div
@@ -20,10 +23,28 @@ export function EmptyState({ onOpen, notice }: Props) {
         <Button variant="primary" icon={<OpenFileIcon size={16} />} onClick={onOpen}>
           Open…
         </Button>
-        {notice && (
-          <p role="status" className="max-w-full font-mono text-[13px] break-all text-fg">
-            {notice}
+        {error && (
+          <p role="alert" className="flex items-center gap-1 text-danger">
+            <ErrorIcon size={14} /> {error}
           </p>
+        )}
+        {recent.length > 0 && (
+          <nav aria-label="Recent traces" className="flex w-full flex-col items-stretch gap-1 text-left">
+            <span className="ot-label">Recent</span>
+            {recent.map((r) => (
+              <button
+                key={r.paths.join('\n')}
+                type="button"
+                disabled={!r.exists}
+                title={r.exists ? r.paths.join('\n') : 'Not found at this path any more'}
+                onClick={() => onOpenRecent(r.paths)}
+                className="truncate rounded px-2 py-1 text-left font-mono text-[13px] hover:bg-surface hover:text-accent disabled:opacity-50 disabled:hover:bg-transparent disabled:hover:text-fg"
+              >
+                {r.name}
+                {!r.exists && <span className="text-muted"> (not found)</span>}
+              </button>
+            ))}
+          </nav>
         )}
         <p className="mt-4 text-[13px] text-muted">
           This tool reads recordings. To record, use tcpdump or Wireshark, for example on a gateway:{' '}

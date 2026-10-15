@@ -1,4 +1,4 @@
-import type { ButtonHTMLAttributes, InputHTMLAttributes, ReactNode } from 'react';
+import type { ButtonHTMLAttributes, ComponentProps, ReactNode } from 'react';
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: 'primary' | 'default';
@@ -39,7 +39,8 @@ export function IconButton({ label, children, ...props }: ButtonHTMLAttributes<H
 
 const INPUT = 'h-8 rounded border border-control bg-bg px-2 font-mono text-[13px] text-fg-strong disabled:opacity-60';
 
-export function TextInput({ className = '', ...props }: InputHTMLAttributes<HTMLInputElement>) {
+// React 19 passes ref as a prop: it reaches the input with the rest.
+export function TextInput({ className = '', ...props }: ComponentProps<'input'>) {
   return <input className={`${INPUT} ${className}`} {...props} />;
 }
 

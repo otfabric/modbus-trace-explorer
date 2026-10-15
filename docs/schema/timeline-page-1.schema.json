@@ -1,0 +1,122 @@
+{
+  "$defs": {
+    "service.Row": {
+      "additionalProperties": false,
+      "properties": {
+        "class": {
+          "type": "string"
+        },
+        "client": {
+          "type": "string"
+        },
+        "conn": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "exception": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "fc": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "flags": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "kind": {
+          "type": "string"
+        },
+        "latency_ns": {
+          "type": "integer"
+        },
+        "result": {
+          "type": "string"
+        },
+        "seq": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "server": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        },
+        "summary": {
+          "type": "string"
+        },
+        "t_ns": {
+          "type": "integer"
+        },
+        "tid": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "unit": {
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "client",
+        "conn",
+        "flags",
+        "kind",
+        "result",
+        "seq",
+        "server",
+        "summary",
+        "t_ns"
+      ],
+      "type": "object"
+    },
+    "service.TimelinePage": {
+      "additionalProperties": false,
+      "properties": {
+        "offset": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "rows": {
+          "anyOf": [
+            {
+              "items": {
+                "$ref": "#/$defs/service.Row"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "total": {
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "offset",
+        "rows",
+        "total"
+      ],
+      "type": "object"
+    }
+  },
+  "$id": "https://github.com/otfabric/modbus-trace-explorer/docs/schema/timeline-page-1.schema.json",
+  "$ref": "#/$defs/service.TimelinePage",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Generated from internal/service by internal/engine's TestSchemasUpToDate.",
+  "title": "Timeline page"
+}

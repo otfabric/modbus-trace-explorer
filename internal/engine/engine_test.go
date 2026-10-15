@@ -9,8 +9,11 @@ import (
 )
 
 func TestAbout(t *testing.T) {
-	e := New(Options{})
-	defer func() { _ = e.Close() }()
+	e, err := New(Options{CacheDir: t.TempDir(), ConfigDir: t.TempDir()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = e.Shutdown() }()
 	a, err := e.About(context.Background())
 	if err != nil || a.Version == "" || a.OS != runtime.GOOS || a.Go == "" {
 		t.Errorf("%+v %v", a, err)

@@ -1,5 +1,5 @@
 .PHONY: help all check test coverage coverage-check coverage-clean fmt fmt-check vet lint lint-ci vuln mod-check \
-	frontend frontend-install frontend-check frontend-urls build build-gui bundle-macos appicon winres spike dev clean
+	frontend frontend-install frontend-check frontend-urls golden scale build build-gui bundle-macos appicon winres spike dev clean
 
 help: ## This help
 	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z0-9_-]+:.*?## / {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}' $(MAKEFILE_LIST)
@@ -32,7 +32,7 @@ LDFLAGS  = -ldflags "-s -w -X github.com/otfabric/modbus-trace-explorer/internal
 
 # Packages measured by the coverage gate. The Wails shell (cmd/, the window
 # parts of internal/gui) needs a window and is covered by the frontend tests.
-TEST_PKGS    := ./internal/engine/... ./internal/service/... ./internal/store/... ./internal/buildinfo/...
+TEST_PKGS    := ./internal/engine/... ./internal/service/... ./internal/store/... ./internal/buildinfo/... ./internal/applog/... ./internal/schemagen/...
 COVERAGE_MIN := 85
 
 all: check build ## Run all checks and build
@@ -107,6 +107,12 @@ winres: ## Regenerate the Windows resources (icon, manifest) linked into the des
 	@cd cmd/modbus-trace-explorer && go run github.com/tc-hib/go-winres@v0.3.3 simply --arch amd64,arm64 --manifest gui \
 		--icon appicon.png --product-name "Modbus Trace Explorer" --file-description "OT Fabric Modbus Trace Explorer" \
 		--copyright "Copyright (c) 2026 OT Fabric. MIT License." --original-filename modbus-trace-explorer.exe --out rsrc
+
+golden: ## Regenerate the JSON Schemas of the DTOs in docs/schema
+	@MTE_UPDATE=1 go test -count=1 -run '^TestSchemasUpToDate$$' ./internal/engine
+
+scale: ## Import a generated trace of SCALE transactions (default 1,000,000) and time it (R21, A4)
+	@MTE_SCALE=$${SCALE:-1000000} go test -count=1 -run '^TestScale$$' -v -timeout 60m ./internal/engine
 
 spike: ## Run the M0 store spike (SPIKE_ROWS rows, default 10,000,000); see docs/ARCHITECTURE.md section 5
 	@MTE_SPIKE_ROWS=$${SPIKE_ROWS:-10000000} go test -count=1 -run '^TestSpike$$' -v -timeout 60m ./internal/store
