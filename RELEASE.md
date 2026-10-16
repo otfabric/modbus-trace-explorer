@@ -1,7 +1,5 @@
 # modbus-trace-explorer Releases
 
-How to release: run the **Release** workflow from the Actions tab on `main`. The first release is `v0.1.0`: choose `bump = minor` (with no tag yet, `patch` would make `v0.0.1`). The workflow runs every check and build of CI with the real version, tags the commit, publishes the GitHub release with the five desktop builds, a SHA-256 checksum file and build provenance, and takes the notes from the `## v<version>` section below, up to the next line that is exactly `---`.
-
 ## v0.1.0
 
 **Date:** 2026-10-16
