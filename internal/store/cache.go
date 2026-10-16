@@ -331,6 +331,20 @@ func IsGzip(path string) (bool, error) {
 	return b[0] == 0x1f && b[1] == 0x8b, nil
 }
 
+// RemoveCopy deletes a decompressed copy made by Decompress (A16: the copy
+// lives only while its trace is open). Other paths are left alone.
+func (c *Cache) RemoveCopy(path string) error {
+	name := filepath.Base(path)
+	if filepath.Dir(path) != c.root || !strings.HasPrefix(name, "gz-") {
+		return nil
+	}
+	c.forget(name)
+	if err := os.Remove(path); err != nil && !os.IsNotExist(err) {
+		return err
+	}
+	return nil
+}
+
 // Decompress writes the decompressed copy of a gzip trace into the cache
 // (an entry of its own, named by fp) and returns its path; an existing
 // copy is reused. Before it starts it checks that the expected size (from
@@ -339,17 +353,10 @@ func IsGzip(path string) (bool, error) {
 // space would fall below FreeMargin (a gzip bomb ends there).
 // progress is called with bytes read of the compressed file.
 func (c *Cache) Decompress(ctx context.Context, path, fp string, progress func(read, total int64)) (string, error) {
-	// trace.pcapng.gz -> gz-<fp>.pcapng; anything else -> .pcap (the
-	// readers detect the format by its magic, not by the name).
-	ext := filepath.Ext(strings.TrimSuffix(filepath.Base(path), ".gz"))
-	if ext != ".pcapng" && ext != ".cap" {
-		ext = ".pcap"
-	}
-	dst := filepath.Join(c.root, "gz-"+fp+ext)
-	if _, err := os.Stat(dst); err == nil {
-		c.touch(filepath.Base(dst))
+	if dst, ok := c.Decompressed(path, fp); ok {
 		return dst, nil
 	}
+	dst := c.gzName(path, fp)
 	in, err := os.Open(path)
 	if err != nil {
 		return "", err
@@ -419,6 +426,28 @@ func (c *Cache) Decompress(ctx context.Context, path, fp string, progress func(r
 	}
 	c.touch(filepath.Base(dst))
 	return dst, c.Evict()
+}
+
+// gzName is the decompressed copy's path: trace.pcapng.gz ->
+// gz-<fp>.pcapng; anything else -> .pcap (the readers detect the format by
+// its magic, not by the name).
+func (c *Cache) gzName(path, fp string) string {
+	ext := filepath.Ext(strings.TrimSuffix(filepath.Base(path), ".gz"))
+	if ext != ".pcapng" && ext != ".cap" {
+		ext = ".pcap"
+	}
+	return filepath.Join(c.root, "gz-"+fp+ext)
+}
+
+// Decompressed returns the decompressed copy of path made earlier under
+// fp, if the cache still has it.
+func (c *Cache) Decompressed(path, fp string) (string, bool) {
+	dst := c.gzName(path, fp)
+	if _, err := os.Stat(dst); err != nil {
+		return "", false
+	}
+	c.touch(filepath.Base(dst))
+	return dst, true
 }
 
 // expected estimates the decompressed size: the gzip trailer's ISIZE (the

@@ -1,6 +1,16 @@
 import { ServiceError, type Service } from './service';
 import type {
   About,
+  CacheInfo,
+  Exclusion,
+  ExportResult,
+  JobKind,
+  MBCAPExport,
+  MBCAPPreview,
+  PreviewTarget,
+  Settings,
+  SubtraceExport,
+  TimelineExport,
   ConnStats,
   CoverageMap,
   CoverageQuery,
@@ -227,6 +237,9 @@ export class MockService implements Service {
   private jobs = new Map<string, () => void>();
   private nextJob = 0;
   private paths: string[] = ['/traces/site-2026-10-14.pcapng'];
+  private results = new Map<string, ExportResult>();
+  private prefs: Settings = { time_mode: 'local', server_ports: [], one_based: false, cache_cap: 2 * 1024 ** 3 };
+  private cacheCleared = false;
 
   constructor(opts: MockOptions = {}) {
     this.rows = opts.rows ?? 1_000_000;
@@ -249,6 +262,7 @@ export class MockService implements Service {
       size: this.rows * 190,
       gzip: name.endsWith('.gz'),
       analyzed: this.analyzed,
+      prepare: this.analyzed && name.endsWith('.gz') ? true : undefined,
       choices: this.analyzed ? { flows: [1, 2], server_ports: [502, 1502], servers: [] } : undefined,
     };
   }
@@ -271,7 +285,7 @@ export class MockService implements Service {
     for (const l of this.listeners) l({ kind: 'job', job });
   }
 
-  private run(kind: 'scan' | 'analyze', phases: string[], then: () => void): JobRef {
+  private run(kind: JobKind, phases: string[], then: () => void): JobRef {
     const id = `${kind}-${++this.nextJob}`;
     const total = this.rows * 190;
     let k = 0;
@@ -326,6 +340,10 @@ export class MockService implements Service {
       selected: [1, 2],
       one_click: false,
     };
+  }
+
+  async prepare(): Promise<JobRef> {
+    return this.run('prepare', ['decompress'], () => {});
   }
 
   async analyze(_fileId: string, _cfg: AnalyzeConfig): Promise<JobRef> {
@@ -595,6 +613,127 @@ export class MockService implements Service {
       ],
     };
   }
+
+  async previewMBCAP(_fileId: string, x: MBCAPExport): Promise<MBCAPPreview> {
+    const noTime = { ...x.filter, from_ns: undefined, to_ns: undefined };
+    const counts = new Map<string, number>();
+    const targets = new Map<string, PreviewTarget>();
+    let transactions = 0;
+    let samples = 0;
+    for (let i = 0; i < Math.min(this.rows, 100_000); i++) {
+      const r = generate(i);
+      if (r.kind !== 'txn') continue;
+      transactions++;
+      let reason = '';
+      if (r.class === 'write') reason = 'write_function';
+      else if (r.status === 'unanswered') reason = 'unanswered';
+      else if (r.status === 'exception' && !x.exceptions) reason = 'exceptions_disabled';
+      else if (!matches(r, noTime)) reason = 'not_selected';
+      else if (!matches(r, x.filter)) reason = 'outside_window';
+      if (reason) {
+        counts.set(reason, (counts.get(reason) ?? 0) + 1);
+        continue;
+      }
+      samples++;
+      const key = `${r.server}/${r.unit}`;
+      let t = targets.get(key);
+      if (!t) {
+        t = { key, server: r.server, unit: r.unit ?? 0, label: x.labels?.[key] || `${r.server} unit ${r.unit}`, samples: 0, clients: [] };
+        targets.set(key, t);
+      }
+      t.samples++;
+      if (!t.clients.includes(r.client)) t.clients.push(r.client);
+    }
+    const meaning: Record<string, string> = {
+      write_function: 'Writes change a device; a capture holds reads only.',
+      unanswered: 'No response was observed.',
+      exceptions_disabled: 'Exception responses are switched off for this export.',
+      not_selected: 'Outside the selection.',
+      outside_window: 'Outside the time window.',
+    };
+    const excluded: Exclusion[] = Object.keys(meaning)
+      .filter((k) => counts.get(k))
+      .map((k) => ({ reason: k, count: counts.get(k) ?? 0, meaning: meaning[k] ?? '' }));
+    const notes = ['A response without a usable timestamp is found only by the export (invalid_time).'];
+    if (x.change_only) notes.unshift('Change-only drops a response equal to the last one of its range: the export can write fewer samples than shown.');
+    return { selection: '', transactions, samples, up_to: x.change_only, targets: [...targets.values()], excluded, notes };
+  }
+
+  private exportJob(kind: 'mbcap' | 'timeline' | 'subtrace', path: string, result: () => Omit<ExportResult, 'job' | 'kind' | 'file'>): JobRef {
+    if (!path.startsWith('/')) throw new ServiceError('invalid_argument', 'the export needs a full path');
+    const ref = this.run(kind, [kind], () => {
+      this.results.set(ref.id, { job: ref.id, kind, file: path.split('/').pop() ?? path, ...result() });
+    });
+    return ref;
+  }
+
+  async exportMBCAP(fileId: string, x: MBCAPExport, path: string): Promise<JobRef> {
+    const pv = await this.previewMBCAP(fileId, x);
+    const samples = x.change_only ? Math.round(pv.samples * 0.4) : pv.samples;
+    const excluded = Object.fromEntries(pv.excluded.map((e) => [e.reason, e.count]));
+    return this.exportJob('mbcap', path, () => ({
+      format: x.format,
+      report: {
+        schema_version: 1, library: 'go-modbus-trace mock', capture_library: 'go-modbus-capture mock', format: 'MBCAP draft 0.3',
+        selection: pv.selection, tick_ns: x.tick_ns || 1000, transactions_seen: pv.transactions, samples_written: samples,
+        change_only_dropped: pv.samples - samples, excluded,
+        targets: pv.targets.map((t, k) => ({ id: k + 1, server: t.server, unit: t.unit, label: t.label, samples: t.samples,
+          streams: t.clients.map((c, n) => ({ id: n + 1, client: c, samples: t.samples })) })),
+        warnings: [{ code: 'stale_after_write', target: 1, text: 'A write came after the last read of holding 4096-4157.' }],
+        replay: { samples, changed_values: samples * 3, estimated_in_memory_bytes: 12 * 1024 ** 2 + samples * 750 },
+      },
+      replay: [`mbcapctl verify ${path}`, ...pv.targets.map((_t, k) =>
+        `modbusctl server replay --input ${path} --listen 127.0.0.1${pv.targets.length > 1 ? ` --target ${k + 1}` : ''} --port ${1502 + k} --before-first absent --missing exception`)],
+      caveats: ['Writes are not replayed: the device answers with what was read.', 'Only what was read exists: other addresses answer with an exception.'],
+      doc: 'https://github.com/otfabric/go-modbus-trace/blob/main/docs/REPLAY-WORKFLOW.md',
+    }));
+  }
+
+  async exportTimeline(_fileId: string, x: TimelineExport, path: string): Promise<JobRef> {
+    const rows = this.sample(x.filter).length;
+    return this.exportJob('timeline', path, () => ({ format: x.format, rows, late: 0 }));
+  }
+
+  async exportSubtrace(_fileId: string, x: SubtraceExport, path: string): Promise<JobRef> {
+    const f = x.filter;
+    if (f.units?.length || f.functions?.length || f.statuses?.length || f.classes?.length || f.flags?.length || f.space || f.summary) {
+      throw new ServiceError('invalid_argument', 'a sub-trace selects connections (server, client, conn) and a time window, not transactions: remove the other terms');
+    }
+    return this.exportJob('subtrace', path, () => ({ format: 'pcapng', packets: this.rows * 2, bytes: this.rows * 180, connections: f.conns?.length || 4 }));
+  }
+
+  async exportResult(jobId: string): Promise<ExportResult> {
+    const r = this.results.get(jobId);
+    if (!r) throw new ServiceError('not_found', `no finished export ${jobId}`);
+    return r;
+  }
+
+  async saveReport(jobId: string): Promise<void> {
+    await this.exportResult(jobId);
+  }
+
+  async settings(): Promise<Settings> {
+    return { ...this.prefs, server_ports: [...this.prefs.server_ports] };
+  }
+
+  async saveSettings(s: Settings): Promise<Settings> {
+    if (s.server_ports.some((p) => p < 1 || p > 65535)) throw new ServiceError('invalid_argument', 'server ports: 1 to 65535');
+    if (s.cache_cap < 256 * 1024 ** 2) throw new ServiceError('invalid_argument', 'cache size: 256 MiB to 1 TiB');
+    this.prefs = { ...s, server_ports: [...new Set(s.server_ports)].sort((a, b) => a - b) };
+    return this.settings();
+  }
+
+  async cacheInfo(): Promise<CacheInfo> {
+    const bytes = this.analyzed && !this.cacheCleared ? this.rows * 90 : 0;
+    return { dir: '/Users/me/Library/Caches/modbus-trace-explorer', bytes, cap: this.prefs.cache_cap, entries: bytes ? 1 : 0 };
+  }
+
+  async clearCache(): Promise<CacheInfo> {
+    this.cacheCleared = true;
+    return this.cacheInfo();
+  }
+
+  async clearRecent(): Promise<void> {}
 
   /** A small version of the Go parser (engine.parseFilter): enough terms to develop against. */
   async parseFilter(_fileId: string, text: string): Promise<FilterParse> {

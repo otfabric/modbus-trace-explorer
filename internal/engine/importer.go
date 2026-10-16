@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"hash/fnv"
 	"math"
-	"net/netip"
 	"slices"
 	"strings"
 
@@ -47,7 +46,7 @@ func (e *Engine) Scan(_ context.Context, id string) (service.JobRef, error) {
 		if sum == nil {
 			return "", traceError(err)
 		}
-		res := suggest(sum, flows)
+		res := suggest(sum, flows, e.defaultPorts())
 		t.mu.Lock()
 		t.scan = &res
 		t.mu.Unlock()
@@ -127,8 +126,13 @@ func traceError(err error) error {
 
 // suggest builds the Flows step: the Modbus-like flows are preselected and
 // their server ports prefill the ports field (R2).
-func suggest(sum *trace.FileSummary, flows []trace.Flow) service.ScanResult {
+func suggest(sum *trace.FileSummary, flows []trace.Flow, extra []uint16) service.ScanResult {
 	ports := []uint16{502}
+	for _, p := range extra {
+		if !slices.Contains(ports, p) {
+			ports = append(ports, p)
+		}
+	}
 	var sel []uint32
 	for _, f := range flows {
 		if f.Class != trace.ClassModbus {
@@ -169,6 +173,28 @@ func (e *Engine) ScanResult(_ context.Context, id string) (service.ScanResult, e
 	return *t.scan, nil
 }
 
+// Prepare decompresses an analysed gzip trace again: its copy lives only
+// while the trace is open (A16), its analysis stays in the cache.
+func (e *Engine) Prepare(_ context.Context, id string) (service.JobRef, error) {
+	t, err := e.trace(id)
+	if err != nil {
+		return service.JobRef{}, err
+	}
+	if !t.claim() {
+		return service.JobRef{}, service.Errorf(service.CodeInvalidArgument, "a scan or an analysis of this trace is running")
+	}
+	return e.start("prepare", id, func(ctx context.Context, j *job) (string, error) {
+		defer t.unclaim()
+		if err := e.decompress(ctx, t, j); err != nil {
+			return "", err
+		}
+		t.mu.Lock()
+		t.info.Prepare, t.lib = false, nil
+		t.mu.Unlock()
+		return "", nil
+	}), nil
+}
+
 // Analyze starts the second pass: the library's events become the index,
 // which replaces any earlier one of the same trace when it is complete.
 func (e *Engine) Analyze(_ context.Context, id string, cfg service.AnalyzeConfig) (service.JobRef, error) {
@@ -176,14 +202,9 @@ func (e *Engine) Analyze(_ context.Context, id string, cfg service.AnalyzeConfig
 	if err != nil {
 		return service.JobRef{}, err
 	}
-	opts := trace.Options{Flows: cfg.Flows}
-	opts.ServerPorts = cfg.ServerPorts
-	for _, s := range cfg.Servers {
-		ap, err := netip.ParseAddrPort(s)
-		if err != nil {
-			return service.JobRef{}, service.Errorf(service.CodeInvalidArgument, "server %q: an address and a port, such as 10.0.0.2:502", s)
-		}
-		opts.Servers = append(opts.Servers, ap)
+	opts, err := traceOptions(cfg)
+	if err != nil {
+		return service.JobRef{}, err
 	}
 	if !t.claim() {
 		return service.JobRef{}, service.Errorf(service.CodeInvalidArgument, "a scan or an analysis of this trace is running")

@@ -35,3 +35,19 @@ describe('formatValue', () => {
     expect(formatValue(1, 'hex', true)).toBe('1');
   });
 });
+
+describe('export and settings helpers', () => {
+  it('names exports after the trace and reads port lists', async () => {
+    const { baseName } = await import('../components/ExportDialog');
+    const { parsePorts } = await import('../components/SettingsDialog');
+    expect(baseName('site.pcapng')).toBe('site');
+    expect(baseName('site.pcapng.gz')).toBe('site');
+    expect(baseName('a.pcap + 2 more')).toBe('a');
+    expect(baseName('trace')).toBe('trace');
+    expect(parsePorts('502, 1502 503')).toEqual([502, 1502, 503]);
+    expect(parsePorts('')).toEqual([]);
+    expect(parsePorts('0')).toBeNull();
+    expect(parsePorts('70000')).toBeNull();
+    expect(parsePorts('x')).toBeNull();
+  });
+});

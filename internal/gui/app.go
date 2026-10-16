@@ -133,6 +133,11 @@ func (a *App) ScanResult(ctx context.Context, id string) (service.ScanResult, er
 	return a.svc.ScanResult(ctx, id)
 }
 
+// Prepare decompresses an analysed gzip trace again.
+func (a *App) Prepare(ctx context.Context, id string) (service.JobRef, error) {
+	return a.svc.Prepare(ctx, id)
+}
+
 // Analyze starts the analysis.
 func (a *App) Analyze(ctx context.Context, id string, cfg service.AnalyzeConfig) (service.JobRef, error) {
 	return a.svc.Analyze(ctx, id, cfg)
@@ -202,6 +207,82 @@ func (a *App) PendingFiles() []string {
 		p = []string{}
 	}
 	return p
+}
+
+// PreviewMBCAP binds Service.PreviewMBCAP.
+func (a *App) PreviewMBCAP(ctx context.Context, id string, x service.MBCAPExport) (service.MBCAPPreview, error) {
+	return a.svc.PreviewMBCAP(ctx, id, x)
+}
+
+// ExportMBCAP binds Service.ExportMBCAP.
+func (a *App) ExportMBCAP(ctx context.Context, id string, x service.MBCAPExport, path string) (service.JobRef, error) {
+	return a.svc.ExportMBCAP(ctx, id, x, path)
+}
+
+// ExportTimeline binds Service.ExportTimeline.
+func (a *App) ExportTimeline(ctx context.Context, id string, x service.TimelineExport, path string) (service.JobRef, error) {
+	return a.svc.ExportTimeline(ctx, id, x, path)
+}
+
+// ExportSubtrace binds Service.ExportSubtrace.
+func (a *App) ExportSubtrace(ctx context.Context, id string, x service.SubtraceExport, path string) (service.JobRef, error) {
+	return a.svc.ExportSubtrace(ctx, id, x, path)
+}
+
+// ExportResult binds Service.ExportResult.
+func (a *App) ExportResult(ctx context.Context, job string) (service.ExportResult, error) {
+	return a.svc.ExportResult(ctx, job)
+}
+
+// SaveReport binds Service.SaveReport.
+func (a *App) SaveReport(ctx context.Context, job, path string) error {
+	return a.svc.SaveReport(ctx, job, path)
+}
+
+// Settings binds Service.Settings.
+func (a *App) Settings(ctx context.Context) (service.Settings, error) { return a.svc.Settings(ctx) }
+
+// SaveSettings binds Service.SaveSettings.
+func (a *App) SaveSettings(ctx context.Context, s service.Settings) (service.Settings, error) {
+	return a.svc.SaveSettings(ctx, s)
+}
+
+// CacheInfo binds Service.CacheInfo.
+func (a *App) CacheInfo(ctx context.Context) (service.CacheInfo, error) { return a.svc.CacheInfo(ctx) }
+
+// ClearCache binds Service.ClearCache.
+func (a *App) ClearCache(ctx context.Context) (service.CacheInfo, error) {
+	return a.svc.ClearCache(ctx)
+}
+
+// ClearRecent binds Service.ClearRecent.
+func (a *App) ClearRecent(ctx context.Context) error { return a.svc.ClearRecent(ctx) }
+
+// saveFilters are the Save dialog's file types per export kind.
+var saveFilters = map[string][2]string{
+	"mbcap":  {"MBCAP capture", "*.mbcap"},
+	"jsonl":  {"JSON Lines", "*.jsonl"},
+	"csv":    {"CSV", "*.csv"},
+	"pcapng": {"pcapng trace", "*.pcapng"},
+	"json":   {"JSON", "*.json"},
+}
+
+// ChooseSave asks where to save a file with the native dialog, proposing
+// name; it returns "" when the user cancels.
+func (a *App) ChooseSave(name, kind string) (string, error) {
+	app := application.Get()
+	if app == nil {
+		return "", service.Errorf(service.CodeInternal, "no application")
+	}
+	d := app.Dialog.SaveFile().SetFilename(name).CanCreateDirectories(true)
+	if f, ok := saveFilters[kind]; ok {
+		d = d.AddFilter(f[0], f[1])
+	}
+	path, err := d.AddFilter("All files", "*.*").PromptForSingleSelection()
+	if err != nil {
+		return "", service.Wrap(service.CodeInternal, err, "save dialog")
+	}
+	return path, nil
 }
 
 // ChooseTraces lets the user pick trace files with the native dialog; it

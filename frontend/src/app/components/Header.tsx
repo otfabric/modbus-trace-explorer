@@ -1,17 +1,18 @@
 import logoDark from '../../assets/logo-dark.svg';
 import logoLight from '../../assets/logo-light.svg';
 import modbusIcon from '../../assets/modbus.svg';
-import { MoonIcon, SunIcon } from '../icons';
+import { MoonIcon, SettingsIcon, SunIcon } from '../icons';
 import type { Theme } from '../platform/platform';
 import { IconButton } from './ui';
 
 interface HeaderProps {
   theme: Theme;
   onToggleTheme: () => void;
+  onSettings: () => void;
 }
 
 /** BRANDING.md section 4: protocol icon, product name, "powered by OT Fabric". No mode badge: there is one mode. */
-export function Header({ theme, onToggleTheme }: HeaderProps) {
+export function Header({ theme, onToggleTheme, onSettings }: HeaderProps) {
   return (
     <header className="flex h-14 shrink-0 items-center gap-4 border-b border-line bg-header px-4">
       <img src={modbusIcon} alt="" width={32} height={32} />
@@ -24,6 +25,9 @@ export function Header({ theme, onToggleTheme }: HeaderProps) {
         </span>
       </span>
       <span className="ml-auto flex items-center gap-3">
+        <IconButton label="Settings" onClick={onSettings}>
+          <SettingsIcon />
+        </IconButton>
         <IconButton label={theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'} onClick={onToggleTheme}>
           {theme === 'dark' ? <SunIcon /> : <MoonIcon />}
         </IconButton>

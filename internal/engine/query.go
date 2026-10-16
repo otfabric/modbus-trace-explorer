@@ -52,6 +52,13 @@ func (e *Engine) Overview(_ context.Context, id string) (service.Overview, error
 }
 
 // present reports whether every file of the trace is still where it was.
+// preparing reports a gzip trace whose decompressed copy is not made yet.
+func (t *openTrace) preparing() bool {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	return t.info.Prepare
+}
+
 func (t *openTrace) present() bool {
 	for _, p := range t.data {
 		if fi, err := os.Stat(p); err != nil || !fi.Mode().IsRegular() {

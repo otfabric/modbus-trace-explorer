@@ -230,3 +230,35 @@ func TestNoSpace(t *testing.T) {
 		t.Errorf("left behind: %v", ents)
 	}
 }
+
+// A16: RemoveCopy deletes a decompressed copy and nothing else.
+func TestRemoveCopy(t *testing.T) {
+	c, err := NewCache(t.TempDir(), 0, time.Now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cp := filepath.Join(c.Root(), "gz-abc-0.pcap")
+	other := filepath.Join(c.Root(), "ix-abc")
+	outside := filepath.Join(t.TempDir(), "gz-x.pcap")
+	for _, p := range []string{cp, outside} {
+		if err := os.WriteFile(p, []byte("x"), FileMode); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := os.Mkdir(other, DirMode); err != nil {
+		t.Fatal(err)
+	}
+	for _, p := range []string{cp, cp, other, outside} {
+		if err := c.RemoveCopy(p); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if _, err := os.Stat(cp); !os.IsNotExist(err) {
+		t.Error("the copy is still there")
+	}
+	for _, p := range []string{other, outside} {
+		if _, err := os.Stat(p); err != nil {
+			t.Errorf("%s removed: %v", p, err)
+		}
+	}
+}

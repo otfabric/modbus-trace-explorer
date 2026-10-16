@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { DetailPane } from './components/DetailPane';
 import { EmptyState } from './components/EmptyState';
+import { ExportDialog } from './components/ExportDialog';
 import { FilterBar } from './components/FilterBar';
 import { FlowsStep } from './components/FlowsStep';
 import { Header } from './components/Header';
 import { ImportProgress } from './components/ImportProgress';
+import { SettingsDialog } from './components/SettingsDialog';
 import {
   AddressIcon,
   DeviceIcon,
@@ -18,7 +20,7 @@ import {
 } from './icons';
 import type { Platform } from './platform/platform';
 import { toServiceError, type Service } from './service/service';
-import type { AnalyzeConfig, Detail, FileInfo, Filter, JobState, Order, Overview, RecentFile, ScanResult, TimelineQuery } from './service/types';
+import type { AnalyzeConfig, Detail, FileInfo, Filter, JobState, Order, Overview, RecentFile, ScanResult, Settings, TimelineQuery } from './service/types';
 import { formatBytes, formatCount, formatDuration, formatTime, type TimeMode } from './state/format';
 import { useTheme } from './state/useTheme';
 import { TimelineTable } from './table/TimelineTable';
@@ -50,9 +52,10 @@ type Phase =
   | { kind: 'scanning'; file: FileInfo; job: JobState | null; jobId: string }
   | { kind: 'flows'; file: FileInfo; result: ScanResult; warning?: string }
   | { kind: 'analyzing'; file: FileInfo; job: JobState | null; jobId: string; result?: ScanResult }
+  | { kind: 'preparing'; file: FileInfo; job: JobState | null; jobId: string }
   | { kind: 'ready'; file: FileInfo; warning?: string };
 
-function FileStrip({ ov, onQuality }: { ov: Overview; onQuality: () => void }) {
+function FileStrip({ ov, onQuality, onExport }: { ov: Overview; onQuality: () => void; onExport: () => void }) {
   const badge = { ok: 'Quality: OK', warnings: `Quality: ${ov.quality_count} warnings`, problems: `Quality: ${ov.quality_count} problems` }[ov.quality];
   return (
     <div className="flex shrink-0 flex-wrap items-center gap-x-6 gap-y-1 border-b border-line px-4 py-2 font-mono text-[13px]">
@@ -78,9 +81,15 @@ function FileStrip({ ov, onQuality }: { ov: Overview; onQuality: () => void }) {
           {ov.quality === 'ok' ? <QualityIcon size={14} /> : <WarningIcon size={14} />}
           {badge}
         </button>
-        <span className="inline-flex items-center gap-1 text-muted" title="Exports arrive with M3">
+        <button
+          type="button"
+          onClick={onExport}
+          disabled={ov.trace_missing}
+          title={ov.trace_missing ? 'Exports read the trace, which is not at its path' : 'Export (Ctrl/Cmd+E)'}
+          className="inline-flex items-center gap-1 hover:text-accent disabled:cursor-not-allowed disabled:opacity-50"
+        >
           <ExportIcon size={14} /> Export
-        </span>
+        </button>
       </span>
     </div>
   );
@@ -102,6 +111,8 @@ export function App({ service, platform }: AppProps) {
   const [detailError, setDetailError] = useState<string | null>(null);
   const [showDetail, setShowDetail] = useState(true);
   const [total, setTotal] = useState(0);
+  const [dialog, setDialog] = useState<'export' | 'settings' | null>(null);
+  const [oneBased, setOneBased] = useState(false);
   const filterBox = useRef<HTMLInputElement>(null);
   const phaseRef = useRef(phase);
   phaseRef.current = phase;
@@ -114,6 +125,15 @@ export function App({ service, platform }: AppProps) {
   useEffect(() => {
     service.recent().then(setRecent, () => setRecent([]));
   }, [service, phase.kind]);
+
+  // The saved settings (R20) set the time display and the address labels.
+  const applySettings = useCallback((s: Settings) => {
+    setTimeMode(s.time_mode);
+    setOneBased(s.one_based);
+  }, []);
+  useEffect(() => {
+    service.settings().then(applySettings, () => {});
+  }, [service, applySettings]);
 
   // A trace is ready: its overview, and a fresh view state.
   const ready = useCallback(
@@ -135,6 +155,11 @@ export function App({ service, platform }: AppProps) {
         const cur = phaseRef.current;
         if (cur.kind !== 'empty') await service.close(cur.file.id).catch(() => {});
         const file = await service.open(paths);
+        if (file.analyzed && file.prepare) {
+          const ref = await service.prepare(file.id);
+          setPhase({ kind: 'preparing', file, job: null, jobId: ref.id });
+          return;
+        }
         if (file.analyzed) {
           ready(file);
           return;
@@ -155,13 +180,18 @@ export function App({ service, platform }: AppProps) {
       service.subscribe((ev) => {
         const job = ev.job;
         const cur = phaseRef.current;
-        if (!job || (cur.kind !== 'scanning' && cur.kind !== 'analyzing') || job.id !== cur.jobId) return;
+        if (!job || (cur.kind !== 'scanning' && cur.kind !== 'analyzing' && cur.kind !== 'preparing') || job.id !== cur.jobId) return;
         if (job.state === 'running') {
           setPhase({ ...cur, job });
           return;
         }
         if (job.state === 'failed') {
           fail(new Error(job.error?.message ?? 'the job failed'));
+          return;
+        }
+        if (cur.kind === 'preparing') {
+          if (job.state === 'canceled') setPhase({ kind: 'empty' });
+          else ready({ ...cur.file, prepare: false });
           return;
         }
         if (cur.kind === 'scanning') {
@@ -228,6 +258,12 @@ export function App({ service, platform }: AppProps) {
       if (mod && e.key.toLowerCase() === 'o') {
         e.preventDefault();
         void platform.chooseTraces().then(open);
+      } else if (mod && e.key.toLowerCase() === 'e') {
+        e.preventDefault();
+        if (phaseRef.current.kind === 'ready') setDialog('export');
+      } else if (mod && e.key === ',') {
+        e.preventDefault();
+        setDialog('settings');
       } else if ((mod && e.key.toLowerCase() === 'f') || (!typing && e.key === '/')) {
         e.preventDefault();
         filterBox.current?.focus();
@@ -246,7 +282,7 @@ export function App({ service, platform }: AppProps) {
   }, [platform, open]);
 
   const cancelJob = () => {
-    if (phase.kind === 'scanning' || phase.kind === 'analyzing') void service.cancelJob(phase.jobId);
+    if (phase.kind === 'scanning' || phase.kind === 'analyzing' || phase.kind === 'preparing') void service.cancelJob(phase.jobId);
   };
 
   let body: ReactNode;
@@ -256,6 +292,9 @@ export function App({ service, platform }: AppProps) {
       break;
     case 'scanning':
       body = <ImportProgress title="Scanning the trace" name={phase.file.name} job={phase.job} onCancel={cancelJob} />;
+      break;
+    case 'preparing':
+      body = <ImportProgress title="Decompressing the trace" name={phase.file.name} job={phase.job} onCancel={cancelJob} />;
       break;
     case 'analyzing':
       body = <ImportProgress title="Analysing the selected flows" name={phase.file.name} job={phase.job} onCancel={cancelJob} />;
@@ -277,7 +316,7 @@ export function App({ service, platform }: AppProps) {
     case 'ready':
       body = (
         <>
-          {overview && <FileStrip ov={overview} onQuality={() => setView('quality')} />}
+          {overview && <FileStrip ov={overview} onQuality={() => setView('quality')} onExport={() => setDialog('export')} />}
           {phase.warning && (
             <p role="alert" className="flex shrink-0 items-center gap-2 border-b border-line px-4 py-1 text-wire">
               <WarningIcon size={14} /> {phase.warning}
@@ -340,7 +379,7 @@ export function App({ service, platform }: AppProps) {
               ) : view === 'patterns' ? (
                 <PatternsView service={service} fileId={fileId} filter={filter} timeMode={timeMode} firstNs={firstNs} onShow={show} />
               ) : view === 'addresses' ? (
-                <AddressesView service={service} fileId={fileId} filter={filter} timeMode={timeMode} firstNs={firstNs} />
+                <AddressesView service={service} fileId={fileId} filter={filter} timeMode={timeMode} firstNs={firstNs} oneBased={oneBased} />
               ) : (
                 <QualityView service={service} fileId={fileId} onShow={show} />
               )}
@@ -365,8 +404,29 @@ export function App({ service, platform }: AppProps) {
 
   return (
     <div className="flex h-full flex-col">
-      <Header theme={theme} onToggleTheme={toggleTheme} />
+      <Header theme={theme} onToggleTheme={toggleTheme} onSettings={() => setDialog('settings')} />
       {body}
+      {dialog === 'export' && phase.kind === 'ready' && (
+        <ExportDialog
+          service={service}
+          platform={platform}
+          fileId={phase.file.id}
+          name={phase.file.name}
+          filter={filter}
+          firstNs={firstNs}
+          onClose={() => setDialog(null)}
+        />
+      )}
+      {dialog === 'settings' && (
+        <SettingsDialog
+          service={service}
+          theme={theme}
+          onToggleTheme={toggleTheme}
+          onSaved={applySettings}
+          onRecentCleared={() => setRecent([])}
+          onClose={() => setDialog(null)}
+        />
+      )}
       {phase.kind === 'ready' && (
         <footer className="flex h-7 shrink-0 items-center gap-4 border-t border-line px-4 font-mono text-[12px] text-muted">
           <span>{formatCount(total)} rows</span>

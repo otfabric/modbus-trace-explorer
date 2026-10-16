@@ -1,0 +1,44 @@
+{
+  "$defs": {
+    "service.Settings": {
+      "additionalProperties": false,
+      "properties": {
+        "cache_cap": {
+          "type": "integer"
+        },
+        "one_based": {
+          "type": "boolean"
+        },
+        "server_ports": {
+          "anyOf": [
+            {
+              "items": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "time_mode": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "cache_cap",
+        "one_based",
+        "server_ports",
+        "time_mode"
+      ],
+      "type": "object"
+    }
+  },
+  "$id": "https://github.com/otfabric/modbus-trace-explorer/docs/schema/settings-1.schema.json",
+  "$ref": "#/$defs/service.Settings",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Generated from internal/service by internal/engine's TestSchemasUpToDate.",
+  "title": "Settings"
+}

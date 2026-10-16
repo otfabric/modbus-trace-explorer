@@ -12,6 +12,8 @@ interface Props {
   filter: Filter;
   timeMode: TimeMode;
   firstNs: number;
+  /** The Settings choice; the view's toggle starts from it. */
+  oneBased?: boolean;
 }
 
 type Radix = 'dec' | 'hex' | 'bin';
@@ -181,7 +183,7 @@ function StepChart({ points, radix, bits }: { points: HistoryPoint[]; radix: Rad
 }
 
 /** R11: what was read and written of a device, and the observed values of one address. */
-export function AddressesView({ service, fileId, filter, timeMode, firstNs }: Props) {
+export function AddressesView({ service, fileId, filter, timeMode, firstNs, oneBased: oneBasedSetting = false }: Props) {
   const devices = useLoad(() => service.devices(fileId, filter), [service, fileId, JSON.stringify(filter)]);
   const [device, setDevice] = useState<string>('');
   const [space, setSpace] = useState<string>('holding');
@@ -196,7 +198,8 @@ export function AddressesView({ service, fileId, filter, timeMode, firstNs }: Pr
   const [every, setEvery] = useState(false);
   const [radix, setRadix] = useState<Radix>('dec');
   // Addresses are zero-based as sent; the 1-based reference is a label only.
-  const [oneBased, setOneBased] = useState(false);
+  const [oneBased, setOneBased] = useState(oneBasedSetting);
+  useEffect(() => setOneBased(oneBasedSetting), [oneBasedSetting]);
   const base = oneBased ? 1 : 0;
   const [points, setPoints] = useState<HistoryPoint[]>([]);
   const [job, setJob] = useState<{ id: string; scanned: number; candidates: number; done: boolean; next?: number } | null>(null);

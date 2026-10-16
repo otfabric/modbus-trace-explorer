@@ -12,6 +12,10 @@ export class MockPlatform implements Platform {
     return ['/traces/site-2026-10-14.pcapng'];
   }
 
+  async chooseSave(name: string): Promise<string | null> {
+    return `/exports/${name}`;
+  }
+
   onOpen(): () => void {
     return () => {};
   }

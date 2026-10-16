@@ -41,6 +41,13 @@ var schemas = []struct {
 	{"coverage-map", "Addresses view: coverage", service.CoverageMap{}},
 	{"history-query", "Address history query", service.HistoryQuery{}},
 	{"quality", "Quality view", service.Quality{}},
+	{"mbcap-export", "MBCAP export choices", service.MBCAPExport{}},
+	{"mbcap-preview", "MBCAP export preview", service.MBCAPPreview{}},
+	{"timeline-export", "Timeline export choices", service.TimelineExport{}},
+	{"subtrace-export", "Sub-trace export choices", service.SubtraceExport{}},
+	{"export-result", "Export result", service.ExportResult{}},
+	{"settings", "Settings", service.Settings{}},
+	{"cache-info", "Analysis cache", service.CacheInfo{}},
 	{"error", "Error", service.Error{}},
 }
 
@@ -154,6 +161,25 @@ func TestOutputValidates(t *testing.T) {
 	if len(pts) == 0 {
 		t.Error("no history points")
 	}
+	mx := service.MBCAPExport{Exceptions: true, Format: "mbcap", Labels: map[string]string{srv1.String() + "/1": "Meter"}}
+	validate(t, "mbcap-export", mx)
+	pv, _ := e.PreviewMBCAP(ctx, id, mx)
+	validate(t, "mbcap-preview", pv)
+	dir := t.TempDir()
+	ref, err := e.ExportMBCAP(ctx, id, mx, filepath.Join(dir, "x.mbcap"))
+	validate(t, "export-result", runExport(t, e, ref, err))
+	tx := service.TimelineExport{Filter: service.Filter{Units: []uint8{1}}, Format: "csv"}
+	validate(t, "timeline-export", tx)
+	ref, err = e.ExportTimeline(ctx, id, tx, filepath.Join(dir, "x.csv"))
+	validate(t, "export-result", runExport(t, e, ref, err))
+	sx := service.SubtraceExport{Filter: service.Filter{Conns: []uint32{1}}}
+	validate(t, "subtrace-export", sx)
+	ref, err = e.ExportSubtrace(ctx, id, sx, filepath.Join(dir, "x.pcapng"))
+	validate(t, "export-result", runExport(t, e, ref, err))
+	st, _ := e.Settings(ctx)
+	validate(t, "settings", st)
+	ci, _ := e.CacheInfo(ctx)
+	validate(t, "cache-info", ci)
 	fp, _ := e.ParseFilter(ctx, id, "unit:1 color:red")
 	validate(t, "filter-parse", fp)
 	validate(t, "analyze-config", service.AnalyzeConfig{Flows: []uint32{1}, ServerPorts: []uint16{502}, Servers: []string{}})

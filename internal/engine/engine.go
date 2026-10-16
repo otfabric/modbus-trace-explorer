@@ -54,6 +54,9 @@ type Engine struct {
 	jobs   map[string]*job
 	nextID int
 	subs   map[chan service.Event]struct{}
+
+	results     map[string]service.ExportResult // finished exports, the last maxResults
+	resultOrder []string
 }
 
 var _ service.Service = (*Engine)(nil)
@@ -63,6 +66,8 @@ type openTrace struct {
 	info    service.FileInfo
 	data    []string // what the library reads: the paths, or decompressed copies
 	release func()   // lets the cache evict this trace's entries again
+	// removeCopy deletes a decompressed copy when the trace closes (A16).
+	removeCopy func(path string) error
 
 	mu    sync.Mutex
 	lib   *trace.File // random access for Detail, opened on first use
@@ -111,8 +116,12 @@ func New(o Options) (*Engine, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Engine{log: log, cache: cache, config: o.ConfigDir, now: now, lib: buildinfo.ModuleVersion(buildinfo.GoModbusTracePath),
-		files: map[string]*openTrace{}, jobs: map[string]*job{}, subs: map[chan service.Event]struct{}{}}, nil
+	e := &Engine{log: log, cache: cache, config: o.ConfigDir, now: now, lib: buildinfo.ModuleVersion(buildinfo.GoModbusTracePath),
+		files: map[string]*openTrace{}, jobs: map[string]*job{}, subs: map[chan service.Event]struct{}{}}
+	if st, ok := e.readSettings(); ok && st.CacheCap > 0 {
+		cache.SetCap(st.CacheCap)
+	}
+	return e, nil
 }
 
 // Shutdown cancels every job and releases every open trace.
@@ -143,6 +152,11 @@ func (t *openTrace) close() error {
 	if t.ix != nil {
 		err = t.ix.Close()
 		t.ix = nil
+	}
+	for i, d := range t.data {
+		if i < len(t.info.Paths) && d != t.info.Paths[i] && t.removeCopy != nil {
+			err = errors.Join(err, t.removeCopy(d))
+		}
 	}
 	if t.release != nil {
 		t.release()
@@ -194,7 +208,7 @@ func (e *Engine) Open(_ context.Context, paths []string) (service.FileInfo, erro
 		name += " + " + strconv.Itoa(len(paths)-1) + " more"
 	}
 	info := service.FileInfo{ID: fp, Paths: slices.Clone(paths), Name: name, Size: size, Gzip: gz}
-	t := &openTrace{info: info, data: slices.Clone(paths), release: e.cache.Hold(fp)}
+	t := &openTrace{info: info, data: slices.Clone(paths), release: e.cache.Hold(fp), removeCopy: e.cache.RemoveCopy}
 	if ix, err := e.cache.Lookup(fp); err == nil {
 		if err := t.attach(ix); err == nil {
 			info.Analyzed = true
@@ -202,6 +216,10 @@ func (e *Engine) Open(_ context.Context, paths []string) (service.FileInfo, erro
 			if json.Unmarshal(ix.Meta.Choices, &cfg) == nil {
 				info.Choices = &cfg
 			}
+			// A gzip trace's decompressed copy lives only while it is
+			// open (A16): the analysis is reused, the copy is made again
+			// by Prepare.
+			info.Prepare = gz
 		} else {
 			_ = ix.Close()
 		}

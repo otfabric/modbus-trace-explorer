@@ -8,6 +8,7 @@ import { MockService } from './service/mock';
 function platform(paths: string[] = []): Platform {
   return {
     chooseTraces: async () => paths,
+    chooseSave: async (name: string) => `/out/${name}`,
     onOpen: () => () => {},
     openExternal: () => {},
     persistTheme: () => {},
@@ -119,5 +120,103 @@ describe('App', () => {
     const conditions = await screen.findByRole('region', { name: 'Conditions' });
     expect(within(conditions).getAllByText('none').length).toBeGreaterThan(0);
     expect(screen.getByRole('region', { name: 'Facts' })).toHaveTextContent('pcapng');
+  });
+
+  it('exports an MBCAP capture with a live preview, the report and the replay commands', async () => {
+    const user = userEvent.setup();
+    render(<App service={new MockService({ rows: 3000, analyzed: true, step: 1 })} platform={platform(['/x/site.pcapng'])} />);
+    await user.click(screen.getByRole('button', { name: /Open/ }));
+    await screen.findByRole('grid', { name: 'Timeline' });
+    await user.click(await screen.findByRole('button', { name: /^Export$/ }));
+    const dialog = await screen.findByRole('dialog', { name: 'Export' });
+    const preview = await within(dialog).findByRole('region', { name: 'Preview' });
+    expect(await within(preview).findByText(/samples of .* transactions/)).toBeInTheDocument();
+    expect(within(preview).getByText('write_function')).toBeInTheDocument();
+    const label = within(preview).getAllByRole('textbox')[0] as HTMLInputElement;
+    await user.clear(label);
+    await user.type(label, 'Meter');
+    await user.click(within(dialog).getByRole('checkbox', { name: /Change-only/ }));
+    expect(await within(preview).findAllByText(/up to/)).not.toHaveLength(0);
+    await user.click(within(dialog).getByRole('button', { name: 'Export…' }));
+    const done = await screen.findByRole('dialog', { name: 'Export written' }, { timeout: 3000 });
+    expect(within(done).getByText('site.mbcap')).toBeInTheDocument();
+    expect(within(done).getByText(/1: Meter/)).toBeInTheDocument();
+    expect(within(done).getByText(/^mbcapctl verify \/out\/site\.mbcap$/)).toBeInTheDocument();
+    expect(within(done).getAllByText(/modbusctl server replay/).length).toBeGreaterThan(0);
+    expect(within(done).getByText('stale_after_write')).toBeInTheDocument();
+    await user.click(within(done).getByRole('button', { name: 'Save report…' }));
+    expect(await within(done).findByText('Report saved as site-report.json')).toBeInTheDocument();
+    await user.click(within(done).getByRole('button', { name: 'Done' }));
+    expect(screen.queryByRole('dialog')).toBeNull();
+  });
+
+  it('exports the timeline, and explains a refused sub-trace', async () => {
+    const user = userEvent.setup();
+    render(<App service={new MockService({ rows: 3000, analyzed: true, step: 1 })} platform={platform(['/x/site.pcapng'])} />);
+    await user.click(screen.getByRole('button', { name: /Open/ }));
+    const grid = await screen.findByRole('grid', { name: 'Timeline' });
+    await user.type(screen.getByRole('textbox', { name: 'Filter' }), 'unit:1{Enter}');
+    await waitFor(() => expect(Number(grid.getAttribute('aria-rowcount'))).toBeLessThan(3000));
+    await user.keyboard('{Control>}e{/Control}');
+    const dialog = await screen.findByRole('dialog', { name: 'Export' });
+    await user.click(within(dialog).getByRole('tab', { name: 'Timeline' }));
+    await user.click(within(dialog).getByRole('radio', { name: 'JSON Lines' }));
+    await user.click(within(dialog).getByRole('button', { name: 'Export…' }));
+    const done = await screen.findByRole('dialog', { name: 'Export written' }, { timeout: 3000 });
+    expect(within(done).getByText(/site-timeline\.jsonl/)).toBeInTheDocument();
+    expect(within(done).getByText(/rows/)).toBeInTheDocument();
+    await user.click(within(done).getByRole('button', { name: 'Done' }));
+
+    await user.click(screen.getByRole('button', { name: /^Export$/ }));
+    const again = await screen.findByRole('dialog', { name: 'Export' });
+    await user.click(within(again).getByRole('tab', { name: /Sub-trace/ }));
+    expect(within(again).getByText(/writes and vendor functions are included verbatim/)).toBeInTheDocument();
+    await user.click(within(again).getByRole('button', { name: 'Export…' }));
+    expect(await within(again).findByRole('alert')).toHaveTextContent(/not transactions/);
+    await user.click(within(again).getByRole('radio', { name: 'Every connection' }));
+    await user.click(within(again).getByRole('button', { name: 'Export…' }));
+    const sub = await screen.findByRole('dialog', { name: 'Export written' }, { timeout: 3000 });
+    expect(within(sub).getByText(/packets of 4 connections/)).toBeInTheDocument();
+  });
+
+  it('keeps settings: time display, server ports, address labels, cache and recent files', async () => {
+    const user = userEvent.setup();
+    const service = new MockService({ rows: 3000, analyzed: true, step: 1 });
+    render(<App service={service} platform={platform(['/x/site.pcapng'])} />);
+    await user.click(screen.getByRole('button', { name: 'Settings' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Settings' });
+    await within(dialog).findByRole('combobox', { name: 'Time display' });
+    await user.selectOptions(within(dialog).getByRole('combobox', { name: 'Time display' }), 'utc');
+    await user.type(within(dialog).getByRole('textbox', { name: 'Server ports' }), '1502, x');
+    await user.click(within(dialog).getByRole('button', { name: 'Save' }));
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent(/1 to 65535/);
+    await user.clear(within(dialog).getByRole('textbox', { name: 'Server ports' }));
+    await user.type(within(dialog).getByRole('textbox', { name: 'Server ports' }), '1502 503');
+    await user.click(within(dialog).getByRole('checkbox', { name: /1-based/ }));
+    await user.click(within(dialog).getByRole('button', { name: 'Clear recent files' }));
+    expect(await within(dialog).findByRole('status')).toHaveTextContent('Recent files cleared.');
+    await user.click(within(dialog).getByRole('button', { name: 'Save' }));
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(await service.settings()).toMatchObject({ time_mode: 'utc', server_ports: [503, 1502], one_based: true });
+
+    await user.click(screen.getByRole('button', { name: /Open/ }));
+    await screen.findByRole('grid', { name: 'Timeline' });
+    expect(screen.getByText('time: utc')).toBeInTheDocument();
+    await user.keyboard('{Control>},{/Control}');
+    const again = await screen.findByRole('dialog', { name: 'Settings' });
+    expect(await within(again).findByText(/in 1 entry/)).toBeInTheDocument();
+    await user.click(within(again).getByRole('button', { name: 'Clear cache…' }));
+    await user.click(await screen.findByRole('button', { name: 'Clear cache' }));
+    expect(await within(again).findByText(/in 0 entries/)).toBeInTheDocument();
+  });
+
+  it('decompresses an analysed gzip trace again before showing it (A16)', async () => {
+    const user = userEvent.setup();
+    render(<App service={new MockService({ rows: 2000, analyzed: true, step: 20 })} platform={platform(['/x/site.pcapng.gz'])} />);
+    await user.click(screen.getByRole('button', { name: /Open/ }));
+    expect(await screen.findByText('Decompressing the trace')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^Analyze/ })).toBeNull();
+    const grid = await screen.findByRole('grid', { name: 'Timeline' }, { timeout: 3000 });
+    await waitFor(() => expect(grid).toHaveAttribute('aria-rowcount', '2001'));
   });
 });
