@@ -29,6 +29,7 @@ export function chips(f: Filter): { key: Key; label: string }[] {
   list('statuses', 'status', f.statuses);
   list('exceptions', 'exc', f.exceptions);
   list('flags', 'flag', f.flags);
+  if (f.summary !== undefined) out.push({ key: 'summary', label: `request:${f.summary}` });
   if (f.not_flags?.length) out.push({ key: 'not_flags', label: `-flag:${f.not_flags.join(',')}` });
   if (f.space || f.start !== undefined) {
     const range = f.start !== undefined ? (f.start === f.end ? `${f.start}` : `${f.start}-${f.end ?? 65535}`) : '';

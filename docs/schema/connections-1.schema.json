@@ -1,0 +1,95 @@
+{
+  "$defs": {
+    "service.ConnStats": {
+      "additionalProperties": false,
+      "properties": {
+        "bytes": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "client": {
+          "type": "string"
+        },
+        "close": {
+          "type": "string"
+        },
+        "first_ns": {
+          "type": "integer"
+        },
+        "flags": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "gaps": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "id": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "last_ns": {
+          "type": "integer"
+        },
+        "open": {
+          "type": "string"
+        },
+        "resyncs": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "role_confidence": {
+          "type": "number"
+        },
+        "role_guessed": {
+          "type": "boolean"
+        },
+        "role_source": {
+          "type": "string"
+        },
+        "server": {
+          "type": "string"
+        },
+        "transactions": {
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "bytes",
+        "client",
+        "close",
+        "first_ns",
+        "flags",
+        "gaps",
+        "id",
+        "last_ns",
+        "open",
+        "resyncs",
+        "role_confidence",
+        "role_guessed",
+        "role_source",
+        "server",
+        "transactions"
+      ],
+      "type": "object"
+    }
+  },
+  "$id": "https://github.com/otfabric/modbus-trace-explorer/docs/schema/connections-1.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Generated from internal/service by internal/engine's TestSchemasUpToDate.",
+  "items": {
+    "$ref": "#/$defs/service.ConnStats"
+  },
+  "title": "Conversations view",
+  "type": "array"
+}

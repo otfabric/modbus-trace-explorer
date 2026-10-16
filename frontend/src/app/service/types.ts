@@ -33,14 +33,14 @@ export interface RecentFile {
 
 export interface JobRef {
   id: string;
-  kind: 'scan' | 'analyze';
+  kind: 'scan' | 'analyze' | 'history';
 }
 
 export type JobStatus = 'running' | 'done' | 'failed' | 'canceled';
 
 export interface JobState {
   id: string;
-  kind: 'scan' | 'analyze';
+  kind: 'scan' | 'analyze' | 'history';
   file: string;
   state: JobStatus;
   phase: string;
@@ -53,8 +53,9 @@ export interface JobState {
 }
 
 export interface ExplorerEvent {
-  kind: 'job';
+  kind: 'job' | 'history';
   job?: JobState;
+  history?: HistoryChunk;
 }
 
 /** A TCP flow from the library's Scan (trace.Flow), the fields the Flows step shows. */
@@ -152,6 +153,8 @@ export interface Filter {
   not_flags?: string[];
   from_ns?: number;
   to_ns?: number;
+  /** Exactly this request summary (a pattern's "show in timeline"). */
+  summary?: string;
   space?: Space;
   start?: number;
   end?: number;
@@ -255,4 +258,144 @@ export interface Detail {
 export interface FilterParse {
   filter: Filter;
   errors: { term: string; message: string }[];
+}
+
+/** Durations summarised: exact quantiles and buckets a power of two apart (service.Distribution). */
+export interface Distribution {
+  count: number;
+  min_ns: number;
+  p50_ns: number;
+  p95_ns: number;
+  p99_ns: number;
+  max_ns: number;
+  histogram: { lo_ns: number; hi_ns: number; count: number }[];
+}
+
+/** One server and unit (R8; service.DeviceStats). */
+export interface DeviceStats {
+  server: string;
+  unit: number;
+  transactions: number;
+  by_function: Record<string, number>;
+  by_status: Record<string, number>;
+  reads: number;
+  writes: number;
+  exceptions: number;
+  unanswered: number;
+  clients: string[];
+  first_ns: number;
+  last_ns: number;
+  rate: number;
+  bytes: number;
+  latency?: Distribution;
+}
+
+/** One connection (R9; service.ConnStats). */
+export interface ConnStats {
+  id: number;
+  client: string;
+  server: string;
+  open: string;
+  close: string;
+  role_source: string;
+  role_confidence: number;
+  role_guessed: boolean;
+  first_ns: number;
+  last_ns: number;
+  transactions: number;
+  bytes: number;
+  gaps: number;
+  resyncs: number;
+  flags: string[];
+}
+
+/** A recurring request (R10; service.Pattern). */
+export interface Pattern {
+  client: string;
+  server: string;
+  unit: number;
+  function: number;
+  summary: string;
+  space?: string;
+  start: number;
+  count: number;
+  requests: number;
+  first_ns: number;
+  last_ns: number;
+  interval?: Distribution;
+  jitter_ns: number;
+  responses: number;
+  changed: number;
+  volatility: number;
+  volatility_class: 'static' | 'slow' | 'noisy';
+}
+
+export interface CoverageQuery {
+  server: string;
+  unit: number;
+  space: string;
+  filter: Filter;
+}
+
+export interface AddressInterval {
+  start: number;
+  /** Inclusive. */
+  end: number;
+  count: number;
+  first_ns: number;
+  last_ns: number;
+}
+
+/** What was read and written of a data space (R11; service.CoverageMap). */
+export interface CoverageMap {
+  server: string;
+  unit: number;
+  space: string;
+  spaces: string[];
+  read: AddressInterval[];
+  written: AddressInterval[];
+}
+
+export interface HistoryQuery {
+  server: string;
+  unit: number;
+  space: string;
+  address: number;
+  after: number;
+  limit: number;
+  every: boolean;
+}
+
+export interface HistoryPoint {
+  t_ns: number;
+  seq: number;
+  value: number;
+  write: boolean;
+  client: string;
+  changed: boolean;
+}
+
+/** A batch of an address history job (service.HistoryChunk). */
+export interface HistoryChunk {
+  job: string;
+  points: HistoryPoint[];
+  done: boolean;
+  next?: number;
+  candidates: number;
+  scanned: number;
+}
+
+export interface Condition {
+  code: string;
+  label: string;
+  count: number;
+  severity: 'info' | 'warning' | 'problem';
+  meaning: string;
+  filter?: Filter;
+}
+
+/** R12 (service.Quality). */
+export interface Quality {
+  conditions: Condition[];
+  facts: { label: string; value: string }[];
 }

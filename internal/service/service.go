@@ -49,6 +49,21 @@ type Service interface {
 	// Detail returns one row with its decoded ADUs and the packets that
 	// carried them, re-read from the trace.
 	Detail(ctx context.Context, fileID string, seq uint64) (Detail, error)
+	// Devices aggregates the filtered transactions per server and unit (R8).
+	Devices(ctx context.Context, fileID string, f Filter) ([]DeviceStats, error)
+	// Connections lists the connections with rows in the filter (R9).
+	Connections(ctx context.Context, fileID string, f Filter) ([]ConnStats, error)
+	// Patterns finds the recurring requests in the filter (R10).
+	Patterns(ctx context.Context, fileID string, f Filter) ([]Pattern, error)
+	// Coverage maps the addresses read and written of one device and data
+	// space (R11).
+	Coverage(ctx context.Context, fileID string, q CoverageQuery) (CoverageMap, error)
+	// AddressHistory starts a job that reads the values of one address
+	// from the trace; the points arrive as "history" events (R11).
+	AddressHistory(ctx context.Context, fileID string, q HistoryQuery) (JobRef, error)
+	// Quality lists every condition the library counted (R12).
+	Quality(ctx context.Context, fileID string) (Quality, error)
+
 	// ParseFilter parses the filter box's text (UX.md section 6); times
 	// like "14:30" or "+15m" are read against the trace's first packet.
 	ParseFilter(ctx context.Context, fileID, text string) (FilterParse, error)
@@ -114,8 +129,9 @@ type JobState struct {
 
 // Event is what Subscribe delivers.
 type Event struct {
-	Kind string    `json:"kind"` // job
-	Job  *JobState `json:"job,omitempty"`
+	Kind    string        `json:"kind"` // job, history
+	Job     *JobState     `json:"job,omitempty"`
+	History *HistoryChunk `json:"history,omitempty"`
 }
 
 // ScanResult is the Flows step's content (R2).
@@ -180,6 +196,9 @@ type Filter struct {
 	NotFlags   []string `json:"not_flags,omitempty"`
 	FromNS     *int64   `json:"from_ns,omitempty"`
 	ToNS       *int64   `json:"to_ns,omitempty"` // exclusive
+	// Summary selects the transactions with exactly this summary (a
+	// pattern's "show in timeline").
+	Summary string `json:"summary,omitempty"`
 	// Space and the address range select transactions whose range
 	// overlaps; an empty Space with a range means any data space.
 	Space string  `json:"space,omitempty"`
@@ -293,6 +312,177 @@ type ConnDetail struct {
 	RoleSource     string  `json:"role_source"`
 	RoleConfidence float64 `json:"role_confidence"`
 	Transactions   uint64  `json:"transactions"`
+}
+
+// DeviceStats is one server and unit (R8).
+type DeviceStats struct {
+	Server       string            `json:"server"`
+	Unit         uint8             `json:"unit"`
+	Transactions uint64            `json:"transactions"`
+	ByFunction   map[string]uint64 `json:"by_function"` // function code (decimal) -> count
+	ByStatus     map[string]uint64 `json:"by_status"`
+	Reads        uint64            `json:"reads"`
+	Writes       uint64            `json:"writes"`
+	Exceptions   uint64            `json:"exceptions"`
+	Unanswered   uint64            `json:"unanswered"`
+	Clients      []string          `json:"clients"`
+	FirstNS      int64             `json:"first_ns"`
+	LastNS       int64             `json:"last_ns"`
+	Rate         float64           `json:"rate"`  // transactions per second between first and last
+	Bytes        uint64            `json:"bytes"` // request and response ADU bytes
+	Latency      *Distribution     `json:"latency,omitempty"`
+}
+
+// Distribution summarises durations (latencies, intervals): exact
+// quantiles and a histogram of logarithmic buckets.
+type Distribution struct {
+	Count     uint64   `json:"count"`
+	MinNS     int64    `json:"min_ns"`
+	P50NS     int64    `json:"p50_ns"`
+	P95NS     int64    `json:"p95_ns"`
+	P99NS     int64    `json:"p99_ns"`
+	MaxNS     int64    `json:"max_ns"`
+	Histogram []Bucket `json:"histogram"`
+}
+
+// Bucket is one bar of a histogram: durations in [LoNS, HiNS).
+type Bucket struct {
+	LoNS  int64  `json:"lo_ns"`
+	HiNS  int64  `json:"hi_ns"`
+	Count uint64 `json:"count"`
+}
+
+// ConnStats is one connection (R9).
+type ConnStats struct {
+	ID             uint32   `json:"id"`
+	Client         string   `json:"client"`
+	Server         string   `json:"server"`
+	Open           string   `json:"open"`
+	Close          string   `json:"close"`
+	RoleSource     string   `json:"role_source"`
+	RoleConfidence float64  `json:"role_confidence"`
+	RoleGuessed    bool     `json:"role_guessed"`
+	FirstNS        int64    `json:"first_ns"`
+	LastNS         int64    `json:"last_ns"`
+	Transactions   uint64   `json:"transactions"` // in the filter
+	Bytes          uint64   `json:"bytes"`        // TCP payload, both directions
+	Gaps           uint64   `json:"gaps"`
+	Resyncs        uint64   `json:"resyncs"`
+	Flags          []string `json:"flags"` // of its transactions in the filter
+}
+
+// Pattern is a recurring request (R10): one client asking one device the
+// same thing.
+type Pattern struct {
+	Client   string `json:"client"`
+	Server   string `json:"server"`
+	Unit     uint8  `json:"unit"`
+	Function uint8  `json:"function"`
+	Summary  string `json:"summary"`
+	Space    string `json:"space,omitempty"`
+	Start    uint16 `json:"start"`
+	Count    uint16 `json:"count"`
+	Requests uint64 `json:"requests"`
+	FirstNS  int64  `json:"first_ns"`
+	LastNS   int64  `json:"last_ns"`
+	// Interval is the time between successive requests.
+	Interval   *Distribution `json:"interval,omitempty"`
+	JitterNS   int64         `json:"jitter_ns"` // median absolute deviation of the interval
+	Responses  uint64        `json:"responses"`
+	Changed    uint64        `json:"changed"`    // responses that differ from the one before
+	Volatility float64       `json:"volatility"` // changed / (responses - 1)
+	// VolatilityClass is static (never changed), slow (under 20% of the
+	// answers changed) or noisy.
+	VolatilityClass string `json:"volatility_class"`
+}
+
+// CoverageQuery names a device and a data space.
+type CoverageQuery struct {
+	Server string `json:"server"`
+	Unit   uint8  `json:"unit"`
+	Space  string `json:"space"`
+	Filter Filter `json:"filter"`
+}
+
+// CoverageMap is what was read and written of a data space (R11).
+type CoverageMap struct {
+	Server  string     `json:"server"`
+	Unit    uint8      `json:"unit"`
+	Space   string     `json:"space"`
+	Spaces  []string   `json:"spaces"` // the device's data spaces with any access
+	Read    []Interval `json:"read"`
+	Written []Interval `json:"written"`
+}
+
+// Interval is a merged range of addresses (inclusive) with how often and
+// when it was touched.
+type Interval struct {
+	Start   uint16 `json:"start"`
+	End     uint16 `json:"end"`
+	Count   uint64 `json:"count"`
+	FirstNS int64  `json:"first_ns"`
+	LastNS  int64  `json:"last_ns"`
+}
+
+// HistoryQuery asks for the observed values of one address.
+type HistoryQuery struct {
+	Server  string `json:"server"`
+	Unit    uint8  `json:"unit"`
+	Space   string `json:"space"`
+	Address uint16 `json:"address"`
+	// After continues a capped history: the Next of the last chunk.
+	After uint64 `json:"after"`
+	// Limit caps the points (default 200,000).
+	Limit int `json:"limit"`
+	// Every keeps repeated values (every poll); otherwise only changes and
+	// writes.
+	Every bool `json:"every"`
+}
+
+// HistoryChunk is a batch of points of an address history job.
+type HistoryChunk struct {
+	Job    string         `json:"job"`
+	Points []HistoryPoint `json:"points"`
+	// Done: the job has finished; Next, when set, continues it ("load more").
+	Done bool    `json:"done"`
+	Next *uint64 `json:"next,omitempty"`
+	// Candidates are the transactions that touch the address; Scanned how
+	// many of them have been read.
+	Candidates uint64 `json:"candidates"`
+	Scanned    uint64 `json:"scanned"`
+}
+
+// HistoryPoint is one observed value: a read or a write.
+type HistoryPoint struct {
+	TimeNS  int64  `json:"t_ns"`
+	Seq     uint64 `json:"seq"`
+	Value   uint16 `json:"value"` // a register's word, or 0/1 for a bit
+	Write   bool   `json:"write"`
+	Client  string `json:"client"`
+	Changed bool   `json:"changed"` // differs from the previous read
+}
+
+// Quality lists the conditions the library counted (R12); none is hidden
+// when zero.
+type Quality struct {
+	Conditions []Condition `json:"conditions"`
+	Facts      []Fact      `json:"facts"`
+}
+
+// Condition is one quality counter with its meaning.
+type Condition struct {
+	Code     string  `json:"code"`
+	Label    string  `json:"label"`
+	Count    uint64  `json:"count"`
+	Severity string  `json:"severity"` // info, warning, problem
+	Meaning  string  `json:"meaning"`
+	Filter   *Filter `json:"filter,omitempty"` // "show in timeline"
+}
+
+// Fact is a capture-level fact (link types, snap length, drops, hashes).
+type Fact struct {
+	Label string `json:"label"`
+	Value string `json:"value"`
 }
 
 // FilterParse is the parsed filter box.

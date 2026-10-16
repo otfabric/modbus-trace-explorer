@@ -7,12 +7,14 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"hash/fnv"
 	"math"
 	"net/netip"
 	"slices"
 	"strings"
 
 	"github.com/otfabric/go-modbus-trace/export/mbcapexport"
+	"github.com/otfabric/go-modbus-trace/mbtcp"
 	"github.com/otfabric/go-modbus-trace/model"
 	"github.com/otfabric/go-modbus-trace/trace"
 
@@ -355,7 +357,24 @@ func (b *builder) event(ev *model.Event) error {
 			r.LatUS = uint32(min(math.MaxUint32-1, max(0, x.LatencyNS/1000)))
 		}
 		r.MBCAP = reasonCode(mbcapexport.Classify(x))
-		r.Summary = b.w.Summary(x.Summary)
+		var size int
+		if x.Request != nil {
+			size += x.Request.Size
+		}
+		if x.Response != nil {
+			size += x.Response.Size
+			h := fnv.New32a()
+			_, _ = h.Write(x.Response.PDU)
+			r.RespHash = uint16(h.Sum32()) // collisions of 1 in 65,536 only hide a change from the volatility
+		}
+		r.Bytes = uint16(min(size, math.MaxUint16))
+		// The request in words (UX.md section 3); the outcome is the Result
+		// column, built from the status. A request alone groups a pattern.
+		summary := x.Summary
+		if x.Request != nil && x.Request.View != nil {
+			summary = mbtcp.Summary(*x.Request.View, nil)
+		}
+		r.Summary = b.w.Summary(summary)
 		if x.Request != nil {
 			req = x.Request.Refs
 		}

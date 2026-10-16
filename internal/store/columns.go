@@ -19,7 +19,7 @@ import (
 
 // FormatVersion changes whenever the layout of an index directory changes;
 // a directory of another version is rebuilt.
-const FormatVersion = 1
+const FormatVersion = 2 // 2: bytes and resp_hash columns (M2)
 
 // ErrFormat is wrapped by the error Open returns for a directory that is
 // not a complete index of this version.
@@ -111,28 +111,30 @@ func FlagList(m uint32) []string {
 // Strings live in dictionaries (Device, Client, Summary); the provenance
 // in the refs file.
 type Row struct {
-	Kind    uint8
-	TimeNS  int64
-	Conn    uint32
-	Device  uint16 // index into the device dictionary (server endpoint and unit)
-	Client  uint16 // index into the client dictionary (address)
-	TID     uint16
-	FC      uint8
-	Sub     uint16 // NoSub when absent
-	Class   uint8
-	Status  uint8
-	Exc     uint8
-	Flags   uint32
-	Space   uint8 // the first range's data space
-	Start   uint16
-	Count   uint16
-	WStart  uint16 // the write range of FC23, else 0
-	WCount  uint16
-	LatUS   uint32 // NoLatency when absent
-	MBCAP   uint8  // the export classification (mbcapexport reason index); 0 = exported
-	Summary uint32 // a transaction's index into the summary dictionary
-	Extra   uint32 // another row's index into its extra data (stored in the summary column)
-	Refs    uint64 // offset of the row's provenance in refs.bin
+	Kind     uint8
+	TimeNS   int64
+	Conn     uint32
+	Device   uint16 // index into the device dictionary (server endpoint and unit)
+	Client   uint16 // index into the client dictionary (address)
+	TID      uint16
+	FC       uint8
+	Sub      uint16 // NoSub when absent
+	Class    uint8
+	Status   uint8
+	Exc      uint8
+	Flags    uint32
+	Space    uint8 // the first range's data space
+	Start    uint16
+	Count    uint16
+	WStart   uint16 // the write range of FC23, else 0
+	WCount   uint16
+	LatUS    uint32 // NoLatency when absent
+	MBCAP    uint8  // the export classification (mbcapexport reason index); 0 = exported
+	Bytes    uint16 // request and response ADU bytes on the wire
+	RespHash uint16 // a hash of the response PDU, to tell a changed answer (patterns' volatility)
+	Summary  uint32 // a transaction's index into the summary dictionary
+	Extra    uint32 // another row's index into its extra data (stored in the summary column)
+	Refs     uint64 // offset of the row's provenance in refs.bin
 }
 
 // column describes one column file: its name, its width and how a Row's
@@ -167,6 +169,8 @@ var columns = []column{
 	{"wcount", 2, func(b []byte, r *Row) { le.PutUint16(b, r.WCount) }, func(b []byte, r *Row) { r.WCount = le.Uint16(b) }},
 	{"lat_us", 4, func(b []byte, r *Row) { le.PutUint32(b, r.LatUS) }, func(b []byte, r *Row) { r.LatUS = le.Uint32(b) }},
 	{"mbcap", 1, func(b []byte, r *Row) { b[0] = r.MBCAP }, func(b []byte, r *Row) { r.MBCAP = b[0] }},
+	{"bytes", 2, func(b []byte, r *Row) { le.PutUint16(b, r.Bytes) }, func(b []byte, r *Row) { r.Bytes = le.Uint16(b) }},
+	{"resp_hash", 2, func(b []byte, r *Row) { le.PutUint16(b, r.RespHash) }, func(b []byte, r *Row) { r.RespHash = le.Uint16(b) }},
 	// A transaction's summary, or another row's extra data: one column, by kind
 	// (the kind column is read first).
 	{"summary", 4, func(b []byte, r *Row) {

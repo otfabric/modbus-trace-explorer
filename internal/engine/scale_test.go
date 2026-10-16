@@ -74,6 +74,25 @@ func TestScale(t *testing.T) {
 	t0 = time.Now()
 	_, _ = e.Timeline(ctx, id, service.TimelineQuery{Filter: service.Filter{Servers: []string{"10.1.0.7"}}, Order: "time", Limit: 100})
 	t.Logf("  %-40s %v", "a new filter (scan of the columns)", time.Since(t0).Round(10*time.Microsecond))
+	view := func(name string, fn func() error) {
+		t0 := time.Now()
+		if err := fn(); err != nil {
+			t.Fatal(err)
+		}
+		t.Logf("  %-40s %v", name, time.Since(t0).Round(10*time.Microsecond))
+	}
+	view("devices", func() error { _, err := e.Devices(ctx, id, service.Filter{}); return err })
+	view("connections", func() error { _, err := e.Connections(ctx, id, service.Filter{}); return err })
+	view("patterns", func() error { _, err := e.Patterns(ctx, id, service.Filter{}); return err })
+	view("coverage", func() error {
+		_, err := e.Coverage(ctx, id, service.CoverageQuery{Server: "10.1.0.7:502", Unit: 1, Space: "holding"})
+		return err
+	})
+	view("quality", func() error { _, err := e.Quality(ctx, id); return err })
+	t0 = time.Now()
+	pts, last := history(t, e, id, service.HistoryQuery{Server: "10.1.0.7:502", Unit: 1, Space: "holding", Address: 4096})
+	t.Logf("  %-40s %v: %d points of %d candidates, capped: %v", "address history (a changing register)",
+		time.Since(t0).Round(time.Millisecond), len(pts), last.Candidates, last.Next != nil)
 }
 
 func dirSize(dir string) int64 {

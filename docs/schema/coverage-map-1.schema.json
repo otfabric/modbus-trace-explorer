@@ -1,0 +1,103 @@
+{
+  "$defs": {
+    "service.CoverageMap": {
+      "additionalProperties": false,
+      "properties": {
+        "read": {
+          "anyOf": [
+            {
+              "items": {
+                "$ref": "#/$defs/service.Interval"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "server": {
+          "type": "string"
+        },
+        "space": {
+          "type": "string"
+        },
+        "spaces": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "unit": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "written": {
+          "anyOf": [
+            {
+              "items": {
+                "$ref": "#/$defs/service.Interval"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "read",
+        "server",
+        "space",
+        "spaces",
+        "unit",
+        "written"
+      ],
+      "type": "object"
+    },
+    "service.Interval": {
+      "additionalProperties": false,
+      "properties": {
+        "count": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "end": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "first_ns": {
+          "type": "integer"
+        },
+        "last_ns": {
+          "type": "integer"
+        },
+        "start": {
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "count",
+        "end",
+        "first_ns",
+        "last_ns",
+        "start"
+      ],
+      "type": "object"
+    }
+  },
+  "$id": "https://github.com/otfabric/modbus-trace-explorer/docs/schema/coverage-map-1.schema.json",
+  "$ref": "#/$defs/service.CoverageMap",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Generated from internal/service by internal/engine's TestSchemasUpToDate.",
+  "title": "Addresses view: coverage"
+}

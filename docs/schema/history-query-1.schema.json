@@ -1,0 +1,48 @@
+{
+  "$defs": {
+    "service.HistoryQuery": {
+      "additionalProperties": false,
+      "properties": {
+        "address": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "after": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "every": {
+          "type": "boolean"
+        },
+        "limit": {
+          "type": "integer"
+        },
+        "server": {
+          "type": "string"
+        },
+        "space": {
+          "type": "string"
+        },
+        "unit": {
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "address",
+        "after",
+        "every",
+        "limit",
+        "server",
+        "space",
+        "unit"
+      ],
+      "type": "object"
+    }
+  },
+  "$id": "https://github.com/otfabric/modbus-trace-explorer/docs/schema/history-query-1.schema.json",
+  "$ref": "#/$defs/service.HistoryQuery",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Generated from internal/service by internal/engine's TestSchemasUpToDate.",
+  "title": "Address history query"
+}

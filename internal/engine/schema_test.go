@@ -34,6 +34,13 @@ var schemas = []struct {
 	{"timeline-page", "Timeline page", service.TimelinePage{}},
 	{"detail", "Row detail", service.Detail{}},
 	{"filter-parse", "Parsed filter", service.FilterParse{}},
+	{"devices", "Devices view", []service.DeviceStats{}},
+	{"connections", "Conversations view", []service.ConnStats{}},
+	{"patterns", "Patterns view", []service.Pattern{}},
+	{"coverage-query", "Coverage query", service.CoverageQuery{}},
+	{"coverage-map", "Addresses view: coverage", service.CoverageMap{}},
+	{"history-query", "Address history query", service.HistoryQuery{}},
+	{"quality", "Quality view", service.Quality{}},
 	{"error", "Error", service.Error{}},
 }
 
@@ -129,6 +136,23 @@ func TestOutputValidates(t *testing.T) {
 			t.Fatal(err)
 		}
 		validate(t, "detail", d)
+	}
+	devs, _ := e.Devices(ctx, id, service.Filter{})
+	validate(t, "devices", devs)
+	conns, _ := e.Connections(ctx, id, service.Filter{})
+	validate(t, "connections", conns)
+	pats, _ := e.Patterns(ctx, id, service.Filter{})
+	validate(t, "patterns", pats)
+	cq := service.CoverageQuery{Server: srv1.String(), Unit: 1, Space: "holding"}
+	validate(t, "coverage-query", cq)
+	cov, _ := e.Coverage(ctx, id, cq)
+	validate(t, "coverage-map", cov)
+	validate(t, "history-query", service.HistoryQuery{Server: srv1.String(), Unit: 1, Space: "holding", Address: 100})
+	ql, _ := e.Quality(ctx, id)
+	validate(t, "quality", ql)
+	pts, _ := history(t, e, id, service.HistoryQuery{Server: srv1.String(), Unit: 1, Space: "holding", Address: 100, Every: true})
+	if len(pts) == 0 {
+		t.Error("no history points")
 	}
 	fp, _ := e.ParseFilter(ctx, id, "unit:1 color:red")
 	validate(t, "filter-parse", fp)

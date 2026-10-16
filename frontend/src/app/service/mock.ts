@@ -1,6 +1,15 @@
 import { ServiceError, type Service } from './service';
 import type {
   About,
+  ConnStats,
+  CoverageMap,
+  CoverageQuery,
+  DeviceStats,
+  Distribution,
+  HistoryPoint,
+  HistoryQuery,
+  Pattern,
+  Quality,
   AnalyzeConfig,
   Detail,
   ExplorerEvent,
@@ -161,7 +170,7 @@ export function generate(i: number): Generated {
   };
 }
 
-const TXN_TERMS: (keyof Filter)[] = ['units', 'functions', 'statuses', 'classes', 'exceptions', 'flags', 'not_flags', 'space', 'start', 'end'];
+const TXN_TERMS: (keyof Filter)[] = ['units', 'functions', 'statuses', 'classes', 'exceptions', 'flags', 'not_flags', 'summary', 'space', 'start', 'end'];
 
 function matches(row: Generated, f: Filter): boolean {
   if (f.servers?.length && !f.servers.some((s) => row.server === s || row.server.startsWith(s + ':'))) return false;
@@ -182,6 +191,7 @@ function matches(row: Generated, f: Filter): boolean {
   if (f.exceptions?.length && (row.exception === undefined || !f.exceptions.includes(row.exception))) return false;
   if (f.flags?.length && !f.flags.every((x) => row.flags.includes(x))) return false;
   if (f.not_flags?.length && f.not_flags.some((x) => row.flags.includes(x))) return false;
+  if (f.summary !== undefined && row.summary !== f.summary) return false;
   if (f.space && row.space !== f.space) return false;
   if (f.start !== undefined || f.end !== undefined) {
     if (!row.count) return false;
@@ -424,6 +434,168 @@ export class MockService implements Service {
     };
   }
 
+  /** The rows the views aggregate: the first 100,000 that pass the filter, so the mock stays quick. */
+  private sample(f: Filter): Generated[] {
+    const out: Generated[] = [];
+    for (let i = 0; i < this.rows && out.length < 100_000; i++) {
+      const r = generate(i);
+      if (matches(r, f)) out.push(r);
+    }
+    return out;
+  }
+
+  async devices(_fileId: string, f: Filter): Promise<DeviceStats[]> {
+    const by = new Map<string, { s: DeviceStats; clients: Set<string>; lat: number[] }>();
+    for (const r of this.sample(f)) {
+      if (r.kind !== 'txn') continue;
+      const key = `${r.server}/${r.unit}`;
+      let a = by.get(key);
+      if (!a) {
+        a = { s: { server: r.server, unit: r.unit ?? 0, transactions: 0, by_function: {}, by_status: {}, reads: 0, writes: 0, exceptions: 0, unanswered: 0, clients: [], first_ns: r.t_ns, last_ns: r.t_ns, rate: 0, bytes: 0 }, clients: new Set(), lat: [] };
+        by.set(key, a);
+      }
+      const d = a.s;
+      d.transactions++;
+      d.by_function[String(r.fc)] = (d.by_function[String(r.fc)] ?? 0) + 1;
+      d.by_status[r.status ?? 'ok'] = (d.by_status[r.status ?? 'ok'] ?? 0) + 1;
+      if (r.class === 'write') d.writes++;
+      else d.reads++;
+      if (r.status === 'exception') d.exceptions++;
+      if (r.status === 'unanswered') d.unanswered++;
+      a.clients.add(r.client);
+      d.first_ns = Math.min(d.first_ns, r.t_ns);
+      d.last_ns = Math.max(d.last_ns, r.t_ns);
+      d.bytes += 140;
+      if (r.latency_ns !== undefined) a.lat.push(r.latency_ns);
+    }
+    return [...by.values()]
+      .map((a) => ({ ...a.s, clients: [...a.clients].sort(), rate: a.s.transactions / Math.max(1, (a.s.last_ns - a.s.first_ns) / 1e9), latency: dist(a.lat) }))
+      .sort((x, y) => x.server.localeCompare(y.server) || x.unit - y.unit);
+  }
+
+  async connections(_fileId: string, f: Filter): Promise<ConnStats[]> {
+    const by = new Map<number, ConnStats>();
+    for (const r of this.sample(f)) {
+      let c = by.get(r.conn);
+      if (!c) {
+        c = { id: r.conn, client: `${r.client}:${49820 + r.conn}`, server: r.server, open: 'syn', close: 'end_of_trace', role_source: 'syn', role_confidence: 1, role_guessed: false, first_ns: r.t_ns, last_ns: r.t_ns, transactions: 0, bytes: 0, gaps: 0, resyncs: 0, flags: [] };
+        by.set(r.conn, c);
+      }
+      c.last_ns = Math.max(c.last_ns, r.t_ns);
+      if (r.kind === 'txn') {
+        c.transactions++;
+        c.bytes += 140;
+        for (const fl of r.flags) if (!c.flags.includes(fl)) c.flags.push(fl);
+      }
+      if (r.kind === 'gap') c.gaps++;
+    }
+    return [...by.values()].sort((a, b) => a.id - b.id);
+  }
+
+  async patterns(_fileId: string, f: Filter): Promise<Pattern[]> {
+    const by = new Map<string, { p: Pattern; times: number[]; last?: string }>();
+    for (const r of this.sample(f)) {
+      if (r.kind !== 'txn') continue;
+      const key = `${r.client}|${r.server}|${r.unit}|${r.summary}`;
+      let a = by.get(key);
+      if (!a) {
+        a = { p: { client: r.client, server: r.server, unit: r.unit ?? 0, function: r.fc ?? 0, summary: r.summary, space: r.space, start: r.start ?? 0, count: r.count ?? 0, requests: 0, first_ns: r.t_ns, last_ns: r.t_ns, jitter_ns: 0, responses: 0, changed: 0, volatility: 0, volatility_class: 'static' }, times: [] };
+        by.set(key, a);
+      }
+      a.p.requests++;
+      a.p.last_ns = r.t_ns;
+      a.times.push(r.t_ns);
+      if (r.status === 'ok' || r.status === 'exception') {
+        const answer = `${mix(r.seq, 9) % 5}`;
+        if (a.last !== undefined && a.last !== answer) a.p.changed++;
+        a.p.responses++;
+        a.last = answer;
+      }
+    }
+    return [...by.values()]
+      .map(({ p, times }) => {
+        const gaps = times.slice(1).map((t, k) => t - (times[k] as number));
+        const interval = dist(gaps);
+        const volatility = p.responses > 1 ? p.changed / (p.responses - 1) : 0;
+        const volatility_class: Pattern['volatility_class'] = p.changed === 0 ? 'static' : volatility < 0.2 ? 'slow' : 'noisy';
+        const jitter_ns = interval ? Math.round(interval.p50_ns / 20) : 0;
+        return { ...p, interval, volatility, volatility_class, jitter_ns };
+      })
+      .sort((a, b) => b.requests - a.requests);
+  }
+
+  async coverage(_fileId: string, q: CoverageQuery): Promise<CoverageMap> {
+    const spaces = new Set<string>();
+    const read = new Map<number, { start: number; end: number; count: number; first_ns: number; last_ns: number }>();
+    const written = new Map<number, { start: number; end: number; count: number; first_ns: number; last_ns: number }>();
+    for (const r of this.sample({ ...q.filter, servers: [q.server], units: [q.unit] })) {
+      if (r.kind !== 'txn' || !r.space || !r.count) continue;
+      spaces.add(r.space);
+      if (r.space !== q.space) continue;
+      const list = r.class === 'write' ? written : read;
+      const start = r.start ?? 0;
+      const iv = list.get(start) ?? { start, end: start + r.count - 1, count: 0, first_ns: r.t_ns, last_ns: r.t_ns };
+      iv.count++;
+      iv.last_ns = r.t_ns;
+      list.set(start, iv);
+    }
+    const sorted = (m: Map<number, { start: number; end: number; count: number; first_ns: number; last_ns: number }>) => [...m.values()].sort((a, b) => a.start - b.start);
+    return { server: q.server, unit: q.unit, space: q.space, spaces: [...spaces].sort(), read: sorted(read), written: sorted(written) };
+  }
+
+  async addressHistory(_fileId: string, q: HistoryQuery): Promise<JobRef> {
+    const id = `history-${++this.nextJob}`;
+    const total = 3000;
+    const limit = q.limit > 0 ? q.limit : 200_000;
+    let k = q.after;
+    let value = 1000;
+    let stopped = false;
+    const tick = () => {
+      if (stopped) return;
+      const points: HistoryPoint[] = [];
+      while (k < total && points.length < 500 && k - q.after < limit) {
+        const write = k % 400 === 399;
+        const next = write ? 5000 : value + (mix(k, 11) % 10 === 0 ? (mix(k, 12) % 7) - 3 : 0);
+        const changed = !write && next !== value;
+        if (q.every || changed || write || k === q.after) {
+          points.push({ t_ns: START_NS + k * 1e9, seq: k * 10 + 1, value: next, write, client: '10.0.3.5', changed });
+        }
+        if (!write) value = next;
+        k++;
+      }
+      const done = k >= total || k - q.after >= limit;
+      for (const l of this.listeners) {
+        l({ kind: 'history', history: { job: id, points, done, next: done && k < total ? k : undefined, candidates: total, scanned: k } });
+      }
+      if (!done) setTimeout(tick, this.step);
+      else this.jobs.delete(id);
+    };
+    this.jobs.set(id, () => {
+      stopped = true;
+      this.jobs.delete(id);
+    });
+    setTimeout(tick, this.step);
+    return { id, kind: 'history' };
+  }
+
+  async quality(): Promise<Quality> {
+    const c = (code: string, label: string, count: number, severity: 'info' | 'warning' | 'problem', meaning: string, filter?: Filter) => ({ code, label, count, severity, meaning, filter });
+    return {
+      conditions: [
+        c('capture_drops', 'Dropped by the capture host', 0, 'problem', 'The capture tool reported packets it could not keep: reads may be missing.'),
+        c('gaps', 'Gaps', Math.floor(this.rows / 77_777), 'problem', 'Bytes of a connection the capture missed; transactions next to them are uncertain.', { flags: ['gap_adjacent'] }),
+        c('retransmitted', 'Retransmissions', Math.floor(this.rows / 200), 'info', 'Segments seen more than once; the first copy was used.', { flags: ['retransmitted'] }),
+        c('unanswered', 'Unanswered requests', Math.floor(this.rows / 500), 'warning', 'Requests with no response observed before the connection or the trace ended.', { statuses: ['unanswered'] }),
+        c('role_guessed', 'Guessed roles', 0, 'info', 'Which side is the server was inferred from the traffic, not from the handshake.', { flags: ['role_guessed'] }),
+      ],
+      facts: [
+        { label: 'Format', value: 'pcapng' },
+        { label: 'Link types', value: '[ethernet]' },
+        { label: 'Packets', value: String(this.rows * 2 + 40) },
+      ],
+    };
+  }
+
   /** A small version of the Go parser (engine.parseFilter): enough terms to develop against. */
   async parseFilter(_fileId: string, text: string): Promise<FilterParse> {
     const filter: Filter = {};
@@ -472,4 +644,20 @@ export class MockService implements Service {
     }
     return { filter, errors };
   }
+}
+
+/** Durations summarised as service.Distribution does (exact quantiles, power-of-two buckets). */
+function dist(ns: number[]): Distribution | undefined {
+  if (ns.length === 0) return undefined;
+  const v = [...ns].sort((a, b) => a - b);
+  const q = (p: number) => v[Math.min(v.length - 1, Math.ceil(p * v.length) - 1)] as number;
+  const lo = Math.floor(Math.log2(Math.max(1, v[0] as number)));
+  const hi = Math.floor(Math.log2(Math.max(1, v[v.length - 1] as number))) + 1;
+  const histogram = [];
+  for (let b = lo; b < hi; b++) {
+    const lo_ns = 2 ** b;
+    const hi_ns = 2 ** (b + 1);
+    histogram.push({ lo_ns, hi_ns, count: v.filter((x) => x >= lo_ns && x < hi_ns).length });
+  }
+  return { count: v.length, min_ns: v[0] as number, p50_ns: q(0.5), p95_ns: q(0.95), p99_ns: q(0.99), max_ns: v[v.length - 1] as number, histogram };
 }
