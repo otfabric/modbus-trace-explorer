@@ -37,6 +37,9 @@ func (e *Engine) AddressHistory(_ context.Context, id string, q service.HistoryQ
 	if !t.present() {
 		return service.JobRef{}, service.Errorf(service.CodeUnavailable, "the trace is not at its path: values are read from it")
 	}
+	if t.preparing() {
+		return service.JobRef{}, service.Errorf(service.CodeUnavailable, "the trace is not decompressed yet")
+	}
 	limit := q.Limit
 	if limit <= 0 {
 		limit = DefaultHistoryLimit

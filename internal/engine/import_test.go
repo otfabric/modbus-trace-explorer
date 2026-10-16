@@ -461,6 +461,51 @@ func TestGzip(t *testing.T) {
 	if len(rows) != 10 || d.Request == nil || d.Request.Hex == "" {
 		t.Errorf("%d rows, detail %+v", len(rows), d.Request)
 	}
+
+	// A16: the decompressed copy goes when the trace closes; reopened,
+	// the analysis is reused and Prepare makes the copy again.
+	ctx := context.Background()
+	cp := info.data[0]
+	if err := e.Close(ctx, id); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(cp); !os.IsNotExist(err) {
+		t.Errorf("the decompressed copy is still there: %v", err)
+	}
+	again, err := e.Open(ctx, []string{gz})
+	if err != nil || !again.Analyzed || !again.Prepare {
+		t.Fatalf("reopened %+v %v", again, err)
+	}
+	if d, err := e.Detail(ctx, id, rows[0].Seq); err != nil || d.Request == nil || d.Request.Hex != "" {
+		t.Errorf("detail before Prepare: %v %+v", err, d.Request)
+	}
+	if _, err := e.ExportTimeline(ctx, id, service.TimelineExport{Format: "csv"}, filepath.Join(t.TempDir(), "t.csv")); !isCode(err, service.CodeUnavailable) {
+		t.Errorf("export before Prepare: %v", err)
+	}
+	ref, err := e.Prepare(ctx, id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	e.wait(ref.ID)
+	if d, err := e.Detail(ctx, id, rows[0].Seq); err != nil || d.Request == nil || d.Request.Hex == "" {
+		t.Errorf("detail after Prepare: %v", err)
+	}
+	ref, err = e.ExportTimeline(ctx, id, service.TimelineExport{Format: "csv"}, filepath.Join(t.TempDir(), "t.csv"))
+	if res := runExport(t, e, ref, err); res.Rows == 0 {
+		t.Errorf("export from a gzip trace: %+v", res)
+	}
+	if fi, _ := e.trace(id); fi.info.Prepare {
+		t.Error("still preparing")
+	}
+
+	// Without the copy (cleared), the trace is imported again.
+	_ = e.Close(ctx, id)
+	if _, err := e.ClearCache(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if again, _ := e.Open(ctx, []string{gz}); again.Analyzed {
+		t.Error("analysed without its decompressed copy")
+	}
 }
 
 // A13: hostile files give a clear error or partial results, never a crash.

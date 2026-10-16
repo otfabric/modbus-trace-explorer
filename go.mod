@@ -3,7 +3,9 @@ module github.com/otfabric/modbus-trace-explorer
 go 1.25.0
 
 require (
+	github.com/otfabric/go-modbus-capture v0.0.2
 	github.com/otfabric/go-modbus-trace v0.0.0-20261015215839-5fc55831c519
+	github.com/santhosh-tekuri/jsonschema/v6 v6.0.3
 	github.com/wailsapp/wails/v3 v3.0.0-beta.29
 	golang.org/x/sys v0.46.0
 	modernc.org/sqlite v1.53.0
@@ -19,9 +21,7 @@ require (
 	github.com/mattn/go-colorable v0.1.14 // indirect
 	github.com/mattn/go-isatty v0.0.24 // indirect
 	github.com/ncruces/go-strftime v1.0.0 // indirect
-	github.com/otfabric/go-modbus-capture v0.0.2 // indirect
 	github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec // indirect
-	github.com/santhosh-tekuri/jsonschema/v6 v6.0.3 // indirect
 	golang.org/x/text v0.39.0 // indirect
 	modernc.org/libc v1.73.4 // indirect
 	modernc.org/mathutil v1.7.1 // indirect

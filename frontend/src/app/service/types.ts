@@ -23,6 +23,8 @@ export interface FileInfo {
   /** The cache holds a complete analysis: no import needed. */
   analyzed: boolean;
   choices?: AnalyzeConfig;
+  /** An analysed gzip trace whose decompressed copy went when it was closed (A16): run prepare first. */
+  prepare?: boolean;
 }
 
 export interface RecentFile {
@@ -31,16 +33,18 @@ export interface RecentFile {
   exists: boolean;
 }
 
+export type JobKind = 'scan' | 'analyze' | 'prepare' | 'history' | 'mbcap' | 'timeline' | 'subtrace';
+
 export interface JobRef {
   id: string;
-  kind: 'scan' | 'analyze' | 'history';
+  kind: JobKind;
 }
 
 export type JobStatus = 'running' | 'done' | 'failed' | 'canceled';
 
 export interface JobState {
   id: string;
-  kind: 'scan' | 'analyze' | 'history';
+  kind: JobKind;
   file: string;
   state: JobStatus;
   phase: string;
@@ -398,4 +402,104 @@ export interface Condition {
 export interface Quality {
   conditions: Condition[];
   facts: { label: string; value: string }[];
+}
+
+/** The MBCAP export dialog (R13; service.MBCAPExport). */
+export interface MBCAPExport {
+  /** The selection: {} for everything, the current filter, or one device; its time range is the window. */
+  filter: Filter;
+  exceptions: boolean;
+  change_only: boolean;
+  /** 0: the library's default. */
+  tick_ns: number;
+  /** "ip:port/unit" -> label. */
+  labels?: Record<string, string>;
+  format: 'mbcap' | 'jsonl' | 'csv';
+}
+
+export interface PreviewTarget {
+  key: string;
+  server: string;
+  unit: number;
+  label: string;
+  samples: number;
+  clients: string[];
+}
+
+export interface Exclusion {
+  reason: string;
+  count: number;
+  meaning: string;
+}
+
+/** What an export would write, counted from the index (service.MBCAPPreview). */
+export interface MBCAPPreview {
+  selection: string;
+  transactions: number;
+  samples: number;
+  /** Change-only: samples is an upper bound. */
+  up_to: boolean;
+  targets: PreviewTarget[];
+  excluded: Exclusion[];
+  notes: string[];
+}
+
+export interface TimelineExport {
+  filter: Filter;
+  format: 'csv' | 'jsonl';
+}
+
+export interface SubtraceExport {
+  filter: Filter;
+}
+
+/** The library's export report (go-modbus-trace mbcapexport.Report), the fields the dialog shows. */
+export interface ExportReport {
+  schema_version: number;
+  library: string;
+  capture_library: string;
+  format: string;
+  selection: string;
+  tick_ns: number;
+  transactions_seen: number;
+  samples_written: number;
+  change_only_dropped: number;
+  excluded: Record<string, number>;
+  targets: { id: number; server: string; unit: number; label: string; samples: number; streams: { id: number; client: string; samples: number }[] }[];
+  warnings: { code: string; target?: number; text: string }[];
+  replay: { samples: number; changed_values: number; estimated_in_memory_bytes: number };
+}
+
+/** What a finished export wrote (service.ExportResult). */
+export interface ExportResult {
+  job: string;
+  kind: 'mbcap' | 'timeline' | 'subtrace';
+  file: string;
+  format?: string;
+  report?: ExportReport;
+  replay?: string[];
+  caveats?: string[];
+  /** The replay walkthrough (an https link the Go side supplies). */
+  doc?: string;
+  rows?: number;
+  late?: number;
+  packets?: number;
+  bytes?: number;
+  connections?: number;
+}
+
+/** R20 (service.Settings). The theme is kept by the window. */
+export interface Settings {
+  time_mode: 'local' | 'utc' | 'relative';
+  server_ports: number[];
+  one_based: boolean;
+  /** Bytes. */
+  cache_cap: number;
+}
+
+export interface CacheInfo {
+  dir: string;
+  bytes: number;
+  cap: number;
+  entries: number;
 }

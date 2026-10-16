@@ -13,6 +13,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/otfabric/go-modbus-trace/export/mbcapexport"
 	"github.com/otfabric/go-modbus-trace/trace"
 )
 
@@ -35,6 +36,8 @@ type Service interface {
 	Scan(ctx context.Context, fileID string) (JobRef, error)
 	// ScanResult returns what the finished scan found.
 	ScanResult(ctx context.Context, fileID string) (ScanResult, error)
+	// Prepare starts decompressing an analysed gzip trace again (FileInfo.Prepare).
+	Prepare(ctx context.Context, fileID string) (JobRef, error)
 	// Analyze starts the second pass into the analysis cache.
 	Analyze(ctx context.Context, fileID string, cfg AnalyzeConfig) (JobRef, error)
 	// CancelJob cancels a running job.
@@ -67,6 +70,35 @@ type Service interface {
 	// ParseFilter parses the filter box's text (UX.md section 6); times
 	// like "14:30" or "+15m" are read against the trace's first packet.
 	ParseFilter(ctx context.Context, fileID, text string) (FilterParse, error)
+
+	// PreviewMBCAP counts, from the index, what an MBCAP export would
+	// write and leave out (R13).
+	PreviewMBCAP(ctx context.Context, fileID string, x MBCAPExport) (MBCAPPreview, error)
+	// ExportMBCAP starts a job that re-streams the trace through the
+	// library into an MBCAP capture at path (R13); ExportResult has the
+	// report when it is done.
+	ExportMBCAP(ctx context.Context, fileID string, x MBCAPExport, path string) (JobRef, error)
+	// ExportTimeline starts a job writing the timeline as CSV or JSON
+	// Lines (R14).
+	ExportTimeline(ctx context.Context, fileID string, x TimelineExport, path string) (JobRef, error)
+	// ExportSubtrace starts a job writing the packets of the selected
+	// connections as pcapng (R15).
+	ExportSubtrace(ctx context.Context, fileID string, x SubtraceExport, path string) (JobRef, error)
+	// ExportResult returns what a finished export wrote.
+	ExportResult(ctx context.Context, jobID string) (ExportResult, error)
+	// SaveReport writes a finished MBCAP export's report as JSON to path.
+	SaveReport(ctx context.Context, jobID, path string) error
+
+	// Settings returns the user's settings (R20).
+	Settings(ctx context.Context) (Settings, error)
+	// SaveSettings stores the settings and returns them as kept.
+	SaveSettings(ctx context.Context, s Settings) (Settings, error)
+	// CacheInfo returns the analysis cache's location and size.
+	CacheInfo(ctx context.Context) (CacheInfo, error)
+	// ClearCache removes every cache entry not in use.
+	ClearCache(ctx context.Context) (CacheInfo, error)
+	// ClearRecent empties the recent files list.
+	ClearRecent(ctx context.Context) error
 }
 
 // About names the versions in this build.
@@ -89,6 +121,10 @@ type FileInfo struct {
 	Analyzed bool     `json:"analyzed"` // the cache holds a complete analysis: no import needed
 	// Choices remembered from the last analysis of this trace.
 	Choices *AnalyzeConfig `json:"choices,omitempty"`
+	// Prepare: an analysed gzip trace whose decompressed copy was removed
+	// when it was last closed (A16); Prepare makes it again before the
+	// bytes can be read.
+	Prepare bool `json:"prepare,omitempty"`
 }
 
 // RecentFile is an entry of the recent files list.
@@ -527,4 +563,96 @@ func Errorf(code, format string, args ...any) *Error {
 // Wrap creates an Error around err, with a formatted message in front.
 func Wrap(code string, err error, format string, args ...any) *Error {
 	return &Error{Code: code, Message: fmt.Sprintf(format, args...) + ": " + err.Error(), Err: err}
+}
+
+// MBCAPExport is the MBCAP export dialog (R13).
+type MBCAPExport struct {
+	// Filter selects the transactions: everything ({}), the current
+	// filter, or one device; its time range is the export window. The
+	// library's selection has no exception-code or request terms.
+	Filter     Filter            `json:"filter"`
+	Exceptions bool              `json:"exceptions"` // write exception responses (default on)
+	ChangeOnly bool              `json:"change_only"`
+	TickNS     uint64            `json:"tick_ns"`          // 0: the library's default
+	Labels     map[string]string `json:"labels,omitempty"` // "ip:port/unit" -> label
+	Format     string            `json:"format"`           // mbcap, jsonl or csv
+}
+
+// MBCAPPreview is what an export would write, counted from the index.
+type MBCAPPreview struct {
+	Selection    string `json:"selection"` // the library's canonical form; "" is everything
+	Transactions uint64 `json:"transactions"`
+	Samples      uint64 `json:"samples"`
+	// UpTo: Samples is an upper bound (change-only drops unchanged
+	// responses, which only the export can tell).
+	UpTo     bool            `json:"up_to"`
+	Targets  []PreviewTarget `json:"targets"`
+	Excluded []Exclusion     `json:"excluded"`
+	Notes    []string        `json:"notes"`
+}
+
+// PreviewTarget is one target of a previewed export.
+type PreviewTarget struct {
+	Key     string   `json:"key"` // ip:port/unit, the label's key
+	Server  string   `json:"server"`
+	Unit    uint8    `json:"unit"`
+	Label   string   `json:"label"`
+	Samples uint64   `json:"samples"`
+	Clients []string `json:"clients"` // one stream each
+}
+
+// Exclusion counts the transactions an export leaves out for one reason.
+type Exclusion struct {
+	Reason  string `json:"reason"`
+	Count   uint64 `json:"count"`
+	Meaning string `json:"meaning"`
+}
+
+// TimelineExport is the timeline export (R14).
+type TimelineExport struct {
+	Filter Filter `json:"filter"`
+	Format string `json:"format"` // csv or jsonl
+}
+
+// SubtraceExport is the sub-trace export (R15): connections (by conn,
+// server or client) and a time window; other filter terms are refused.
+type SubtraceExport struct {
+	Filter Filter `json:"filter"`
+}
+
+// ExportResult is what a finished export wrote.
+type ExportResult struct {
+	Job    string `json:"job"`
+	Kind   string `json:"kind"` // mbcap, timeline, subtrace
+	File   string `json:"file"` // the file name, without its directory
+	Format string `json:"format,omitempty"`
+	// MBCAP: the library's report, and the replay hand-off (R16).
+	Report  *mbcapexport.Report `json:"report,omitempty"`
+	Replay  []string            `json:"replay,omitempty"`  // commands to copy
+	Caveats []string            `json:"caveats,omitempty"` // what a replay does not do
+	Doc     string              `json:"doc,omitempty"`     // the replay walkthrough (an https link)
+	// Timeline: rows written, and rows written out of time order.
+	Rows uint64 `json:"rows,omitempty"`
+	Late uint64 `json:"late,omitempty"`
+	// Sub-trace.
+	Packets     uint64 `json:"packets,omitempty"`
+	Bytes       uint64 `json:"bytes,omitempty"`
+	Connections int    `json:"connections,omitempty"`
+}
+
+// Settings are the user's choices (R20). The theme is kept by the window
+// (it applies before the engine answers).
+type Settings struct {
+	TimeMode    string   `json:"time_mode"`    // local, utc, relative
+	ServerPorts []uint16 `json:"server_ports"` // added to the Flows step's suggestion
+	OneBased    bool     `json:"one_based"`    // address labels 1-based
+	CacheCap    int64    `json:"cache_cap"`    // bytes
+}
+
+// CacheInfo describes the analysis cache.
+type CacheInfo struct {
+	Dir     string `json:"dir"`
+	Bytes   int64  `json:"bytes"`
+	Cap     int64  `json:"cap"`
+	Entries int    `json:"entries"`
 }

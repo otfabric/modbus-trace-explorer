@@ -164,6 +164,7 @@ func (ix *Index) Close() error {
 // read-only: writing to them faults.
 type Columns struct {
 	Kind, FC, Class, Status, Exc, Space  []uint8
+	MBCAP                                []uint8
 	Device, Client, Start, Count, WStart []uint16
 	WCount, Bytes, RespHash              []uint16
 	Conn, Flags, Lat, Summary            []uint32
@@ -175,7 +176,7 @@ func (ix *Index) Columns() Columns {
 	c := ix.cols
 	return Columns{
 		Kind: c.uint8s("kind"), FC: c.uint8s("fc"), Class: c.uint8s("class"), Status: c.uint8s("status"), Exc: c.uint8s("exc"),
-		Space: c.uint8s("space"), Device: c.uint16s("device"), Client: c.uint16s("client"), Start: c.uint16s("start"),
+		Space: c.uint8s("space"), MBCAP: c.uint8s("mbcap"), Device: c.uint16s("device"), Client: c.uint16s("client"), Start: c.uint16s("start"),
 		Count: c.uint16s("count"), WStart: c.uint16s("wstart"), WCount: c.uint16s("wcount"), Bytes: c.uint16s("bytes"),
 		RespHash: c.uint16s("resp_hash"), Conn: c.uint32s("conn"), Flags: c.uint32s("flags"), Lat: c.uint32s("lat_us"),
 		Summary: c.uint32s("summary"), T: c.int64s("t_ns"),

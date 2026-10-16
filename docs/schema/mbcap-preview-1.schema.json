@@ -1,0 +1,142 @@
+{
+  "$defs": {
+    "service.Exclusion": {
+      "additionalProperties": false,
+      "properties": {
+        "count": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "meaning": {
+          "type": "string"
+        },
+        "reason": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "count",
+        "meaning",
+        "reason"
+      ],
+      "type": "object"
+    },
+    "service.MBCAPPreview": {
+      "additionalProperties": false,
+      "properties": {
+        "excluded": {
+          "anyOf": [
+            {
+              "items": {
+                "$ref": "#/$defs/service.Exclusion"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "notes": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "samples": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "selection": {
+          "type": "string"
+        },
+        "targets": {
+          "anyOf": [
+            {
+              "items": {
+                "$ref": "#/$defs/service.PreviewTarget"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "transactions": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "up_to": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "excluded",
+        "notes",
+        "samples",
+        "selection",
+        "targets",
+        "transactions",
+        "up_to"
+      ],
+      "type": "object"
+    },
+    "service.PreviewTarget": {
+      "additionalProperties": false,
+      "properties": {
+        "clients": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "key": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        },
+        "samples": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "server": {
+          "type": "string"
+        },
+        "unit": {
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "clients",
+        "key",
+        "label",
+        "samples",
+        "server",
+        "unit"
+      ],
+      "type": "object"
+    }
+  },
+  "$id": "https://github.com/otfabric/modbus-trace-explorer/docs/schema/mbcap-preview-1.schema.json",
+  "$ref": "#/$defs/service.MBCAPPreview",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Generated from internal/service by internal/engine's TestSchemasUpToDate.",
+  "title": "MBCAP export preview"
+}

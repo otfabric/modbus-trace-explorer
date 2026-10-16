@@ -1,5 +1,12 @@
 import type {
   About,
+  CacheInfo,
+  ExportResult,
+  MBCAPExport,
+  MBCAPPreview,
+  Settings,
+  SubtraceExport,
+  TimelineExport,
   ConnStats,
   CoverageMap,
   CoverageQuery,
@@ -56,6 +63,8 @@ export interface Service {
   /** Starts the first pass; progress and completion arrive through subscribe. */
   scan(fileId: string): Promise<JobRef>;
   scanResult(fileId: string): Promise<ScanResult>;
+  /** Decompresses an analysed gzip trace again (FileInfo.prepare); progress arrives through subscribe. */
+  prepare(fileId: string): Promise<JobRef>;
   analyze(fileId: string, cfg: AnalyzeConfig): Promise<JobRef>;
   cancelJob(jobId: string): Promise<void>;
   /** Delivers job events; returns the unsubscribe. */
@@ -73,5 +82,18 @@ export interface Service {
   /** Starts reading one address's values; chunks arrive as "history" events. */
   addressHistory(fileId: string, query: HistoryQuery): Promise<JobRef>;
   quality(fileId: string): Promise<Quality>;
+  /** Counts from the index what an MBCAP export would write and leave out (R13). */
+  previewMBCAP(fileId: string, x: MBCAPExport): Promise<MBCAPPreview>;
+  /** Starts an export job into path; ExportResult has what it wrote when it is done. */
+  exportMBCAP(fileId: string, x: MBCAPExport, path: string): Promise<JobRef>;
+  exportTimeline(fileId: string, x: TimelineExport, path: string): Promise<JobRef>;
+  exportSubtrace(fileId: string, x: SubtraceExport, path: string): Promise<JobRef>;
+  exportResult(jobId: string): Promise<ExportResult>;
+  saveReport(jobId: string, path: string): Promise<void>;
+  settings(): Promise<Settings>;
+  saveSettings(s: Settings): Promise<Settings>;
+  cacheInfo(): Promise<CacheInfo>;
+  clearCache(): Promise<CacheInfo>;
+  clearRecent(): Promise<void>;
   parseFilter(fileId: string, text: string): Promise<FilterParse>;
 }

@@ -81,7 +81,7 @@ func (e *Engine) Detail(_ context.Context, id string, seq uint64) (service.Detai
 		d.Response = nil
 	}
 	var reqADU, respADU []byte
-	if t.present() {
+	if t.present() && !t.preparing() {
 		f, ferr := t.file()
 		if ferr == nil {
 			reqADU, err = aduBytes(f, req)

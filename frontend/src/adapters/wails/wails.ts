@@ -2,11 +2,18 @@
 // in internal/gui; method names here must match its exported methods.
 
 import { Call, Clipboard, Events } from '@wailsio/runtime';
-import type { Platform } from '../../app/platform/platform';
+import type { Platform, SaveKind } from '../../app/platform/platform';
 import { loadTheme, persistTheme } from '../../app/platform/themeStorage';
 import { ServiceError, toServiceError, type ErrorCode, type Service } from '../../app/service/service';
 import type {
   About,
+  CacheInfo,
+  ExportResult,
+  MBCAPExport,
+  MBCAPPreview,
+  Settings,
+  SubtraceExport,
+  TimelineExport,
   ConnStats,
   CoverageMap,
   CoverageQuery,
@@ -70,6 +77,7 @@ export class WailsService implements Service {
   recent = () => call<RecentFile[]>('Recent');
   scan = (id: string) => call<JobRef>('Scan', id);
   scanResult = (id: string) => call<ScanResult>('ScanResult', id);
+  prepare = (id: string) => call<JobRef>('Prepare', id);
   analyze = (id: string, cfg: AnalyzeConfig) => call<JobRef>('Analyze', id, cfg);
   cancelJob = (jobId: string) => call<void>('CancelJob', jobId);
   overview = (id: string) => call<Overview>('Overview', id);
@@ -81,6 +89,17 @@ export class WailsService implements Service {
   coverage = (id: string, q: CoverageQuery) => call<CoverageMap>('Coverage', id, q);
   addressHistory = (id: string, q: HistoryQuery) => call<JobRef>('AddressHistory', id, q);
   quality = (id: string) => call<Quality>('Quality', id);
+  previewMBCAP = (id: string, x: MBCAPExport) => call<MBCAPPreview>('PreviewMBCAP', id, x);
+  exportMBCAP = (id: string, x: MBCAPExport, path: string) => call<JobRef>('ExportMBCAP', id, x, path);
+  exportTimeline = (id: string, x: TimelineExport, path: string) => call<JobRef>('ExportTimeline', id, x, path);
+  exportSubtrace = (id: string, x: SubtraceExport, path: string) => call<JobRef>('ExportSubtrace', id, x, path);
+  exportResult = (job: string) => call<ExportResult>('ExportResult', job);
+  saveReport = (job: string, path: string) => call<void>('SaveReport', job, path);
+  settings = () => call<Settings>('Settings');
+  saveSettings = (s: Settings) => call<Settings>('SaveSettings', s);
+  cacheInfo = () => call<CacheInfo>('CacheInfo');
+  clearCache = () => call<CacheInfo>('ClearCache');
+  clearRecent = () => call<void>('ClearRecent');
 
   // A stale request is not cancelled on the Go side (Wails calls are not
   // abortable); its answer is dropped here.
@@ -102,6 +121,10 @@ export class WailsPlatform implements Platform {
 
   // The Go side shows the native dialog; the paths come from it, not from the page.
   chooseTraces = () => call<string[]>('ChooseTraces');
+  async chooseSave(name: string, kind: SaveKind): Promise<string | null> {
+    const path = await call<string>('ChooseSave', name, kind);
+    return path === '' ? null : path;
+  }
 
   onOpen(handler: (paths: string[]) => void): () => void {
     // Paths handed over before the window was ready (command line, "open with").

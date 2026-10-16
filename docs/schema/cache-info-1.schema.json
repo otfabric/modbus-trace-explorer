@@ -1,0 +1,33 @@
+{
+  "$defs": {
+    "service.CacheInfo": {
+      "additionalProperties": false,
+      "properties": {
+        "bytes": {
+          "type": "integer"
+        },
+        "cap": {
+          "type": "integer"
+        },
+        "dir": {
+          "type": "string"
+        },
+        "entries": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "bytes",
+        "cap",
+        "dir",
+        "entries"
+      ],
+      "type": "object"
+    }
+  },
+  "$id": "https://github.com/otfabric/modbus-trace-explorer/docs/schema/cache-info-1.schema.json",
+  "$ref": "#/$defs/service.CacheInfo",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Generated from internal/service by internal/engine's TestSchemasUpToDate.",
+  "title": "Analysis cache"
+}
