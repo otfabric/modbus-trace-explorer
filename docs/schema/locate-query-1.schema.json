@@ -1,0 +1,139 @@
+{
+  "$defs": {
+    "service.Filter": {
+      "additionalProperties": false,
+      "properties": {
+        "classes": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "clients": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "conns": {
+          "items": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "type": "array"
+        },
+        "end": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "exceptions": {
+          "items": {
+            "maximum": 255,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "type": "array"
+        },
+        "flags": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "from_ns": {
+          "type": "integer"
+        },
+        "functions": {
+          "items": {
+            "maximum": 255,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "type": "array"
+        },
+        "not_flags": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "servers": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "space": {
+          "type": "string"
+        },
+        "start": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "statuses": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "summary": {
+          "type": "string"
+        },
+        "to_ns": {
+          "type": "integer"
+        },
+        "units": {
+          "items": {
+            "maximum": 255,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "type": "array"
+        }
+      },
+      "type": "object"
+    },
+    "service.LocateQuery": {
+      "additionalProperties": false,
+      "properties": {
+        "desc": {
+          "type": "boolean"
+        },
+        "filter": {
+          "$ref": "#/$defs/service.Filter"
+        },
+        "frame": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "order": {
+          "type": "string"
+        },
+        "part": {
+          "type": "integer"
+        },
+        "seq": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "step": {
+          "type": "integer"
+        },
+        "t_ns": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "desc",
+        "filter",
+        "order"
+      ],
+      "type": "object"
+    }
+  },
+  "$id": "https://github.com/otfabric/modbus-trace-explorer/docs/schema/locate-query-1.schema.json",
+  "$ref": "#/$defs/service.LocateQuery",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Generated from internal/service by internal/engine's TestSchemasUpToDate.",
+  "title": "Locate query"
+}

@@ -20,6 +20,8 @@ interface Props {
   selectedSeq: number | null;
   onSelect: (rank: number, row: Row) => void;
   onTotal?: (total: number) => void;
+  /** Select and show the row at this rank (go to time or frame, next or previous row); a new nonce repeats it. */
+  goTo?: { rank: number; nonce: number } | null;
 }
 
 interface Window {
@@ -75,7 +77,7 @@ function ResultCell({ row }: { row: Row }): ReactNode {
  * visible rows and a margin are fetched; a change of filter or order aborts
  * the request in flight.
  */
-export function TimelineTable({ fetchPage, filter, order, desc, timeMode, firstNs, selectedSeq, onSelect, onTotal }: Props) {
+export function TimelineTable({ fetchPage, filter, order, desc, timeMode, firstNs, selectedSeq, onSelect, onTotal, goTo }: Props) {
   const scroller = useRef<HTMLDivElement>(null);
   const [viewport, setViewport] = useState(600);
   const [first, setFirst] = useState(0);
@@ -196,6 +198,23 @@ export function TimelineTable({ fetchPage, filter, order, desc, timeMode, firstN
       onSelect(p, row);
     }
   }, [win, onSelect]);
+
+  // A go-to from outside the table: its rank is of the current query, so
+  // it waits until the loaded window belongs to that query (the order may
+  // have changed with it).
+  const selectRef = useRef(select);
+  selectRef.current = select;
+  const pendingGo = useRef<{ rank: number; nonce: number } | null>(null);
+  useEffect(() => {
+    if (goTo) pendingGo.current = goTo;
+  }, [goTo]);
+  useEffect(() => {
+    const g = pendingGo.current;
+    if (!g || win.key !== queryKey) return;
+    pendingGo.current = null;
+    if (win.total > 0) selectRef.current(g.rank);
+    scroller.current?.focus();
+  }, [win, queryKey, goTo]);
 
   const onKeyDown = (e: KeyboardEvent) => {
     const cur = current.current ?? firstRef.current;

@@ -178,7 +178,7 @@ func (e *Engine) About(context.Context) (service.About, error) {
 
 // Open prepares a trace: its fingerprint, and the cached analysis if there
 // is one.
-func (e *Engine) Open(_ context.Context, paths []string) (service.FileInfo, error) {
+func (e *Engine) Open(ctx context.Context, paths []string) (service.FileInfo, error) {
 	if len(paths) == 0 {
 		return service.FileInfo{}, service.Errorf(service.CodeInvalidArgument, "no trace file")
 	}
@@ -199,6 +199,8 @@ func (e *Engine) Open(_ context.Context, paths []string) (service.FileInfo, erro
 			gz = true
 		}
 	}
+	// Several files are one trace in the order of their first packets (R1).
+	paths = byFirstPacket(ctx, paths)
 	fp, err := store.Fingerprint(paths, e.lib, model.EventSemanticsVersion)
 	if err != nil {
 		return service.FileInfo{}, service.Wrap(service.CodeUnavailable, err, "cannot read the trace")

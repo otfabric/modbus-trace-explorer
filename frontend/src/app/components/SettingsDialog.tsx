@@ -15,6 +15,8 @@ interface Props {
   /** Called with the settings as saved. */
   onSaved: (s: Settings) => void;
   onRecentCleared: () => void;
+  /** Opens About (where "Copy diagnostics" is) when there is no native menu. */
+  onAbout?: () => void;
   onClose: () => void;
 }
 
@@ -30,7 +32,7 @@ export function parsePorts(text: string): number[] | null {
 }
 
 /** R20: theme, time display, default server ports, address display, the cache and the recent files. */
-export function SettingsDialog({ service, theme, onToggleTheme, onSaved, onRecentCleared, onClose }: Props) {
+export function SettingsDialog({ service, theme, onToggleTheme, onSaved, onRecentCleared, onAbout, onClose }: Props) {
   const [s, setS] = useState<Settings | null>(null);
   const [ports, setPorts] = useState('');
   const [cache, setCache] = useState<CacheInfo | null>(null);
@@ -131,6 +133,11 @@ export function SettingsDialog({ service, theme, onToggleTheme, onSaved, onRecen
         )}
       </div>
       <div className="mt-5 flex justify-end gap-2">
+        {onAbout && (
+          <button type="button" className="mr-auto text-[13px] text-muted hover:text-accent" onClick={onAbout}>
+            About and diagnostics…
+          </button>
+        )}
         <Button onClick={onClose}>Cancel</Button>
         <Button variant="primary" onClick={() => void save()}>
           Save

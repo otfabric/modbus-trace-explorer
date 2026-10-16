@@ -1,5 +1,5 @@
 # Checks the code and builds the desktop application for every platform.
-# CI calls it on each push; the release workflow (M4) will call it to make a
+# CI calls it on each push; the release workflow calls it to make a
 # release, as the SunSpec Explorer's does.
 #
 # Every job runs on a runner of the architecture it builds for. Nothing is
@@ -104,11 +104,11 @@ jobs:
         with:
           name: frontend-dist
           path: frontend/dist
-      - name: GTK4 and WebKitGTK 6.0
+      - name: GTK4 and WebKitGTK 6.0, and a virtual display for the smoke test
         if: matrix.os == 'linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y --no-install-recommends libgtk-4-dev libwebkitgtk-6.0-dev pkg-config
+          sudo apt-get install -y --no-install-recommends libgtk-4-dev libwebkitgtk-6.0-dev pkg-config xvfb xauth dbus
       - name: Build
         env:
           MACOSX_DEPLOYMENT_TARGET: "13.0"
@@ -127,6 +127,22 @@ jobs:
           go build -tags production -trimpath -ldflags "$flags" -o "out/$exe" ./cmd/modbus-trace-explorer
           go vet ./cmd/modbus-trace-explorer ./internal/gui
           "out/$exe" --version
+      # A15: the built application opens a synthetic trace, imports it and
+      # shows the timeline, then exits 0 (1 with the reason, 2 after three
+      # minutes without a timeline). Linux runs it under a virtual display;
+      # macOS and Windows as far as their runners show windows.
+      - name: Smoke test (A15)
+        continue-on-error: ${{ matrix.os != 'linux' || matrix.experimental || false }}
+        timeout-minutes: 5
+        env:
+          WEBKIT_DISABLE_DMABUF_RENDERER: "1"
+          LIBGL_ALWAYS_SOFTWARE: "1"
+        run: |
+          case "${{ matrix.os }}" in
+            linux)   xvfb-run -a dbus-run-session -- out/modbus-trace-explorer -smoke testdata/smoke.pcapng ;;
+            darwin)  out/modbus-trace-explorer -smoke testdata/smoke.pcapng ;;
+            windows) pwsh -NoProfile -Command '$p = Start-Process -FilePath out/modbus-trace-explorer.exe -ArgumentList "-smoke","testdata/smoke.pcapng" -Wait -PassThru; exit $p.ExitCode' ;;
+          esac
       - name: Package (macOS application bundle, ad-hoc signed)
         if: matrix.os == 'darwin'
         run: |

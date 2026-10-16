@@ -51,3 +51,32 @@ describe('export and settings helpers', () => {
     expect(parsePorts('x')).toBeNull();
   });
 });
+
+describe('byteString and the filter controls', () => {
+  it('copies bytes in four formats', async () => {
+    const { byteString } = await import('../components/DetailPane');
+    const b = ['00', '1F', 'A0'];
+    expect(byteString(b, 'spaced')).toBe('00 1F A0');
+    expect(byteString(b, 'hex')).toBe('001fa0');
+    expect(byteString(b, 'c')).toBe('{ 0x00, 0x1F, 0xA0 }');
+    expect(byteString(b, 'python')).toBe('b"\\x00\\x1f\\xa0"');
+  });
+
+  it('writes the controls in the filter grammar', async () => {
+    const { controlsText } = await import('../components/FilterPopover');
+    expect(
+      controlsText({ servers: '10.0.0.2:502, 10.0.0.3', units: '1 2', clients: '', conns: '', functions: [3, 4], statuses: ['exception'], classes: [],
+        flag: 'slow', notFlag: 'retransmitted', from: '+15m', to: '', space: 'holding', range: '4096-4160' }),
+    ).toBe('server:10.0.0.2:502,10.0.0.3 unit:1,2 fc:3,4 status:exception flag:slow -flag:retransmitted from:+15m addr:holding/4096-4160');
+    expect(controlsText({ servers: '', units: '', clients: '', conns: '', functions: [], statuses: [], classes: [], flag: '', notFlag: '', from: '', to: '', space: '', range: '' })).toBe('');
+  });
+
+  it('reads the mock trace times', async () => {
+    const { mockTime } = await import('../service/mock');
+    const start = Date.UTC(2026, 9, 14, 12, 2, 11, 384) * 1e6;
+    expect(mockTime('+15m')).toBe(start + 900e9);
+    expect(mockTime('+1.5s')).toBe(start + 1.5e9);
+    expect(mockTime('x')).toBeUndefined();
+    expect(mockTime('12:30')).toBeTypeOf('number');
+  });
+});

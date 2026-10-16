@@ -30,7 +30,10 @@ var statusWords = map[string]string{"orphan": "orphan_response", "ambiguous": "a
 // match, commas for alternatives, a leading "-" to negate a flag. A term
 // that does not parse is returned as an error, never ignored.
 func (e *Engine) ParseFilter(_ context.Context, id, text string) (service.FilterParse, error) {
-	var first int64
+	if _, err := e.trace(id); err != nil {
+		return service.FilterParse{}, err
+	}
+	var first int64 // offsets need the trace's first packet: known once it is analysed
 	if _, ix, err := e.index(id); err == nil {
 		first = ix.Meta.FirstNS
 	}

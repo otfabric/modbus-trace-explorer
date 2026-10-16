@@ -1,6 +1,9 @@
+import engineSite from '../../test/fixtures/engine-site.json';
 import { ServiceError, type Service } from './service';
 import type {
   About,
+  Location,
+  LocateQuery,
   CacheInfo,
   Exclusion,
   ExportResult,
@@ -26,6 +29,7 @@ import type {
   FileInfo,
   Filter,
   FilterParse,
+  FileSummary,
   Flow,
   FunctionClass,
   JobRef,
@@ -233,7 +237,7 @@ export class MockService implements Service {
   private analyzed: boolean;
   private cacheKey = '';
   private cache: Int32Array | null = null;
-  private listeners = new Set<(e: ExplorerEvent) => void>();
+  protected listeners = new Set<(e: ExplorerEvent) => void>();
   private jobs = new Map<string, () => void>();
   private nextJob = 0;
   private paths: string[] = ['/traces/site-2026-10-14.pcapng'];
@@ -319,16 +323,25 @@ export class MockService implements Service {
   }
 
   async scanResult(): Promise<ScanResult> {
+    // The library's shapes come from the engine's own answer for a small
+    // trace (src/test/fixtures, written by make golden), scaled to this
+    // trace's size, so the mock keeps every field the engine sends (A17).
+    const base = engineSite.scan_result;
+    const f0 = base.flows[0] as unknown as Flow;
     const flow = (id: number, a: string, b: string, cls: Flow['class'], score: number, port?: number): Flow => ({
-      id, a, b, role_source: 'syn', role_guessed: false, role_confidence: 1, open: 'syn', close: 'fin',
+      ...f0, id, a, b, role_source: 'syn', role_guessed: false, role_confidence: 1, open: 'syn', close: 'fin',
       packets: [this.rows, this.rows], bytes: [this.rows * 12, this.rows * 80], class: cls, score,
       adus: cls === 'modbus_tcp' ? [this.rows / 2, this.rows / 2] : [0, 0], server_port: port, gaps: 0,
     });
+    const sum = base.summary as unknown as FileSummary;
     return {
       summary: {
+        ...sum,
         file: this.paths[0]?.split('/').pop() ?? '', format: 'pcapng', gzip: false, input_bytes: this.rows * 190, bytes: this.rows * 170,
-        packets: this.rows * 2 + 40, interfaces: [{ id: 0, part: 0, link: 'ethernet', snaplen: 262144, name: 'eth0', packets: this.rows * 2 }],
-        connections: { total: 4, midstream: 0, evicted: 0 }, quality: {}, unsupported: { not_tcp: 12 }, sha256: '',
+        packets: this.rows * 2 + 40,
+        interfaces: [{ ...(sum.interfaces[0] as FileSummary['interfaces'][number]), id: 0, part: 0, link: 'ethernet', snaplen: 262144, name: 'eth0', packets: this.rows * 2 }],
+        connections: { ...sum.connections, total: 4, midstream: 0, evicted: 0 }, unsupported: { not_tcp: 12 },
+        sha256: '9f2c4e0d7a1b3c5e8f6a2d4b1c3e5f7a9b0c2d4e6f8a1b3c5d7e9f0a2b4c6d8e',
       },
       flows: [
         flow(1, '10.0.3.5:49822', '10.0.3.21:502', 'modbus_tcp', 0.99, 502),
@@ -371,6 +384,7 @@ export class MockService implements Service {
       quality: 'warnings',
       quality_count: 3,
       trace_missing: false,
+      summary: (await this.scanResult()).summary,
     };
   }
 
@@ -614,6 +628,56 @@ export class MockService implements Service {
     };
   }
 
+  async locate(_fileId: string, q: LocateQuery): Promise<Location> {
+    const sel = this.selection({ filter: q.filter, order: q.seq !== undefined ? q.order : 'time', desc: false, offset: 0, limit: 0 });
+    const total = sel ? sel.length : this.rows;
+    if (total === 0) return { found: false, rank: 0, seq: 0, exact: false, note: 'No rows match the filter.' };
+    const rowAt = (k: number) => (sel ? (sel[k] as number) : k);
+    const at = (k: number, exact: boolean, note?: string): Location => ({ found: true, rank: q.desc ? total - 1 - k : k, seq: rowAt(k) + 1, exact, note });
+    const search = (pred: (k: number) => boolean) => {
+      let lo = 0;
+      let hi = total;
+      while (lo < hi) {
+        const mid = (lo + hi) >> 1;
+        if (pred(mid)) hi = mid;
+        else lo = mid + 1;
+      }
+      return lo;
+    };
+    if (q.t_ns !== undefined) {
+      const t = q.t_ns;
+      const k = search((m) => generate(rowAt(m)).t_ns >= t);
+      if (k >= total) return at(total - 1, false, 'The trace ends before that time: the last row.');
+      return at(k, generate(rowAt(k)).t_ns === t);
+    }
+    if (q.frame !== undefined) {
+      // The mock's request of row seq is frame 2·seq+1 and its response 2·seq+2 (as detail says).
+      const f = q.frame;
+      const k = search((m) => 2 * (rowAt(m) + 1) + 2 >= f);
+      if (k >= total) return { found: false, rank: 0, seq: 0, exact: false, note: `No row of the filter carries frame ${f} or a later one.` };
+      const seq = rowAt(k) + 1;
+      const exact = f === 2 * seq + 1 || f === 2 * seq + 2;
+      return at(k, exact, exact ? undefined : `No row carries frame ${f}; the next one is shown.`);
+    }
+    const seq = q.seq ?? 0;
+    let rank = -1;
+    for (let k = 0; k < total; k++) if (rowAt(k) === seq - 1) rank = q.desc ? total - 1 - k : k;
+    if (rank < 0) return { found: false, rank: 0, seq: 0, exact: false, note: 'The row is not in the filter.' };
+    const conn = generate(seq - 1).conn;
+    const step = (q.step ?? 1) < 0 ? -1 : 1;
+    for (let r = rank + step; r >= 0 && r < total; r += step) {
+      const k = q.desc ? total - 1 - r : r;
+      if (generate(rowAt(k)).conn === conn) return { found: true, rank: r, seq: rowAt(k) + 1, exact: true };
+    }
+    return { found: false, rank: 0, seq: 0, exact: false, note: 'No further row of this connection.' };
+  }
+
+  async diagnostics(fileId: string): Promise<string> {
+    const lines = ['Modbus Trace Explorer mock', 'go-modbus-trace mock', 'Wails none', 'browser'];
+    if (fileId) lines.push(`trace: 1 files, ${Math.round((this.rows * 190) / 2 ** 20)} MiB, analysed ${this.analyzed}`, `index: ${this.rows} rows`);
+    return lines.join('\n') + '\n';
+  }
+
   async previewMBCAP(_fileId: string, x: MBCAPExport): Promise<MBCAPPreview> {
     const noTime = { ...x.filter, from_ns: undefined, to_ns: undefined };
     const counts = new Map<string, number>();
@@ -674,10 +738,11 @@ export class MockService implements Service {
     return this.exportJob('mbcap', path, () => ({
       format: x.format,
       report: {
-        schema_version: 1, library: 'go-modbus-trace mock', capture_library: 'go-modbus-capture mock', format: 'MBCAP draft 0.3',
+        ...engineSite.mbcap_export.report,
+        schema_version: 1, library: 'go-modbus-trace mock', capture_library: 'go-modbus-capture mock', format: 'MBCAP draft 0.1',
         selection: pv.selection, tick_ns: x.tick_ns || 1000, transactions_seen: pv.transactions, samples_written: samples,
         change_only_dropped: pv.samples - samples, excluded,
-        targets: pv.targets.map((t, k) => ({ id: k + 1, server: t.server, unit: t.unit, label: t.label, samples: t.samples,
+        targets: pv.targets.map((t, k) => ({ ...engineSite.mbcap_export.report.targets[0], id: k + 1, server: t.server, unit: t.unit, label: t.label, samples: t.samples,
           streams: t.clients.map((c, n) => ({ id: n + 1, client: c, samples: t.samples })) })),
         warnings: [{ code: 'stale_after_write', target: 1, text: 'A write came after the last read of holding 4096-4157.' }],
         replay: { samples, changed_values: samples * 3, estimated_in_memory_bytes: 12 * 1024 ** 2 + samples * 750 },
@@ -774,6 +839,27 @@ export class MockService implements Service {
           if (neg) filter.not_flags = vals;
           else filter.flags = vals;
           break;
+        case 'from':
+        case 'to': {
+          const ns = mockTime(value);
+          if (ns === undefined) errors.push({ term, message: 'not a time: use 14:30, 14:30:05.250 or +15m' });
+          else if (key === 'from') filter.from_ns = ns;
+          else filter.to_ns = ns;
+          break;
+        }
+        case 'addr': {
+          const m = /^(?:(coil|discrete|holding|input)\/?)?(?:(\d+)(?:-(\d+))?)?$/.exec(value);
+          if (!m || (!m[1] && !m[2])) {
+            errors.push({ term, message: 'use addr:holding/4096-4160 or addr:4100' });
+            break;
+          }
+          if (m[1]) filter.space = m[1] as Filter['space'];
+          if (m[2]) {
+            filter.start = Number(m[2]);
+            filter.end = Number(m[3] ?? m[2]);
+          }
+          break;
+        }
         default:
           errors.push({ term, message: `unknown key "${key}"` });
       }
@@ -783,6 +869,18 @@ export class MockService implements Service {
     }
     return { filter, errors };
   }
+}
+
+/** A time of the filter grammar against the mock trace: +90s, +15m, +1h, or a clock time of its day (local). */
+export function mockTime(v: string): number | undefined {
+  const off = /^\+(\d+(?:\.\d+)?)(s|m|h)$/.exec(v);
+  if (off) return START_NS + Math.round(Number(off[1]) * { s: 1, m: 60, h: 3600 }[off[2] as 's' | 'm' | 'h'] * 1e9);
+  const clock = /^(\d{1,2}):(\d{2})(?::(\d{2})(?:\.(\d{1,9}))?)?$/.exec(v);
+  if (!clock) return undefined;
+  const d = new Date(START_NS / 1e6);
+  d.setHours(Number(clock[1]), Number(clock[2]), Number(clock[3] ?? 0), 0);
+  const frac = clock[4] ? Number(clock[4].padEnd(9, '0')) : 0;
+  return d.getTime() * 1e6 + frac;
 }
 
 /** Durations summarised as service.Distribution does (exact quantiles, power-of-two buckets). */

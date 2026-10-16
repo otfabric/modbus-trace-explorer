@@ -49,8 +49,18 @@ func TestParseFilter(t *testing.T) {
 		}
 	}
 	e := newEngine(t)
-	if got, _ := e.ParseFilter(context.Background(), "not-open", "unit:1"); len(got.Filter.Units) != 1 {
-		t.Error("ParseFilter without a trace")
+	// A trace that is not open is not found (the Service contract); one
+	// that is open but not analysed parses, with offsets from time zero.
+	if _, err := e.ParseFilter(context.Background(), "not-open", "unit:1"); !isCode(err, service.CodeNotFound) {
+		t.Errorf("ParseFilter of a trace that is not open: %v", err)
+	}
+	path := writeTrace(t, "site.pcapng", tracetest.Options{}, site)
+	info, err := e.Open(context.Background(), []string{path})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got, err := e.ParseFilter(context.Background(), info.ID, "unit:1"); err != nil || len(got.Filter.Units) != 1 {
+		t.Errorf("ParseFilter before the analysis: %+v %v", got, err)
 	}
 }
 

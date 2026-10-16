@@ -16,12 +16,24 @@ export class MockPlatform implements Platform {
     return `/exports/${name}`;
   }
 
+  onMenu(): () => void {
+    return () => {};
+  }
+
   onOpen(): () => void {
     return () => {};
   }
 
   openExternal(url: string): void {
     window.open(url, '_blank', 'noopener');
+  }
+
+  async smokeMode(): Promise<boolean> {
+    return new URLSearchParams(window.location.search).has('smoke');
+  }
+
+  smokeDone(rows: number, problem: string): void {
+    console.info(`smoke test: ${problem || `${rows} rows`}`);
   }
 
   copyText(text: string): Promise<void> {

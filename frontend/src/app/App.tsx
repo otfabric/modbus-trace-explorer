@@ -1,9 +1,12 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
+import { AboutDialog } from './components/AboutDialog';
 import { DetailPane } from './components/DetailPane';
 import { EmptyState } from './components/EmptyState';
 import { ExportDialog } from './components/ExportDialog';
 import { FilterBar } from './components/FilterBar';
 import { FlowsStep } from './components/FlowsStep';
+import { GoToDialog, type GoTo } from './components/GoToDialog';
+import { Popover } from './components/Popover';
 import { Header } from './components/Header';
 import { ImportProgress } from './components/ImportProgress';
 import { SettingsDialog } from './components/SettingsDialog';
@@ -18,9 +21,9 @@ import {
   TimelineIcon,
   WarningIcon,
 } from './icons';
-import type { Platform } from './platform/platform';
+import type { MenuAction, Platform } from './platform/platform';
 import { toServiceError, type Service } from './service/service';
-import type { AnalyzeConfig, Detail, FileInfo, Filter, JobState, Order, Overview, RecentFile, ScanResult, Settings, TimelineQuery } from './service/types';
+import type { AnalyzeConfig, Detail, FileInfo, Filter, JobState, LocateQuery, Order, Overview, RecentFile, ScanResult, Settings, TimelineQuery } from './service/types';
 import { formatBytes, formatCount, formatDuration, formatTime, type TimeMode } from './state/format';
 import { useTheme } from './state/useTheme';
 import { TimelineTable } from './table/TimelineTable';
@@ -55,6 +58,54 @@ type Phase =
   | { kind: 'preparing'; file: FileInfo; job: JobState | null; jobId: string }
   | { kind: 'ready'; file: FileInfo; warning?: string };
 
+/** R4: the capture facts behind the file strip. */
+function CaptureFacts({ ov }: { ov: Overview }) {
+  const [open, setOpen] = useState(false);
+  const s = ov.summary;
+  if (!s) return null;
+  const unsupported = Object.entries(s.unsupported ?? {}).filter(([, n]) => n > 0);
+  const truncated = s.quality?.snaplen_truncated ?? 0;
+  return (
+    <span className="relative">
+      <button type="button" aria-expanded={open} className="text-muted hover:text-accent" onClick={() => setOpen((v) => !v)}>
+        Capture facts
+      </button>
+      {open && (
+        <Popover label="Capture facts" align="right" onClose={() => setOpen(false)}>
+          <dl className="grid grid-cols-[max-content_1fr] gap-x-4 gap-y-1 font-mono text-[12px]">
+            <dt className="text-muted">format</dt>
+            <dd>
+              {s.format}
+              {s.gzip ? ' (gzip)' : ''}
+            </dd>
+            <dt className="text-muted">packets</dt>
+            <dd>{formatCount(s.packets)}</dd>
+            <dt className="text-muted">link types</dt>
+            <dd>{[...new Set(s.interfaces.map((i) => i.link))].join(', ') || '–'}</dd>
+            <dt className="text-muted">interfaces</dt>
+            <dd>
+              {s.interfaces.map((i) => (
+                <div key={`${i.part}-${i.id}`}>
+                  {i.name ?? `#${i.id}`}: {i.link}, snap length {i.snaplen}, {formatCount(i.packets)} packets
+                  {i.drops ? `, ${formatCount(i.drops)} dropped` : ''}
+                </div>
+              ))}
+            </dd>
+            <dt className="text-muted">cut by snap length</dt>
+            <dd>{truncated ? formatCount(truncated) : 'none'}</dd>
+            <dt className="text-muted">capture drops</dt>
+            <dd>{s.capture_drops ? formatCount(s.capture_drops) : 'none reported'}</dd>
+            <dt className="text-muted">unsupported</dt>
+            <dd>{unsupported.length ? unsupported.map(([k, n]) => `${k} ${formatCount(n)}`).join(', ') : 'none'}</dd>
+            <dt className="text-muted">SHA-256</dt>
+            <dd className="break-all">{s.sha256 || '–'}</dd>
+          </dl>
+        </Popover>
+      )}
+    </span>
+  );
+}
+
 function FileStrip({ ov, onQuality, onExport }: { ov: Overview; onQuality: () => void; onExport: () => void }) {
   const badge = { ok: 'Quality: OK', warnings: `Quality: ${ov.quality_count} warnings`, problems: `Quality: ${ov.quality_count} problems` }[ov.quality];
   return (
@@ -68,6 +119,7 @@ function FileStrip({ ov, onQuality, onExport }: { ov: Overview; onQuality: () =>
       <span>{formatCount(ov.transactions)} transactions</span>
       <span>{formatCount(ov.connections)} connections</span>
       <span className="ml-auto flex items-center gap-3">
+        <CaptureFacts ov={ov} />
         {ov.trace_missing && (
           <span className="inline-flex items-center gap-1 text-wire">
             <WarningIcon size={14} /> The trace is not at its path: detail is not available
@@ -111,7 +163,15 @@ export function App({ service, platform }: AppProps) {
   const [detailError, setDetailError] = useState<string | null>(null);
   const [showDetail, setShowDetail] = useState(true);
   const [total, setTotal] = useState(0);
-  const [dialog, setDialog] = useState<'export' | 'settings' | null>(null);
+  const [dialog, setDialog] = useState<'export' | 'settings' | 'about' | 'goto-time' | 'goto-frame' | null>(null);
+  const [goTo, setGoTo] = useState<{ rank: number; nonce: number } | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+  const detailBox = useRef<HTMLElement>(null);
+  useEffect(() => {
+    if (!notice) return;
+    const t = setTimeout(() => setNotice(null), 6000);
+    return () => clearTimeout(t);
+  }, [notice]);
   const [oneBased, setOneBased] = useState(false);
   const filterBox = useRef<HTMLInputElement>(null);
   const phaseRef = useRef(phase);
@@ -125,6 +185,28 @@ export function App({ service, platform }: AppProps) {
   useEffect(() => {
     service.recent().then(setRecent, () => setRecent([]));
   }, [service, phase.kind]);
+
+  // The smoke test (A15): import what the command line gave without asking,
+  // and report once the timeline shows rows, or the first error.
+  const [smoke, setSmoke] = useState(false);
+  const smokeReported = useRef(false);
+  useEffect(() => {
+    platform.smokeMode().then(setSmoke, () => setSmoke(false));
+  }, [platform]);
+  const reportSmoke = useCallback(
+    (rows: number, problem: string) => {
+      if (!smoke || smokeReported.current) return;
+      smokeReported.current = true;
+      platform.smokeDone(rows, problem);
+    },
+    [smoke, platform],
+  );
+  useEffect(() => {
+    if (error) reportSmoke(0, error);
+  }, [error, reportSmoke]);
+  useEffect(() => {
+    if (phase.kind === 'ready' && total > 0) reportSmoke(total, '');
+  }, [phase.kind, total, reportSmoke]);
 
   // The saved settings (R20) set the time display and the address labels.
   const applySettings = useCallback((s: Settings) => {
@@ -174,45 +256,117 @@ export function App({ service, platform }: AppProps) {
     [service, ready, fail],
   );
 
-  // Job events drive the import.
-  useEffect(
-    () =>
-      service.subscribe((ev) => {
-        const job = ev.job;
-        const cur = phaseRef.current;
-        if (!job || (cur.kind !== 'scanning' && cur.kind !== 'analyzing' && cur.kind !== 'preparing') || job.id !== cur.jobId) return;
-        if (job.state === 'running') {
-          setPhase({ ...cur, job });
-          return;
-        }
-        if (job.state === 'failed') {
-          fail(new Error(job.error?.message ?? 'the job failed'));
-          return;
-        }
-        if (cur.kind === 'preparing') {
-          if (job.state === 'canceled') setPhase({ kind: 'empty' });
-          else ready({ ...cur.file, prepare: false });
-          return;
-        }
-        if (cur.kind === 'scanning') {
-          if (job.state === 'canceled') {
-            setPhase({ kind: 'empty' });
-            return;
-          }
-          service.scanResult(cur.file.id).then((result) => setPhase({ kind: 'flows', file: cur.file, result, warning: job.warning }), fail);
-          return;
-        }
-        if (job.state === 'canceled') {
-          if (cur.result) setPhase({ kind: 'flows', file: cur.file, result: cur.result });
-          else setPhase({ kind: 'empty' });
-          return;
-        }
-        ready({ ...cur.file, analyzed: true }, job.warning);
-      }),
-    [service, ready, fail],
-  );
+  // Job events drive the import. A job can end before the window knows its
+  // ID (a tiny or broken file fails in milliseconds): its final event is
+  // kept and applied as soon as the phase names the job.
+  const earlyEnds = useRef(new Map<string, JobState>());
+  const onJob = useRef<(job: JobState) => void>(() => {});
+  onJob.current = (job: JobState) => {
+    const cur = phaseRef.current;
+    if ((cur.kind !== 'scanning' && cur.kind !== 'analyzing' && cur.kind !== 'preparing') || job.id !== cur.jobId) {
+      if (job.state !== 'running') {
+        earlyEnds.current.set(job.id, job);
+        if (earlyEnds.current.size > 16) earlyEnds.current.delete(earlyEnds.current.keys().next().value as string);
+      }
+      return;
+    }
+    if (job.state === 'running') {
+      setPhase({ ...cur, job });
+      return;
+    }
+    if (job.state === 'failed') {
+      fail(new Error(job.error?.message ?? 'the job failed'));
+      return;
+    }
+    if (cur.kind === 'preparing') {
+      if (job.state === 'canceled') setPhase({ kind: 'empty' });
+      else ready({ ...cur.file, prepare: false });
+      return;
+    }
+    if (cur.kind === 'scanning') {
+      if (job.state === 'canceled') {
+        setPhase({ kind: 'empty' });
+        return;
+      }
+      service.scanResult(cur.file.id).then((result) => setPhase({ kind: 'flows', file: cur.file, result, warning: job.warning }), fail);
+      return;
+    }
+    if (job.state === 'canceled') {
+      if (cur.result) setPhase({ kind: 'flows', file: cur.file, result: cur.result });
+      else setPhase({ kind: 'empty' });
+      return;
+    }
+    ready({ ...cur.file, analyzed: true }, job.warning);
+  };
+  useEffect(() => service.subscribe((ev) => ev.job && onJob.current(ev.job)), [service]);
+  const waitingFor = phase.kind === 'scanning' || phase.kind === 'analyzing' || phase.kind === 'preparing' ? phase.jobId : null;
+  useEffect(() => {
+    if (!waitingFor) return;
+    const ended = earlyEnds.current.get(waitingFor);
+    if (ended) {
+      earlyEnds.current.delete(waitingFor);
+      onJob.current(ended);
+    }
+  }, [waitingFor]);
 
   useEffect(() => platform.onOpen((paths) => void open(paths)), [platform, open]);
+
+  const closeTrace = useCallback(() => {
+    const cur = phaseRef.current;
+    if (cur.kind === 'empty') return;
+    void service.close(cur.file.id).catch(() => {});
+    setOverview(null);
+    setDialog(null);
+    setPhase({ kind: 'empty' });
+  }, [service]);
+
+  // The native menu (ARCHITECTURE.md section 12): the window owns the state, the menu names the action.
+  const menuRef = useRef<(a: MenuAction) => void>(() => {});
+  menuRef.current = (a: MenuAction) => {
+    const ready = phaseRef.current.kind === 'ready';
+    switch (a.action) {
+      case 'open':
+        void platform.chooseTraces().then(open);
+        break;
+      case 'recent':
+        if (a.paths) void open(a.paths);
+        break;
+      case 'clear-recent':
+        void service.clearRecent().then(() => setRecent([]));
+        break;
+      case 'close':
+        closeTrace();
+        break;
+      case 'export':
+        if (ready) setDialog('export');
+        break;
+      case 'settings':
+        setDialog('settings');
+        break;
+      case 'about':
+        setDialog('about');
+        break;
+      case 'theme':
+        toggleTheme();
+        break;
+      case 'time':
+        setTimeMode((m) => TIME_MODES[(TIME_MODES.indexOf(m) + 1) % TIME_MODES.length] ?? 'local');
+        break;
+      case 'detail':
+        setShowDetail((v) => !v);
+        break;
+    }
+  };
+  useEffect(() => platform.onMenu((a) => menuRef.current(a)), [platform]);
+
+  useEffect(() => {
+    if (smoke && phase.kind === 'flows' && phase.result.selected.length === 0) {
+      reportSmoke(0, 'the scan found no Modbus/TCP flow');
+    } else if (smoke && phase.kind === 'flows') {
+      void analyze(phase.file, phase.result, { flows: phase.result.selected, server_ports: phase.result.server_ports, servers: [] });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [smoke, phase.kind]);
 
   const analyze = async (file: FileInfo, result: ScanResult, cfg: AnalyzeConfig) => {
     try {
@@ -231,6 +385,26 @@ export function App({ service, platform }: AppProps) {
     setSelected(null);
     setView('timeline');
   }, []);
+  // Go to time or frame, and N/P: the engine finds the row, the table shows it.
+  const locate = useCallback(
+    async (q: Partial<LocateQuery>) => {
+      if (!fileId) return;
+      const byTime = q.t_ns !== undefined || q.frame !== undefined;
+      const o: Order = byTime ? 'time' : order;
+      try {
+        const loc = await service.locate(fileId, { filter, order: o, desc, ...q });
+        setNotice(loc.note ?? null);
+        if (!loc.found) return;
+        if (byTime && order !== 'time') setOrder('time');
+        setView('timeline');
+        setSelected(loc.seq);
+        setGoTo({ rank: loc.rank, nonce: Date.now() + Math.random() });
+      } catch (err) {
+        setNotice(toServiceError(err).message);
+      }
+    },
+    [service, fileId, filter, order, desc],
+  );
   const fetchPage = useCallback((q: TimelineQuery, signal: AbortSignal) => service.timeline(fileId, q, signal), [service, fileId]);
 
   // The detail pane follows the selection.
@@ -250,12 +424,29 @@ export function App({ service, platform }: AppProps) {
     };
   }, [service, fileId, selected]);
 
+  // What the key handler reads without being bound again on every change.
+  const keyState = useRef({ selected, detail, locate });
+  keyState.current = { selected, detail, locate };
+
   // UX.md section 9.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      const typing = e.target instanceof HTMLInputElement;
+      const t = e.target;
+      const typing = t instanceof HTMLInputElement || t instanceof HTMLTextAreaElement || t instanceof HTMLSelectElement;
+      const inDialog = t instanceof Element && t.closest('[role=dialog]') !== null;
       const mod = e.metaKey || e.ctrlKey;
-      if (mod && e.key.toLowerCase() === 'o') {
+      const cur = keyState.current;
+      const ready = phaseRef.current.kind === 'ready';
+      if (mod && e.key.toLowerCase() === 'g') {
+        e.preventDefault();
+        if (ready) setDialog(e.shiftKey ? 'goto-frame' : 'goto-time');
+      } else if (mod && e.key.toLowerCase() === 'c' && !typing && ready && cur.detail && !window.getSelection()?.toString()) {
+        // Copy the selected row as text, or with Shift its raw bytes (UX.md section 9).
+        e.preventDefault();
+        const d = cur.detail;
+        const text = e.shiftKey ? [d.request?.hex, d.response?.hex].filter(Boolean).join('\n') : d.text;
+        if (text) void platform.copyText(text).then(() => setNotice(e.shiftKey ? 'Raw bytes copied.' : 'Row copied.'));
+      } else if (mod && e.key.toLowerCase() === 'o') {
         e.preventDefault();
         void platform.chooseTraces().then(open);
       } else if (mod && e.key.toLowerCase() === 'e') {
@@ -267,8 +458,13 @@ export function App({ service, platform }: AppProps) {
       } else if ((mod && e.key.toLowerCase() === 'f') || (!typing && e.key === '/')) {
         e.preventDefault();
         filterBox.current?.focus();
-      } else if (typing || mod) {
+      } else if (typing || mod || inDialog) {
         return;
+      } else if (e.key === 'Enter' && t instanceof Element && t.getAttribute('role') === 'grid') {
+        e.preventDefault();
+        detailBox.current?.focus();
+      } else if ((e.key === 'n' || e.key === 'p') && ready && cur.selected !== null) {
+        void cur.locate({ seq: cur.selected, step: e.key === 'n' ? 1 : -1 });
       } else if (/^[1-6]$/.test(e.key)) {
         setView(VIEWS[Number(e.key) - 1]?.key ?? 'timeline');
       } else if (e.key.toLowerCase() === 't') {
@@ -362,6 +558,7 @@ export function App({ service, platform }: AppProps) {
                   selectedSeq={selected}
                   onSelect={(_rank, row) => setSelected(row.seq)}
                   onTotal={setTotal}
+                  goTo={goTo}
                 />
               ) : view === 'devices' ? (
                 <DevicesView service={service} fileId={fileId} filter={filter} timeMode={timeMode} firstNs={firstNs} onShow={show} />
@@ -385,7 +582,7 @@ export function App({ service, platform }: AppProps) {
               )}
             </main>
             {showDetail && (view === 'timeline' || view === 'conversations') && (
-              <aside aria-label="Detail" className="flex w-96 shrink-0 flex-col border-l border-line">
+              <aside ref={detailBox} tabIndex={-1} aria-label="Detail" className="flex w-96 shrink-0 flex-col border-l border-line outline-none focus-visible:ring-2 focus-visible:ring-accent">
                 <DetailPane
                   detail={detail}
                   error={detailError}
@@ -417,8 +614,22 @@ export function App({ service, platform }: AppProps) {
           onClose={() => setDialog(null)}
         />
       )}
+      {dialog === 'about' && <AboutDialog service={service} platform={platform} fileId={fileId} onClose={() => setDialog(null)} />}
+      {(dialog === 'goto-time' || dialog === 'goto-frame') && phase.kind === 'ready' && (
+        <GoToDialog
+          mode={dialog === 'goto-time' ? 'time' : 'frame'}
+          files={phase.file.paths}
+          parse={(text) => service.parseFilter(phase.file.id, text)}
+          onClose={() => setDialog(null)}
+          onGo={(target: GoTo) => {
+            setDialog(null);
+            void locate(target);
+          }}
+        />
+      )}
       {dialog === 'settings' && (
         <SettingsDialog
+          onAbout={() => setDialog('about')}
           service={service}
           theme={theme}
           onToggleTheme={toggleTheme}
@@ -448,6 +659,11 @@ export function App({ service, platform }: AppProps) {
             order: {order}
             {desc ? ' (descending)' : ''}
           </button>
+          {notice && (
+            <span role="status" className="text-fg">
+              {notice}
+            </span>
+          )}
           {error && (
             <span className="inline-flex items-center gap-1 text-danger">
               <ErrorIcon size={12} /> {error}

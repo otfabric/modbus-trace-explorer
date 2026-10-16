@@ -47,6 +47,8 @@ var schemas = []struct {
 	{"subtrace-export", "Sub-trace export choices", service.SubtraceExport{}},
 	{"export-result", "Export result", service.ExportResult{}},
 	{"settings", "Settings", service.Settings{}},
+	{"locate-query", "Locate query", service.LocateQuery{}},
+	{"location", "Location", service.Location{}},
 	{"cache-info", "Analysis cache", service.CacheInfo{}},
 	{"error", "Error", service.Error{}},
 }
@@ -176,6 +178,10 @@ func TestOutputValidates(t *testing.T) {
 	validate(t, "subtrace-export", sx)
 	ref, err = e.ExportSubtrace(ctx, id, sx, filepath.Join(dir, "x.pcapng"))
 	validate(t, "export-result", runExport(t, e, ref, err))
+	lq := service.LocateQuery{TimeNS: &p.Rows[0].TimeNS}
+	validate(t, "locate-query", lq)
+	lo, _ := e.Locate(ctx, id, lq)
+	validate(t, "location", lo)
 	st, _ := e.Settings(ctx)
 	validate(t, "settings", st)
 	ci, _ := e.CacheInfo(ctx)

@@ -1,0 +1,38 @@
+{
+  "$defs": {
+    "service.Location": {
+      "additionalProperties": false,
+      "properties": {
+        "exact": {
+          "type": "boolean"
+        },
+        "found": {
+          "type": "boolean"
+        },
+        "note": {
+          "type": "string"
+        },
+        "rank": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "seq": {
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "exact",
+        "found",
+        "rank",
+        "seq"
+      ],
+      "type": "object"
+    }
+  },
+  "$id": "https://github.com/otfabric/modbus-trace-explorer/docs/schema/location-1.schema.json",
+  "$ref": "#/$defs/service.Location",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Generated from internal/service by internal/engine's TestSchemasUpToDate.",
+  "title": "Location"
+}
