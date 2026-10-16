@@ -12,12 +12,14 @@ package main
 
 import (
 	_ "embed"
+	"errors"
 	"flag"
 	"fmt"
 	"io"
 	"log/slog"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/wailsapp/wails/v3/pkg/application"
 	"github.com/wailsapp/wails/v3/pkg/events"
@@ -50,6 +52,7 @@ func run(args []string) error {
 	flags := flag.NewFlagSet("modbus-trace-explorer", flag.ContinueOnError)
 	version := flags.Bool("version", false, "print the version and exit")
 	debug := flags.Bool("debug", false, "log at debug level")
+	smoke := flags.Bool("smoke", false, "open the trace given, show its timeline and quit: 0 when it works (CI, A15)")
 	if err := flags.Parse(args); err != nil {
 		return err
 	}
@@ -76,12 +79,52 @@ func run(args []string) error {
 	}
 	log := applog.New(out, level)
 
-	eng, err := engine.New(engine.Options{Logger: log})
+	opts := engine.Options{Logger: log}
+	config := engine.DefaultConfigDir()
+	scratch := ""
+	if *smoke {
+		// A smoke test leaves the user's cache, recent files and window
+		// size alone.
+		dir, err := os.MkdirTemp("", "modbus-trace-explorer-smoke-")
+		if err != nil {
+			return err
+		}
+		scratch = dir
+		defer func() { _ = os.RemoveAll(scratch) }()
+		opts.CacheDir, opts.ConfigDir = filepath.Join(scratch, "cache"), filepath.Join(scratch, "config")
+		config = opts.ConfigDir
+	}
+	eng, err := engine.New(opts)
 	if err != nil {
 		return fmt.Errorf("the analysis cache: %w", err)
 	}
 	defer func() { _ = eng.Shutdown() }()
 	binding := gui.New(eng, flags.Args())
+	if *smoke {
+		if len(flags.Args()) == 0 {
+			return fmt.Errorf("-smoke needs a trace")
+		}
+		// The window's report ends the process with its outcome: quitting
+		// a Wails application may not return from Run (macOS ends the
+		// process itself), so the exit code is set here.
+		binding.SetSmoke(func(err error) {
+			_ = eng.Shutdown()
+			_ = os.RemoveAll(scratch)
+			if err != nil {
+				fmt.Fprintln(os.Stderr, "modbus-trace-explorer:", gui.SmokeError(err))
+				os.Exit(1)
+			}
+			fmt.Println("smoke test: the timeline is shown")
+			os.Exit(0)
+		})
+		// A window that never reports fails the test instead of hanging CI.
+		timer := time.AfterFunc(3*time.Minute, func() {
+			fmt.Fprintln(os.Stderr, "modbus-trace-explorer: smoke test: no timeline after 3 minutes")
+			_ = os.RemoveAll(scratch)
+			os.Exit(2)
+		})
+		defer timer.Stop()
+	}
 
 	app := application.New(application.Options{
 		Name:        appTitle,
@@ -104,21 +147,44 @@ func run(args []string) error {
 	app.Event.OnApplicationEvent(events.Common.ApplicationOpenedWithFile, func(e *application.ApplicationEvent) {
 		binding.Handed([]string{e.Context().Filename()})
 	})
+	geo := gui.LoadGeometry(config, gui.Geometry{Width: 1440, Height: 900}, gui.Geometry{Width: 1024, Height: 640})
+	binding.RefreshMenu()
 	win := app.Window.NewWithOptions(application.WebviewWindowOptions{
 		Title:     appTitle,
-		Width:     1440,
-		Height:    900,
+		Width:     geo.Width,
+		Height:    geo.Height,
 		MinWidth:  1024,
 		MinHeight: 640,
 		URL:       "/",
 		// Files dropped on an element marked data-file-drop-target arrive as
 		// WindowFilesDropped with their paths.
-		EnableFileDrop: true,
+		UseApplicationMenu: true, // Windows and Linux: the menu bar in the window
+		EnableFileDrop:     true,
 		// --ot-bg of the dark theme, so the window does not flash white.
 		BackgroundColour: application.NewRGB(0x11, 0x18, 0x1f),
 	})
 	win.OnWindowEvent(events.Common.WindowFilesDropped, func(e *application.WindowEvent) {
 		binding.Handed(e.Context().DroppedFiles())
 	})
-	return app.Run()
+	if geo.Maximised {
+		win.Maximise()
+	}
+	// The size is remembered when the window closes (not the position).
+	win.OnWindowEvent(events.Common.WindowClosing, func(*application.WindowEvent) {
+		g := gui.Geometry{Maximised: win.IsMaximised()}
+		g.Width, g.Height = win.Size()
+		if g.Maximised {
+			g.Width, g.Height = geo.Width, geo.Height // keep the size it restores to
+		}
+		if err := gui.SaveGeometry(config, g); err != nil {
+			log.Warn("cannot remember the window size", "err", err)
+		}
+	})
+	if err := app.Run(); err != nil {
+		return err
+	}
+	if *smoke {
+		return gui.SmokeError(errors.New("the window closed without a report"))
+	}
+	return nil
 }

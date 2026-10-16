@@ -1,4 +1,4 @@
-.PHONY: help all check test coverage coverage-check coverage-clean fmt fmt-check vet lint lint-ci vuln mod-check \
+.PHONY: help all smoke check test coverage coverage-check coverage-clean fmt fmt-check vet lint lint-ci vuln mod-check \
 	frontend frontend-install frontend-check frontend-urls golden scale build build-gui bundle-macos appicon winres spike dev clean
 
 help: ## This help
@@ -96,6 +96,9 @@ build-gui: frontend ## Build the desktop application (needs cgo and the platform
 	@mkdir -p bin
 	@echo "Building $(GUI_NAME) $(VERSION)"
 	@go build -tags production $(LDFLAGS) -o bin/$(GUI_NAME) $(GUI_SRC)
+
+smoke: build-gui ## Start the built application on testdata/smoke.pcapng and wait for its timeline (A15)
+	@bin/$(GUI_NAME) -smoke testdata/smoke.pcapng
 
 bundle-macos: build-gui ## Wrap the desktop binary in bin/Modbus Trace Explorer.app (macOS, ad-hoc signed)
 	@packaging/macos/bundle.sh bin/$(GUI_NAME) $(VERSION) bin

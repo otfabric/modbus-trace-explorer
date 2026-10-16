@@ -2,11 +2,13 @@
 // in internal/gui; method names here must match its exported methods.
 
 import { Call, Clipboard, Events } from '@wailsio/runtime';
-import type { Platform, SaveKind } from '../../app/platform/platform';
+import type { MenuAction, Platform, SaveKind } from '../../app/platform/platform';
 import { loadTheme, persistTheme } from '../../app/platform/themeStorage';
 import { ServiceError, toServiceError, type ErrorCode, type Service } from '../../app/service/service';
 import type {
   About,
+  Location,
+  LocateQuery,
   CacheInfo,
   ExportResult,
   MBCAPExport,
@@ -38,6 +40,7 @@ import type {
 const BINDING = 'github.com/otfabric/modbus-trace-explorer/internal/gui.App';
 const OPEN_EVENT = 'explorer:open';
 const JOB_EVENT = 'explorer:event';
+const MENU_EVENT = 'explorer:menu';
 
 interface ErrorBody {
   code: ErrorCode;
@@ -89,6 +92,8 @@ export class WailsService implements Service {
   coverage = (id: string, q: CoverageQuery) => call<CoverageMap>('Coverage', id, q);
   addressHistory = (id: string, q: HistoryQuery) => call<JobRef>('AddressHistory', id, q);
   quality = (id: string) => call<Quality>('Quality', id);
+  locate = (id: string, q: LocateQuery) => call<Location>('Locate', id, q);
+  diagnostics = (id: string) => call<string>('Diagnostics', id);
   previewMBCAP = (id: string, x: MBCAPExport) => call<MBCAPPreview>('PreviewMBCAP', id, x);
   exportMBCAP = (id: string, x: MBCAPExport, path: string) => call<JobRef>('ExportMBCAP', id, x, path);
   exportTimeline = (id: string, x: TimelineExport, path: string) => call<JobRef>('ExportTimeline', id, x, path);
@@ -136,6 +141,16 @@ export class WailsPlatform implements Platform {
 
   openExternal(url: string): void {
     void call<void>('OpenExternal', url);
+  }
+
+  onMenu(handler: (action: MenuAction) => void): () => void {
+    return Events.On(MENU_EVENT, (event) => handler(event.data as MenuAction));
+  }
+
+  smokeMode = () => call<boolean>('SmokeMode');
+
+  smokeDone(rows: number, problem: string): void {
+    void call<void>('SmokeDone', rows, problem);
   }
 
   copyText(text: string): Promise<void> {

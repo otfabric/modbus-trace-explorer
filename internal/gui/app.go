@@ -42,6 +42,7 @@ type App struct {
 	pending []string // paths handed over before the frontend asked for them
 	cancel  context.CancelFunc
 	done    chan struct{}
+	smoke   func(error) // the smoke test's report (A15), nil outside it
 }
 
 // New creates the Wails service for svc. initial are the trace paths of
@@ -114,7 +115,11 @@ func (a *App) Open(ctx context.Context, paths []string) (service.FileInfo, error
 	if len(usable) != len(paths) || len(paths) == 0 {
 		return service.FileInfo{}, service.Errorf(service.CodeNotFound, "the trace file is not there (or is not a regular file)")
 	}
-	return a.svc.Open(ctx, usable)
+	info, err := a.svc.Open(ctx, usable)
+	if err == nil {
+		a.RefreshMenu() // Open Recent follows the list
+	}
+	return info, err
 }
 
 // Close releases an open trace.
@@ -191,6 +196,16 @@ func (a *App) Quality(ctx context.Context, id string) (service.Quality, error) {
 	return a.svc.Quality(ctx, id)
 }
 
+// Locate finds a row of the timeline.
+func (a *App) Locate(ctx context.Context, id string, q service.LocateQuery) (service.Location, error) {
+	return a.svc.Locate(ctx, id, q)
+}
+
+// Diagnostics returns the "Copy diagnostics" text.
+func (a *App) Diagnostics(ctx context.Context, id string) (string, error) {
+	return a.svc.Diagnostics(ctx, id)
+}
+
 // ParseFilter parses the filter box.
 func (a *App) ParseFilter(ctx context.Context, id, text string) (service.FilterParse, error) {
 	return a.svc.ParseFilter(ctx, id, text)
@@ -256,7 +271,11 @@ func (a *App) ClearCache(ctx context.Context) (service.CacheInfo, error) {
 }
 
 // ClearRecent binds Service.ClearRecent.
-func (a *App) ClearRecent(ctx context.Context) error { return a.svc.ClearRecent(ctx) }
+func (a *App) ClearRecent(ctx context.Context) error {
+	err := a.svc.ClearRecent(ctx)
+	a.RefreshMenu()
+	return err
+}
 
 // saveFilters are the Save dialog's file types per export kind.
 var saveFilters = map[string][2]string{

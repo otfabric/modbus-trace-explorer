@@ -2,6 +2,7 @@ import { forwardRef, useState, type KeyboardEvent } from 'react';
 import { CloseIcon, ErrorIcon, FilterIcon } from '../icons';
 import type { Filter, FilterParse } from '../service/types';
 import { formatCount } from '../state/format';
+import { FilterPopover } from './FilterPopover';
 import { TextInput } from './ui';
 
 interface Props {
@@ -54,6 +55,7 @@ function without(f: Filter, key: Key): Filter {
 export const FilterBar = forwardRef<HTMLInputElement, Props>(function FilterBar({ filter, total, onChange, parse }, ref) {
   const [text, setText] = useState('');
   const [errors, setErrors] = useState<FilterParse['errors']>([]);
+  const [controls, setControls] = useState(false);
 
   const apply = async () => {
     const res = await parse(text);
@@ -77,7 +79,20 @@ export const FilterBar = forwardRef<HTMLInputElement, Props>(function FilterBar(
   const active = chips(filter);
   return (
     <div className="flex shrink-0 flex-wrap items-center gap-2 border-b border-line px-4 py-2 text-[13px]">
-      <FilterIcon size={16} className="text-muted" />
+      <span className="relative">
+        <button
+          type="button"
+          aria-label="Filter controls"
+          aria-expanded={controls}
+          title="Filter controls"
+          className="inline-flex items-center gap-1 rounded border border-line px-1.5 py-0.5 text-muted hover:border-accent hover:text-accent"
+          onClick={() => setControls((v) => !v)}
+        >
+          <FilterIcon size={16} />
+          Filters
+        </button>
+        {controls && <FilterPopover filter={filter} parse={parse} onApply={onChange} onClose={() => setControls(false)} />}
+      </span>
       {active.map((c) => (
         <span key={c.key} className="inline-flex h-6 items-center gap-1 rounded border border-accent bg-accent-soft px-1.5 font-mono text-[12px] text-accent-strong">
           {c.label}

@@ -11,6 +11,7 @@ package service
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 
 	"github.com/otfabric/go-modbus-trace/export/mbcapexport"
@@ -66,6 +67,15 @@ type Service interface {
 	AddressHistory(ctx context.Context, fileID string, q HistoryQuery) (JobRef, error)
 	// Quality lists every condition the library counted (R12).
 	Quality(ctx context.Context, fileID string) (Quality, error)
+
+	// Locate finds a row of the filtered timeline (R5, UX.md section 9):
+	// the first at or after a time, the first that carries a frame, or the
+	// next or previous row of the same connection as a given row.
+	Locate(ctx context.Context, fileID string, q LocateQuery) (Location, error)
+	// Diagnostics returns the text "Copy diagnostics" puts on the
+	// clipboard (R23): versions, and the open trace's facts without paths
+	// or addresses. fileID may be empty.
+	Diagnostics(ctx context.Context, fileID string) (string, error)
 
 	// ParseFilter parses the filter box's text (UX.md section 6); times
 	// like "14:30" or "+15m" are read against the trace's first packet.
@@ -220,14 +230,14 @@ type Overview struct {
 // does not.
 type Filter struct {
 	Servers   []string `json:"servers,omitempty"` // "ip" or "ip:port"
-	Units     []uint8  `json:"units,omitempty"`
+	Units     Uint8s   `json:"units,omitempty"`
 	Clients   []string `json:"clients,omitempty"` // "ip"
 	Conns     []uint32 `json:"conns,omitempty"`
-	Functions []uint8  `json:"functions,omitempty"`
+	Functions Uint8s   `json:"functions,omitempty"`
 	Statuses  []string `json:"statuses,omitempty"`
 	Classes   []string `json:"classes,omitempty"`
 	// Exceptions are exception codes (exception responses only).
-	Exceptions []uint8  `json:"exceptions,omitempty"`
+	Exceptions Uint8s   `json:"exceptions,omitempty"`
 	Flags      []string `json:"flags,omitempty"`
 	NotFlags   []string `json:"not_flags,omitempty"`
 	FromNS     *int64   `json:"from_ns,omitempty"`
@@ -655,4 +665,77 @@ type CacheInfo struct {
 	Bytes   int64  `json:"bytes"`
 	Cap     int64  `json:"cap"`
 	Entries int    `json:"entries"`
+}
+
+// LocateQuery asks for one row of the timeline as TimelineQuery orders it.
+// Exactly one of TimeNS, Frame and Seq is set.
+type LocateQuery struct {
+	Filter Filter `json:"filter"`
+	Order  string `json:"order"` // time or latency (go to time and frame use time order)
+	Desc   bool   `json:"desc"`
+	// TimeNS: the first row at or after this time.
+	TimeNS *int64 `json:"t_ns,omitempty"`
+	// Frame: the first row whose request or response was carried by this
+	// frame (as Wireshark numbers it) of input file Part.
+	Frame *uint64 `json:"frame,omitempty"`
+	Part  int     `json:"part,omitempty"`
+	// Seq and Step: the next (+1) or previous (-1) row of the same
+	// connection as row Seq.
+	Seq  *uint64 `json:"seq,omitempty"`
+	Step int     `json:"step,omitempty"`
+}
+
+// Location is a row of the timeline: its rank in the query's order and its
+// sequence number.
+type Location struct {
+	Found bool   `json:"found"`
+	Rank  uint64 `json:"rank"`
+	Seq   uint64 `json:"seq"`
+	// Exact: the row is at the time or carries the frame; otherwise it is
+	// the nearest one after.
+	Exact bool   `json:"exact"`
+	Note  string `json:"note,omitempty"`
+}
+
+// Uint8s is a list of unit IDs, function codes or exception codes. It
+// encodes as a JSON array of numbers (a []uint8 would encode as base64) and
+// decodes from one.
+type Uint8s []uint8
+
+// MarshalJSON writes the numbers as an array.
+func (u Uint8s) MarshalJSON() ([]byte, error) {
+	if u == nil {
+		return []byte("null"), nil
+	}
+	ints := make([]int, len(u))
+	for i, v := range u {
+		ints[i] = int(v)
+	}
+	return json.Marshal(ints)
+}
+
+// UnmarshalJSON reads an array of numbers from 0 to 255.
+func (u *Uint8s) UnmarshalJSON(b []byte) error {
+	var ints []int
+	if err := json.Unmarshal(b, &ints); err != nil {
+		return err
+	}
+	if ints == nil {
+		*u = nil
+		return nil
+	}
+	out := make(Uint8s, len(ints))
+	for i, v := range ints {
+		if v < 0 || v > 255 {
+			return fmt.Errorf("%d is not 0 to 255", v)
+		}
+		out[i] = uint8(v)
+	}
+	*u = out
+	return nil
+}
+
+// JSONSchema is the schema of Uint8s (internal/schemagen).
+func (Uint8s) JSONSchema() map[string]any {
+	return map[string]any{"type": "array", "items": map[string]any{"type": "integer", "minimum": 0, "maximum": 255}}
 }

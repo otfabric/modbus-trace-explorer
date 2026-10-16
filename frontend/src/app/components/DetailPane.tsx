@@ -69,30 +69,79 @@ function Fields({ adu, selected, onSelect }: { adu: ADUDetail | undefined; selec
   );
 }
 
-/** A hex dump with offsets and ASCII; the MBAP header (bytes 0-6) apart from the PDU. */
+/** Bytes (as two-digit hex) in the formats the Raw tab copies (UX.md section 4). */
+export function byteString(bytes: string[], format: 'hex' | 'spaced' | 'c' | 'python'): string {
+  switch (format) {
+    case 'hex':
+      return bytes.join('').toLowerCase();
+    case 'spaced':
+      return bytes.join(' ');
+    case 'c':
+      return `{ ${bytes.map((b) => `0x${b}`).join(', ')} }`;
+    case 'python':
+      return `b"${bytes.map((b) => `\\x${b.toLowerCase()}`).join('')}"`;
+  }
+}
+
+const COPY_FORMATS: [Parameters<typeof byteString>[1], string][] = [
+  ['spaced', 'hex'],
+  ['hex', 'hex (no spaces)'],
+  ['c', 'C'],
+  ['python', 'Python'],
+];
+
+/**
+ * A hex dump with offsets and ASCII; the MBAP header (bytes 0-6) apart from
+ * the PDU. Click selects a byte, shift-click extends the selection; the copy
+ * buttons copy the selection, or the whole ADU without one.
+ */
 function HexDump({ label, adu, highlight, copy }: { label: string; adu: ADUDetail | undefined; highlight: Field | null; copy: (t: string) => void }) {
+  const [sel, setSel] = useState<{ anchor: number; from: number; to: number } | null>(null);
   if (!adu || !adu.hex) return null;
   const bytes = bytesOf(adu.hex);
   const rows: string[][] = [];
   for (let i = 0; i < bytes.length; i += 16) rows.push(bytes.slice(i, i + 16));
   const lit = (i: number) => highlight !== null && i >= highlight.offset && i < highlight.offset + highlight.length;
+  const picked = (i: number) => sel !== null && i >= sel.from && i <= sel.to;
+  const pick = (i: number, extend: boolean) => {
+    if (extend && sel) setSel({ anchor: sel.anchor, from: Math.min(sel.anchor, i), to: Math.max(sel.anchor, i) });
+    else if (sel && sel.from === i && sel.to === i) setSel(null);
+    else setSel({ anchor: i, from: i, to: i });
+  };
+  const chosen = sel ? bytes.slice(sel.from, sel.to + 1) : bytes;
+  const what = sel ? `bytes ${sel.from}–${sel.to}` : `the ${label.toLowerCase()}`;
   return (
     <div className="flex flex-col gap-1">
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
         <span className="ot-label">{label}</span>
-        <button type="button" aria-label={`Copy the ${label.toLowerCase()} as hex`} className="text-muted hover:text-accent" onClick={() => copy(bytes.join(' '))}>
-          <CopyIcon size={14} />
-        </button>
+        {sel && <span className="font-mono text-[11px] text-muted">{sel.to - sel.from + 1} selected</span>}
+        <span className="ml-auto flex items-center gap-1 text-[11px]">
+          <CopyIcon size={12} className="text-muted" />
+          {COPY_FORMATS.map(([f, name]) => (
+            <button key={f} type="button" aria-label={`Copy ${what} as ${name}`} className="rounded border border-line px-1 text-muted hover:text-accent" onClick={() => copy(byteString(chosen, f))}>
+              {name}
+            </button>
+          ))}
+        </span>
       </div>
-      <pre className="font-mono text-[12px] leading-5">
+      <pre className="font-mono text-[12px] leading-5 select-none">
         {rows.map((row, r) => (
           <div key={r}>
             <span className="text-muted">{(r * 16).toString(16).padStart(4, '0')} </span>
             {row.map((b, k) => {
               const i = r * 16 + k;
               return (
-                <span key={k} className={`${lit(i) ? 'bg-accent-soft text-accent-strong' : i < 7 ? 'text-muted' : ''}`}>
-                  {b}
+                <span key={k}>
+                  <span
+                    role="button"
+                    tabIndex={-1}
+                    aria-label={`${label} byte ${i}`}
+                    aria-pressed={picked(i)}
+                    onClick={(e) => pick(i, e.shiftKey)}
+                    className={`cursor-pointer ${picked(i) ? 'bg-accent text-bg' : lit(i) ? 'bg-accent-soft text-accent-strong' : i < 7 ? 'text-muted' : ''}`}
+                  >
+                    {b}
+                  </span>
                   {i === 6 ? ' | ' : ' '}
                 </span>
               );

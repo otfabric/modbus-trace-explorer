@@ -488,6 +488,28 @@ export interface ExportResult {
   connections?: number;
 }
 
+/** Asks for one row of the timeline (service.LocateQuery): exactly one of t_ns, frame and seq. */
+export interface LocateQuery {
+  filter: Filter;
+  order: Order;
+  desc: boolean;
+  t_ns?: number;
+  frame?: number;
+  part?: number;
+  seq?: number;
+  /** +1 next, -1 previous row of the same connection as seq. */
+  step?: number;
+}
+
+/** A row of the timeline: its rank in the query's order (service.Location). */
+export interface Location {
+  found: boolean;
+  rank: number;
+  seq: number;
+  exact: boolean;
+  note?: string;
+}
+
 /** R20 (service.Settings). The theme is kept by the window. */
 export interface Settings {
   time_mode: 'local' | 'utc' | 'relative';

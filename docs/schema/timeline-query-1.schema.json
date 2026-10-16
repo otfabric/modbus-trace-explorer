@@ -27,8 +27,12 @@
           "type": "integer"
         },
         "exceptions": {
-          "description": "base64",
-          "type": "string"
+          "items": {
+            "maximum": 255,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "type": "array"
         },
         "flags": {
           "items": {
@@ -40,8 +44,12 @@
           "type": "integer"
         },
         "functions": {
-          "description": "base64",
-          "type": "string"
+          "items": {
+            "maximum": 255,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "type": "array"
         },
         "not_flags": {
           "items": {
@@ -75,8 +83,12 @@
           "type": "integer"
         },
         "units": {
-          "description": "base64",
-          "type": "string"
+          "items": {
+            "maximum": 255,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "type": "array"
         }
       },
       "type": "object"

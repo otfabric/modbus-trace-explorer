@@ -1,5 +1,7 @@
 import type {
   About,
+  Location,
+  LocateQuery,
   CacheInfo,
   ExportResult,
   MBCAPExport,
@@ -82,6 +84,10 @@ export interface Service {
   /** Starts reading one address's values; chunks arrive as "history" events. */
   addressHistory(fileId: string, query: HistoryQuery): Promise<JobRef>;
   quality(fileId: string): Promise<Quality>;
+  /** Finds a row: go to time, go to frame, next or previous row of the same connection. */
+  locate(fileId: string, q: LocateQuery): Promise<Location>;
+  /** The "Copy diagnostics" text: versions and facts, no paths or addresses. fileId may be ''. */
+  diagnostics(fileId: string): Promise<string>;
   /** Counts from the index what an MBCAP export would write and leave out (R13). */
   previewMBCAP(fileId: string, x: MBCAPExport): Promise<MBCAPPreview>;
   /** Starts an export job into path; ExportResult has what it wrote when it is done. */

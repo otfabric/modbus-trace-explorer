@@ -1,19 +1,32 @@
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
-import type { Platform } from './platform/platform';
+import type { MenuAction, Platform } from './platform/platform';
+import { act } from 'react';
 import { App } from './App';
 import { MockService } from './service/mock';
+import type { JobRef } from './service/types';
+
+const copied: string[] = [];
+let menu: ((a: MenuAction) => void) | null = null;
 
 function platform(paths: string[] = []): Platform {
   return {
     chooseTraces: async () => paths,
     chooseSave: async (name: string) => `/out/${name}`,
     onOpen: () => () => {},
+    smokeMode: async () => false,
+    smokeDone: () => {},
+    onMenu: (h: (a: MenuAction) => void) => {
+      menu = h;
+      return () => {};
+    },
     openExternal: () => {},
     persistTheme: () => {},
     loadTheme: () => 'dark' as const,
-    copyText: async () => {},
+    copyText: async (t: string) => {
+      copied.push(t);
+    },
   };
 }
 
@@ -218,5 +231,103 @@ describe('App', () => {
     expect(screen.queryByRole('button', { name: /^Analyze/ })).toBeNull();
     const grid = await screen.findByRole('grid', { name: 'Timeline' }, { timeout: 3000 });
     await waitFor(() => expect(grid).toHaveAttribute('aria-rowcount', '2001'));
+  });
+
+  it('goes to a time and a frame, walks a connection with N/P, and copies the row', async () => {
+    const user = userEvent.setup();
+    render(<App service={new MockService({ rows: 5000, analyzed: true, step: 1 })} platform={platform(['/x/site.pcapng'])} />);
+    await user.click(screen.getByRole('button', { name: /Open/ }));
+    const grid = await screen.findByRole('grid', { name: 'Timeline' });
+    await waitFor(() => expect(grid).toHaveAttribute('aria-rowcount', '5001'));
+    grid.focus();
+    await user.keyboard('{Control>}g{/Control}');
+    const time = await screen.findByRole('dialog', { name: 'Go to time' });
+    await user.type(within(time).getByRole('textbox', { name: 'Time' }), '+30s');
+    await user.click(within(time).getByRole('button', { name: 'Go' }));
+    // 100 rows a second: the row 30 s in is rank 3000.
+    await waitFor(() => expect(grid.querySelector('[aria-selected=true]')?.getAttribute('aria-rowindex')).toBe('3002'));
+
+    await user.keyboard('{Control>}{Shift>}g{/Shift}{/Control}');
+    const frame = await screen.findByRole('dialog', { name: 'Go to frame' });
+    await user.type(within(frame).getByRole('textbox', { name: 'Frame' }), '21');
+    await user.click(within(frame).getByRole('button', { name: 'Go' }));
+    // Frame 21 is the request of row 10 (rank 9).
+    await waitFor(() => expect(grid.querySelector('[aria-selected=true]')?.getAttribute('aria-rowindex')).toBe('11'));
+
+    const before = grid.querySelector('[aria-selected=true]')?.textContent ?? '';
+    grid.focus();
+    await user.keyboard('n');
+    await waitFor(() => expect(grid.querySelector('[aria-selected=true]')?.textContent).not.toBe(before));
+    await user.keyboard('p');
+    await waitFor(() => expect(grid.querySelector('[aria-selected=true]')?.getAttribute('aria-rowindex')).toBe('11'));
+
+    const pane = screen.getByRole('complementary', { name: 'Detail' });
+    await within(pane).findByText(/asked/);
+    copied.length = 0;
+    grid.focus();
+    await user.keyboard('{Control>}c{/Control}');
+    await waitFor(() => expect(copied[0]).toMatch(/asked/));
+    await user.keyboard('{Control>}{Shift>}c{/Shift}{/Control}');
+    await waitFor(() => expect(copied[1]).toMatch(/^[0-9a-f]+/));
+    grid.focus();
+    await user.keyboard('{Enter}');
+    expect(document.activeElement).toBe(pane);
+  });
+
+  it('filters with the controls, shows capture facts, selects raw bytes, and answers the menu', async () => {
+    const user = userEvent.setup();
+    render(<App service={new MockService({ rows: 3000, analyzed: true, step: 1 })} platform={platform(['/x/site.pcapng'])} />);
+    await user.click(screen.getByRole('button', { name: /Open/ }));
+    const grid = await screen.findByRole('grid', { name: 'Timeline' });
+    await user.click(screen.getByRole('button', { name: 'Filter controls' }));
+    const pop = await screen.findByRole('dialog', { name: 'Filter controls' });
+    await user.click(within(pop).getByRole('checkbox', { name: '03 Read Holding' }));
+    await user.type(within(pop).getByRole('textbox', { name: 'Units' }), '1');
+    await user.click(within(pop).getByRole('button', { name: 'Apply' }));
+    expect(await screen.findByRole('button', { name: 'Remove unit:1' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Remove fc:3' })).toBeInTheDocument();
+    await waitFor(() => expect(Number(grid.getAttribute('aria-rowcount'))).toBeLessThan(3000));
+
+    await user.click(screen.getByRole('button', { name: 'Capture facts' }));
+    const facts = await screen.findByRole('dialog', { name: 'Capture facts' });
+    expect(within(facts).getByText(/9f2c4e0d/)).toBeInTheDocument();
+    expect(within(facts).getByText(/not_tcp 12/)).toBeInTheDocument();
+    await user.keyboard('{Escape}');
+
+    await user.click(within(grid).getAllByRole('row')[2] as HTMLElement);
+    const pane = screen.getByRole('complementary', { name: 'Detail' });
+    await within(pane).findByText(/asked/);
+    await user.click(within(pane).getByRole('tab', { name: 'Raw' }));
+    await user.click(within(pane).getByRole('button', { name: 'Request byte 7' }));
+    await user.keyboard('{Shift>}');
+    await user.click(within(pane).getByRole('button', { name: 'Request byte 9' }));
+    await user.keyboard('{/Shift}');
+    copied.length = 0;
+    await user.click(within(pane).getByRole('button', { name: 'Copy bytes 7–9 as Python' }));
+    expect(copied[0]).toMatch(/^b"\\x03\\x[0-9a-f]{2}\\x[0-9a-f]{2}"$/);
+
+    act(() => menu?.({ action: 'about' }));
+    const about = await screen.findByRole('dialog', { name: 'About Modbus Trace Explorer' });
+    await user.click(within(about).getByRole('button', { name: 'Copy diagnostics' }));
+    expect(await within(about).findByRole('status')).toHaveTextContent('without paths or addresses');
+    expect(copied.at(-1)).toMatch(/index: 3000 rows/);
+    await user.click(within(about).getByRole('button', { name: 'Close' }));
+    act(() => menu?.({ action: 'close' }));
+    expect(await screen.findByText(/Drop a pcap or pcapng here/)).toBeInTheDocument();
+  });
+
+  it('shows a scan that fails before its job is known (a broken file)', async () => {
+    class Broken extends MockService {
+      override async scan(): Promise<JobRef> {
+        const job = { id: 'scan-x', kind: 'scan' as const, file: 'mock', state: 'failed' as const, phase: 'scan', read: 0, total: 0, rows: 0, rate: 0,
+          error: { code: 'invalid_argument', message: 'not a pcap or pcapng file' } };
+        for (const l of this.listeners) l({ kind: 'job', job });
+        return { id: 'scan-x', kind: 'scan' };
+      }
+    }
+    const user = userEvent.setup();
+    render(<App service={new Broken({ rows: 10 })} platform={platform(['/x/broken.pcap'])} />);
+    await user.click(screen.getByRole('button', { name: /Open/ }));
+    expect(await screen.findByText(/not a pcap or pcapng file/)).toBeInTheDocument();
   });
 });

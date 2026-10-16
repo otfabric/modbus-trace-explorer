@@ -24,10 +24,18 @@ var (
 	addrPortType  = reflect.TypeOf(netip.AddrPort{})
 	addrType      = reflect.TypeOf(netip.Addr{})
 	textMarshaler = reflect.TypeOf((*encoding.TextMarshaler)(nil)).Elem()
+	// A type that encodes itself declares its own schema.
+	schemaer = reflect.TypeOf((*Schemaer)(nil)).Elem()
 )
 
 type gen struct {
 	defs map[string]any
+}
+
+// Schemaer is implemented by a type whose JSON encoding is its own (a
+// json.Marshaler): its schema is what JSONSchema returns.
+type Schemaer interface {
+	JSONSchema() map[string]any
 }
 
 // Generate returns the schema of v's type, indented, with a final newline.
@@ -82,6 +90,9 @@ func (g *gen) schema(t reflect.Type, nullable bool) map[string]any {
 	k := t.Kind()
 	if k == reflect.Pointer {
 		return g.schema(t.Elem(), nullable)
+	}
+	if t.Implements(schemaer) {
+		return orNull(reflect.Zero(t).Interface().(Schemaer).JSONSchema())
 	}
 	if k == reflect.Struct {
 		name := defName(t)
