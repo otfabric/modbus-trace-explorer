@@ -19,6 +19,9 @@
     "service.Event": {
       "additionalProperties": false,
       "properties": {
+        "history": {
+          "$ref": "#/$defs/service.HistoryChunk"
+        },
         "job": {
           "$ref": "#/$defs/service.JobState"
         },
@@ -28,6 +31,84 @@
       },
       "required": [
         "kind"
+      ],
+      "type": "object"
+    },
+    "service.HistoryChunk": {
+      "additionalProperties": false,
+      "properties": {
+        "candidates": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "done": {
+          "type": "boolean"
+        },
+        "job": {
+          "type": "string"
+        },
+        "next": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "points": {
+          "anyOf": [
+            {
+              "items": {
+                "$ref": "#/$defs/service.HistoryPoint"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "scanned": {
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "candidates",
+        "done",
+        "job",
+        "points",
+        "scanned"
+      ],
+      "type": "object"
+    },
+    "service.HistoryPoint": {
+      "additionalProperties": false,
+      "properties": {
+        "changed": {
+          "type": "boolean"
+        },
+        "client": {
+          "type": "string"
+        },
+        "seq": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "t_ns": {
+          "type": "integer"
+        },
+        "value": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "write": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "changed",
+        "client",
+        "seq",
+        "t_ns",
+        "value",
+        "write"
       ],
       "type": "object"
     },

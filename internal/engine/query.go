@@ -181,6 +181,13 @@ func compile(ix *store.Index, f service.Filter) (*store.Filter, error) {
 	}
 	out.FlagsAll, out.FlagsNone = store.Flags(f.Flags), store.Flags(f.NotFlags)
 	out.FromNS, out.ToNS = f.FromNS, f.ToNS
+	if f.Summary != "" {
+		id := uint32(1 << 31) // a summary the index does not have: nothing matches
+		if k := slices.Index(ix.Summaries, f.Summary); k > 0 {
+			id = uint32(k)
+		}
+		out.Summary = &id
+	}
 	if len(f.Exceptions) > 0 {
 		out.Exc = make([]bool, 256)
 		for _, c := range f.Exceptions {

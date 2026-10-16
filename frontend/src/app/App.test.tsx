@@ -73,4 +73,51 @@ describe('App', () => {
     await user.click(await screen.findByRole('button', { name: 'Cancel' }));
     expect(await screen.findByText(/Drop a pcap or pcapng here/)).toBeInTheDocument();
   });
+
+  it('shows devices, connections, patterns, addresses and quality, and jumps to the timeline', async () => {
+    const user = userEvent.setup();
+    render(<App service={new MockService({ rows: 3000, analyzed: true, step: 1 })} platform={platform(['/x/site.pcapng'])} />);
+    await user.click(screen.getByRole('button', { name: /Open/ }));
+    await screen.findByRole('grid', { name: 'Timeline' });
+    const nav = screen.getByRole('navigation', { name: 'Views' });
+
+    await user.click(within(nav).getByRole('button', { name: /Devices/ }));
+    const devices = await screen.findByRole('table', { name: 'Devices' });
+    expect(within(devices).getAllByRole('row').length).toBeGreaterThan(1);
+    const detail = screen.getByRole('region', { name: 'Device detail' });
+    expect(within(detail).getByText('Latency')).toBeInTheDocument();
+    await user.click(within(detail).getByRole('button', { name: 'Show table' }));
+    expect(within(detail).getByRole('table')).toBeInTheDocument();
+    await user.click(within(detail).getByRole('button', { name: 'Show in timeline' }));
+    expect(await screen.findByRole('grid', { name: 'Timeline' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Remove server:/ })).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: /Remove server:/ }));
+    await user.click(screen.getByRole('button', { name: /Remove unit:/ }));
+
+    await user.click(within(nav).getByRole('button', { name: /Conversations/ }));
+    const conns = await screen.findByRole('table', { name: 'Connections' });
+    expect(within(conns).getAllByRole('row').length).toBeGreaterThan(1);
+    expect(screen.getByRole('region', { name: /Timeline of connection/ })).toBeInTheDocument();
+
+    await user.click(within(nav).getByRole('button', { name: /Patterns/ }));
+    const patterns = await screen.findByRole('table', { name: 'Patterns' });
+    expect(within(patterns).getAllByRole('row').length).toBeGreaterThan(1);
+    await user.click(within(screen.getByRole('region', { name: 'Pattern detail' })).getByRole('button', { name: 'Show in timeline' }));
+    expect(await screen.findByRole('button', { name: /Remove request:/ })).toBeInTheDocument();
+
+    await user.click(within(nav).getByRole('button', { name: /Addresses/ }));
+    expect(await screen.findByText(/Observed, not a complete register map/)).toBeInTheDocument();
+    await user.type(screen.getByRole('textbox', { name: 'Address' }), '40');
+    await user.click(screen.getByRole('button', { name: 'Show values' }));
+    expect(await screen.findByRole('img', { name: 'Values over time' }, { timeout: 3000 })).toBeInTheDocument();
+    await waitFor(() => expect(screen.queryByRole('button', { name: 'Cancel' })).toBeNull(), { timeout: 5000 });
+    await user.click(screen.getByRole('button', { name: 'hex' }));
+    await user.click(within(screen.getByRole('figure', { name: 'Values' })).getByRole('button', { name: 'Show table' }));
+    expect(within(screen.getByRole('table', { name: 'Values' })).getAllByText(/^0x/).length).toBeGreaterThan(0);
+
+    await user.click(within(nav).getByRole('button', { name: /Quality/ }));
+    const conditions = await screen.findByRole('region', { name: 'Conditions' });
+    expect(within(conditions).getAllByText('none').length).toBeGreaterThan(0);
+    expect(screen.getByRole('region', { name: 'Facts' })).toHaveTextContent('pcapng');
+  });
 });

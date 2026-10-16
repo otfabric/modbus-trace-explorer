@@ -90,15 +90,23 @@ func (j *job) emit(final bool) {
 	st := j.state
 	j.lastEmit = j.e.now()
 	j.mu.Unlock()
-	ev := service.Event{Kind: "job", Job: &st}
-	j.e.mu.Lock()
-	subs := make([]chan service.Event, 0, len(j.e.subs))
-	for ch := range j.e.subs {
+	j.e.deliver(service.Event{Kind: "job", Job: &st}, final)
+}
+
+// broadcast delivers an event that must not be dropped (a history chunk).
+func (e *Engine) broadcast(ev service.Event) { e.deliver(ev, true) }
+
+// deliver sends ev to every subscriber; a must-have event waits for a slow
+// subscriber (up to 5 s), progress is dropped for one that is behind.
+func (e *Engine) deliver(ev service.Event, must bool) {
+	e.mu.Lock()
+	subs := make([]chan service.Event, 0, len(e.subs))
+	for ch := range e.subs {
 		subs = append(subs, ch)
 	}
-	j.e.mu.Unlock()
+	e.mu.Unlock()
 	for _, ch := range subs {
-		if final {
+		if must {
 			select {
 			case ch <- ev:
 			case <-time.After(5 * time.Second):

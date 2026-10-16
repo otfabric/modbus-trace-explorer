@@ -22,6 +22,11 @@ import type { AnalyzeConfig, Detail, FileInfo, Filter, JobState, Order, Overview
 import { formatBytes, formatCount, formatDuration, formatTime, type TimeMode } from './state/format';
 import { useTheme } from './state/useTheme';
 import { TimelineTable } from './table/TimelineTable';
+import { AddressesView } from './views/AddressesView';
+import { ConversationsView } from './views/ConversationsView';
+import { DevicesView } from './views/DevicesView';
+import { PatternsView } from './views/PatternsView';
+import { QualityView } from './views/QualityView';
 
 interface AppProps {
   service: Service;
@@ -189,6 +194,13 @@ export function App({ service, platform }: AppProps) {
   };
 
   const fileId = phase.kind === 'ready' ? phase.file.id : '';
+  const firstNs = overview?.first_ns ?? 0;
+  // "Show in timeline": the view's selection narrows the filter.
+  const show = useCallback((f: Filter) => {
+    setFilter((cur) => ({ ...cur, ...f }));
+    setSelected(null);
+    setView('timeline');
+  }, []);
   const fetchPage = useCallback((q: TimelineQuery, signal: AbortSignal) => service.timeline(fileId, q, signal), [service, fileId]);
 
   // The detail pane follows the selection.
@@ -307,16 +319,33 @@ export function App({ service, platform }: AppProps) {
                   order={order}
                   desc={desc}
                   timeMode={timeMode}
-                  firstNs={overview?.first_ns ?? 0}
+                  firstNs={firstNs}
                   selectedSeq={selected}
                   onSelect={(_rank, row) => setSelected(row.seq)}
                   onTotal={setTotal}
                 />
+              ) : view === 'devices' ? (
+                <DevicesView service={service} fileId={fileId} filter={filter} timeMode={timeMode} firstNs={firstNs} onShow={show} />
+              ) : view === 'conversations' ? (
+                <ConversationsView
+                  service={service}
+                  fileId={fileId}
+                  filter={filter}
+                  timeMode={timeMode}
+                  firstNs={firstNs}
+                  fetchPage={fetchPage}
+                  selectedSeq={selected}
+                  onSelect={(row) => setSelected(row.seq)}
+                />
+              ) : view === 'patterns' ? (
+                <PatternsView service={service} fileId={fileId} filter={filter} timeMode={timeMode} firstNs={firstNs} onShow={show} />
+              ) : view === 'addresses' ? (
+                <AddressesView service={service} fileId={fileId} filter={filter} timeMode={timeMode} firstNs={firstNs} />
               ) : (
-                <p className="p-6 text-muted">This view arrives with M2.</p>
+                <QualityView service={service} fileId={fileId} onShow={show} />
               )}
             </main>
-            {showDetail && (
+            {showDetail && (view === 'timeline' || view === 'conversations') && (
               <aside aria-label="Detail" className="flex w-96 shrink-0 flex-col border-l border-line">
                 <DetailPane
                   detail={detail}

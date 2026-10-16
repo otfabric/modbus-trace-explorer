@@ -1,0 +1,186 @@
+{
+  "$defs": {
+    "service.Bucket": {
+      "additionalProperties": false,
+      "properties": {
+        "count": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "hi_ns": {
+          "type": "integer"
+        },
+        "lo_ns": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "count",
+        "hi_ns",
+        "lo_ns"
+      ],
+      "type": "object"
+    },
+    "service.DeviceStats": {
+      "additionalProperties": false,
+      "properties": {
+        "by_function": {
+          "anyOf": [
+            {
+              "additionalProperties": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "by_status": {
+          "anyOf": [
+            {
+              "additionalProperties": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "bytes": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "clients": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "exceptions": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "first_ns": {
+          "type": "integer"
+        },
+        "last_ns": {
+          "type": "integer"
+        },
+        "latency": {
+          "$ref": "#/$defs/service.Distribution"
+        },
+        "rate": {
+          "type": "number"
+        },
+        "reads": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "server": {
+          "type": "string"
+        },
+        "transactions": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "unanswered": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "unit": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "writes": {
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "by_function",
+        "by_status",
+        "bytes",
+        "clients",
+        "exceptions",
+        "first_ns",
+        "last_ns",
+        "rate",
+        "reads",
+        "server",
+        "transactions",
+        "unanswered",
+        "unit",
+        "writes"
+      ],
+      "type": "object"
+    },
+    "service.Distribution": {
+      "additionalProperties": false,
+      "properties": {
+        "count": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "histogram": {
+          "anyOf": [
+            {
+              "items": {
+                "$ref": "#/$defs/service.Bucket"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "max_ns": {
+          "type": "integer"
+        },
+        "min_ns": {
+          "type": "integer"
+        },
+        "p50_ns": {
+          "type": "integer"
+        },
+        "p95_ns": {
+          "type": "integer"
+        },
+        "p99_ns": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "count",
+        "histogram",
+        "max_ns",
+        "min_ns",
+        "p50_ns",
+        "p95_ns",
+        "p99_ns"
+      ],
+      "type": "object"
+    }
+  },
+  "$id": "https://github.com/otfabric/modbus-trace-explorer/docs/schema/devices-1.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Generated from internal/service by internal/engine's TestSchemasUpToDate.",
+  "items": {
+    "$ref": "#/$defs/service.DeviceStats"
+  },
+  "title": "Devices view",
+  "type": "array"
+}

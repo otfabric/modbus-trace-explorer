@@ -156,6 +156,36 @@ func (a *App) Detail(ctx context.Context, id string, seq uint64) (service.Detail
 	return a.svc.Detail(ctx, id, seq)
 }
 
+// Devices aggregates per server and unit.
+func (a *App) Devices(ctx context.Context, id string, f service.Filter) ([]service.DeviceStats, error) {
+	return a.svc.Devices(ctx, id, f)
+}
+
+// Connections lists the connections.
+func (a *App) Connections(ctx context.Context, id string, f service.Filter) ([]service.ConnStats, error) {
+	return a.svc.Connections(ctx, id, f)
+}
+
+// Patterns finds the recurring requests.
+func (a *App) Patterns(ctx context.Context, id string, f service.Filter) ([]service.Pattern, error) {
+	return a.svc.Patterns(ctx, id, f)
+}
+
+// Coverage maps a device's data space.
+func (a *App) Coverage(ctx context.Context, id string, q service.CoverageQuery) (service.CoverageMap, error) {
+	return a.svc.Coverage(ctx, id, q)
+}
+
+// AddressHistory starts reading one address's values.
+func (a *App) AddressHistory(ctx context.Context, id string, q service.HistoryQuery) (service.JobRef, error) {
+	return a.svc.AddressHistory(ctx, id, q)
+}
+
+// Quality lists the quality conditions.
+func (a *App) Quality(ctx context.Context, id string) (service.Quality, error) {
+	return a.svc.Quality(ctx, id)
+}
+
 // ParseFilter parses the filter box.
 func (a *App) ParseFilter(ctx context.Context, id, text string) (service.FilterParse, error) {
 	return a.svc.ParseFilter(ctx, id, text)

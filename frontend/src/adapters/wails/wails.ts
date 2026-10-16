@@ -7,6 +7,14 @@ import { loadTheme, persistTheme } from '../../app/platform/themeStorage';
 import { ServiceError, toServiceError, type ErrorCode, type Service } from '../../app/service/service';
 import type {
   About,
+  ConnStats,
+  CoverageMap,
+  CoverageQuery,
+  DeviceStats,
+  Filter,
+  HistoryQuery,
+  Pattern,
+  Quality,
   AnalyzeConfig,
   Detail,
   ExplorerEvent,
@@ -67,6 +75,12 @@ export class WailsService implements Service {
   overview = (id: string) => call<Overview>('Overview', id);
   detail = (id: string, seq: number) => call<Detail>('Detail', id, seq);
   parseFilter = (id: string, text: string) => call<FilterParse>('ParseFilter', id, text);
+  devices = (id: string, f: Filter) => call<DeviceStats[]>('Devices', id, f);
+  connections = (id: string, f: Filter) => call<ConnStats[]>('Connections', id, f);
+  patterns = (id: string, f: Filter) => call<Pattern[]>('Patterns', id, f);
+  coverage = (id: string, q: CoverageQuery) => call<CoverageMap>('Coverage', id, q);
+  addressHistory = (id: string, q: HistoryQuery) => call<JobRef>('AddressHistory', id, q);
+  quality = (id: string) => call<Quality>('Quality', id);
 
   // A stale request is not cancelled on the Go side (Wails calls are not
   // abortable); its answer is dropped here.

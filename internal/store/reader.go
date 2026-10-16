@@ -89,7 +89,7 @@ type Index struct {
 	// typed views of the columns a filter reads
 	kind, fc, class, status, space, mbcap, exc []uint8
 	device, client, start, count               []uint16
-	conn, flags, lat                           []uint32
+	conn, flags, lat, summary                  []uint32
 	t                                          []int64
 
 	mu    sync.Mutex
@@ -140,7 +140,7 @@ func Open(dir string) (*Index, error) {
 		cols.uint8s("status"), cols.uint8s("space"), cols.uint8s("mbcap")
 	ix.exc = cols.uint8s("exc")
 	ix.device, ix.client, ix.start, ix.count = cols.uint16s("device"), cols.uint16s("client"), cols.uint16s("start"), cols.uint16s("count")
-	ix.conn, ix.flags, ix.lat = cols.uint32s("conn"), cols.uint32s("flags"), cols.uint32s("lat_us")
+	ix.conn, ix.flags, ix.lat, ix.summary = cols.uint32s("conn"), cols.uint32s("flags"), cols.uint32s("lat_us"), cols.uint32s("summary")
 	ix.t = cols.int64s("t_ns")
 	return ix, nil
 }
@@ -157,6 +157,29 @@ func (ix *Index) Close() error {
 	}
 	ix.unmap = nil
 	return err
+}
+
+// Columns are the index's columns as slices indexed by row, for scans
+// that aggregate a selection (the views). They are memory-mapped and
+// read-only: writing to them faults.
+type Columns struct {
+	Kind, FC, Class, Status, Exc, Space  []uint8
+	Device, Client, Start, Count, WStart []uint16
+	WCount, Bytes, RespHash              []uint16
+	Conn, Flags, Lat, Summary            []uint32
+	T                                    []int64
+}
+
+// Columns returns the column slices.
+func (ix *Index) Columns() Columns {
+	c := ix.cols
+	return Columns{
+		Kind: c.uint8s("kind"), FC: c.uint8s("fc"), Class: c.uint8s("class"), Status: c.uint8s("status"), Exc: c.uint8s("exc"),
+		Space: c.uint8s("space"), Device: c.uint16s("device"), Client: c.uint16s("client"), Start: c.uint16s("start"),
+		Count: c.uint16s("count"), WStart: c.uint16s("wstart"), WCount: c.uint16s("wcount"), Bytes: c.uint16s("bytes"),
+		RespHash: c.uint16s("resp_hash"), Conn: c.uint32s("conn"), Flags: c.uint32s("flags"), Lat: c.uint32s("lat_us"),
+		Summary: c.uint32s("summary"), T: c.int64s("t_ns"),
+	}
 }
 
 // Dir returns the index directory.
@@ -271,13 +294,14 @@ type Filter struct {
 	Devices   []bool // indexed by device dictionary index
 	Clients   []bool // indexed by client dictionary index
 	Conns     map[uint32]bool
-	Kinds     []bool // indexed by kind
-	Functions []bool // indexed by function code (256)
-	Statuses  []bool // indexed by status code
-	Classes   []bool // indexed by class code
-	Exc       []bool // indexed by exception code (256)
-	FlagsAll  uint32 // every one of these flags
-	FlagsNone uint32 // none of these flags
+	Kinds     []bool  // indexed by kind
+	Functions []bool  // indexed by function code (256)
+	Statuses  []bool  // indexed by status code
+	Classes   []bool  // indexed by class code
+	Exc       []bool  // indexed by exception code (256)
+	Summary   *uint32 // a transaction's summary dictionary index
+	FlagsAll  uint32  // every one of these flags
+	FlagsNone uint32  // none of these flags
 	FromNS    *int64
 	ToNS      *int64 // exclusive
 	Space     uint8  // 0: any data space
@@ -288,7 +312,7 @@ type Filter struct {
 }
 
 func (f *Filter) txnTerms() bool {
-	return f.Functions != nil || f.Statuses != nil || f.Classes != nil || f.Exc != nil || f.FlagsAll != 0 || f.FlagsNone != 0 ||
+	return f.Functions != nil || f.Statuses != nil || f.Classes != nil || f.Exc != nil || f.Summary != nil || f.FlagsAll != 0 || f.FlagsNone != 0 ||
 		f.Space != 0 || f.Addr
 }
 
@@ -329,6 +353,9 @@ func (ix *Index) pass(f *Filter, i uint32) bool {
 		return false
 	}
 	if f.Classes != nil && (int(ix.class[i]) >= len(f.Classes) || !f.Classes[ix.class[i]]) {
+		return false
+	}
+	if f.Summary != nil && ix.summary[i] != *f.Summary {
 		return false
 	}
 	if f.Exc != nil && (ix.status[i] != excStatus || !f.Exc[ix.exc[i]]) {

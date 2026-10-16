@@ -68,6 +68,9 @@
           },
           "type": "array"
         },
+        "summary": {
+          "type": "string"
+        },
         "to_ns": {
           "type": "integer"
         },

@@ -1,5 +1,13 @@
 import type {
   About,
+  ConnStats,
+  CoverageMap,
+  CoverageQuery,
+  DeviceStats,
+  Filter,
+  HistoryQuery,
+  Pattern,
+  Quality,
   AnalyzeConfig,
   Detail,
   ExplorerEvent,
@@ -57,5 +65,13 @@ export interface Service {
   /** A window of the filtered timeline; abort stale requests with signal. */
   timeline(fileId: string, query: TimelineQuery, signal?: AbortSignal): Promise<TimelinePage>;
   detail(fileId: string, seq: number): Promise<Detail>;
+
+  devices(fileId: string, filter: Filter): Promise<DeviceStats[]>;
+  connections(fileId: string, filter: Filter): Promise<ConnStats[]>;
+  patterns(fileId: string, filter: Filter): Promise<Pattern[]>;
+  coverage(fileId: string, query: CoverageQuery): Promise<CoverageMap>;
+  /** Starts reading one address's values; chunks arrive as "history" events. */
+  addressHistory(fileId: string, query: HistoryQuery): Promise<JobRef>;
+  quality(fileId: string): Promise<Quality>;
   parseFilter(fileId: string, text: string): Promise<FilterParse>;
 }
