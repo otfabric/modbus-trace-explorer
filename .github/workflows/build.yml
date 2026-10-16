@@ -138,6 +138,14 @@ jobs:
           WEBKIT_DISABLE_DMABUF_RENDERER: "1"
           LIBGL_ALWAYS_SOFTWARE: "1"
         run: |
+          if [ "${{ matrix.os }}" = linux ]; then
+            # WebKitGTK sandboxes its web process with bubblewrap, which needs
+            # unprivileged user namespaces. The runner's Ubuntu 24.04 blocks
+            # them through AppArmor (a desktop install allows bwrap with a
+            # profile), and WebKit then aborts. Allow them here rather than
+            # switch the sandbox off, so the test runs the app as users do.
+            sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+          fi
           case "${{ matrix.os }}" in
             linux)   xvfb-run -a dbus-run-session -- out/modbus-trace-explorer -smoke testdata/smoke.pcapng ;;
             darwin)  out/modbus-trace-explorer -smoke testdata/smoke.pcapng ;;
