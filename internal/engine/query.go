@@ -55,9 +55,8 @@ func (e *Engine) Overview(_ context.Context, id string) (service.Overview, error
 		// A capture (R24): its samples are the transactions, its streams
 		// the connections.
 		ov.Capture, ov.Transactions, ov.Connections = facts, facts.Samples, uint64(facts.Streams)
-		exc, unanswered := captureCounts(ix)
 		ov.Quality, ov.QualityCount = "ok", 0
-		for _, c := range captureQuality(facts, exc, unanswered).Conditions {
+		for _, c := range captureQuality(facts, captureExceptions(ix)).Conditions {
 			if c.Count == 0 || c.Severity == "info" {
 				continue
 			}

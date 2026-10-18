@@ -1129,18 +1129,6 @@
             "exception"
           ]
         }
-      },
-      {
-        "code": "unanswered",
-        "label": "Without a response",
-        "count": 0,
-        "severity": "warning",
-        "meaning": "Samples with no response recorded.",
-        "filter": {
-          "statuses": [
-            "unanswered"
-          ]
-        }
       }
     ],
     "facts": [

@@ -234,10 +234,9 @@ read:
 		case capture.End:
 			facts.EndKnown = x.Known
 		case capture.Sample:
-			st, ok := streams[x.Stream]
-			if !ok {
-				return fail(service.Errorf(service.CodeInvalidArgument, "the capture is damaged: sample of unknown stream %d", x.Stream))
-			}
+			// The readers check that a sample's stream and target were
+			// defined before it (a capture's invariants).
+			st := streams[x.Stream]
 			tg := targets[st.Target]
 			row, err := sampleRow(w, h, tg, st, x)
 			if err != nil {
@@ -314,24 +313,20 @@ func sampleRow(w *store.Writer, h capture.Header, tg capture.Target, st capture.
 		r.Sub = *req.Sub
 	}
 	r.Class = store.Code(store.ClassNames[:], string(req.Class))
+	// A capture holds answered requests only (its readers refuse a sample
+	// without a response): a sample is ok or an exception.
 	status := model.StatusOK
-	switch {
-	case len(s.Response) == 0:
-		status = model.StatusUnanswered
-	case s.Response[0]&0x80 != 0:
+	if s.IsException() {
 		status = model.StatusException
 		if len(s.Response) > 1 {
 			r.Exc = s.Response[1]
 		}
 	}
 	r.Status = store.Code(store.StatusNames[:], status)
-	for _, rg := range req.Ranges {
-		switch {
-		case rg.Write && r.Space != 0:
-			r.WStart, r.WCount = rg.Start, rg.Count
-		case r.Space == 0:
-			r.Space, r.Start, r.Count = store.Code(store.SpaceNames[:], string(rg.Space)), rg.Start, rg.Count
-		}
+	// A capture holds reads only (no writes, no FC23): one read range.
+	if len(req.Ranges) > 0 {
+		rg := req.Ranges[0]
+		r.Space, r.Start, r.Count = store.Code(store.SpaceNames[:], string(rg.Space)), rg.Start, rg.Count
 	}
 	r.Bytes = uint16(min(len(s.Request)+len(s.Response), math.MaxUint16))
 	if len(s.Response) > 0 {
@@ -471,25 +466,20 @@ func (t *openTrace) captureADUs(ix *store.Index, i uint32) (req, resp []byte, er
 	return withMBAP(unit, rq), withMBAP(unit, rs), nil
 }
 
-// captureCounts counts a capture's exception and unanswered samples.
-func captureCounts(ix *store.Index) (exceptions, unanswered uint64) {
-	c := ix.Columns()
+// captureExceptions counts a capture's exception responses.
+func captureExceptions(ix *store.Index) (n uint64) {
 	exc := store.Code(store.StatusNames[:], model.StatusException)
-	una := store.Code(store.StatusNames[:], model.StatusUnanswered)
-	for _, st := range c.Status {
-		switch st {
-		case exc:
-			exceptions++
-		case una:
-			unanswered++
+	for _, st := range ix.Columns().Status {
+		if st == exc {
+			n++
 		}
 	}
-	return exceptions, unanswered
+	return n
 }
 
 // captureQuality is the Quality view of a capture: what it records and what
 // may be missing from it.
-func captureQuality(f *service.CaptureFacts, exceptions, unanswered uint64) service.Quality {
+func captureQuality(f *service.CaptureFacts, exceptions uint64) service.Quality {
 	q := service.Quality{Conditions: []service.Condition{}, Facts: []service.Fact{}}
 	add := func(code, label, severity, meaning string, n uint64, flt *service.Filter) {
 		q.Conditions = append(q.Conditions, service.Condition{Code: code, Label: label, Count: n, Severity: severity, Meaning: meaning, Filter: flt})
@@ -509,7 +499,6 @@ func captureQuality(f *service.CaptureFacts, exceptions, unanswered uint64) serv
 	add("end_unknown", "No recorded end", "warning", "The capture was not closed (a crash, or a copy taken while it was recording): its last moment is not known.", b(!f.EndKnown), nil)
 	add("change_only", "Change-only", "info", "Repeated identical responses were not stored: a gap between samples does not mean nothing was asked.", b(f.ChangeOnly), nil)
 	add("exceptions", "Exception responses", "info", "Requests the device answered with an exception.", exceptions, &service.Filter{Statuses: []string{model.StatusException}})
-	add("unanswered", "Without a response", "warning", "Samples with no response recorded.", unanswered, &service.Filter{Statuses: []string{model.StatusUnanswered}})
 	fact := func(label, value string) { q.Facts = append(q.Facts, service.Fact{Label: label, Value: value}) }
 	fact("Encoding", f.Encoding)
 	fact("Producer", f.Producer)

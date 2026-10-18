@@ -377,8 +377,7 @@ func (e *Engine) Quality(_ context.Context, id string) (service.Quality, error) 
 	s, facts := t.sum, t.capture
 	t.mu.Unlock()
 	if facts != nil {
-		exc, unanswered := captureCounts(ix)
-		return captureQuality(facts, exc, unanswered), nil
+		return captureQuality(facts, captureExceptions(ix)), nil
 	}
 	q := service.Quality{Conditions: []service.Condition{}, Facts: []service.Fact{}}
 	if s == nil {
