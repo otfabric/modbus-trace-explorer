@@ -7,6 +7,7 @@ node_modules/
 
 # Coverage reports
 coverage.*
+/frontend/coverage/
 
 # Logs
 *.log

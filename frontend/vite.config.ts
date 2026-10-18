@@ -47,6 +47,14 @@ export default defineConfig(({ mode }) => {
       environment: 'jsdom',
       setupFiles: ['src/test/setup.ts'],
       css: false,
+      // npm run coverage (CI uploads frontend/coverage/lcov.info to Codecov).
+      coverage: {
+        provider: 'v8',
+        include: ['src/app/**/*.{ts,tsx}'],
+        exclude: ['src/**/*.test.{ts,tsx}'],
+        reporter: ['text-summary', 'lcov'],
+        reportsDirectory: 'coverage',
+      },
     },
   };
 });

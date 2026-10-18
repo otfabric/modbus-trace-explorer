@@ -330,4 +330,33 @@ describe('App', () => {
     await user.click(screen.getByRole('button', { name: /Open/ }));
     expect(await screen.findByText(/not a pcap or pcapng file/)).toBeInTheDocument();
   });
+
+  it('resizes the detail pane, and shows background exports and the cache in the status bar', async () => {
+    const user = userEvent.setup();
+    localStorage.removeItem('modbus-trace-explorer.detail-width');
+    render(<App service={new MockService({ rows: 3000, analyzed: true, step: 200 })} platform={platform(['/x/site.pcapng'])} />);
+    await user.click(screen.getByRole('button', { name: /Open/ }));
+    await screen.findByRole('grid', { name: 'Timeline' });
+    const pane = screen.getByRole('complementary', { name: 'Detail' });
+    const handle = screen.getByRole('separator', { name: 'Resize the detail pane' });
+    expect(pane.style.width).toBe('384px');
+    handle.focus();
+    await user.keyboard('{ArrowLeft}{Shift>}{ArrowLeft}{/Shift}');
+    expect(pane.style.width).toBe('464px');
+    await user.keyboard('{End}');
+    expect(pane.style.width).toBe('280px');
+    expect(localStorage.getItem('modbus-trace-explorer.detail-width')).toBe('280');
+    expect(await screen.findByText(/^cache: /)).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: /^Export$/ }));
+    const dialog = await screen.findByRole('dialog', { name: 'Export' });
+    await user.click(within(dialog).getByRole('tab', { name: 'Timeline' }));
+    await user.click(within(dialog).getByRole('button', { name: 'Export…' }));
+    await user.click(await within(dialog).findByRole('button', { name: 'Continue in the background' }));
+    expect(screen.queryByRole('dialog')).toBeNull();
+    const job = await screen.findByRole('status', { name: 'Timeline export running' });
+    await user.click(within(job).getByRole('button', { name: 'Cancel the timeline export' }));
+    expect(await screen.findByText('Timeline export cancelled.')).toBeInTheDocument();
+    expect(screen.queryByRole('status', { name: 'Timeline export running' })).toBeNull();
+  });
 });

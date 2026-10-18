@@ -1,5 +1,27 @@
 # modbus-trace-explorer Releases
 
+## v0.2.0
+
+**Date:** not released yet
+**Previous release:** v0.1.0
+
+## Summary
+
+In progress: opening `.mbcap` captures with the views (R24), the timeline during the import, and smaller improvements.
+
+## Changes
+
+### Added
+
+- **The status bar shows running exports and address histories** with their progress and a Cancel button, the cache's size, and the time zone offset of local time. An export can continue in the background ("Continue in the background" in the Export dialog); the status bar says when it finishes.
+- **The detail pane can be resized**: drag its left edge, or focus the edge and use the arrow keys (Shift for larger steps, Home and End for the limits); double-click restores the default. The width is remembered.
+
+### Changed
+
+- CI uploads the frontend's test coverage to Codecov as well (flag `frontend`), next to the Go coverage (flag `unittests`).
+
+---
+
 ## v0.1.0
 
 **Date:** 2026-10-16
