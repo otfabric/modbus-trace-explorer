@@ -50,6 +50,9 @@ jobs:
     name: Go (tests, coverage, lint, vulnerabilities)
     needs: frontend
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write # Codecov OIDC token exchange, as otfabric/.github go-ci.yml
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-go@v7
@@ -67,6 +70,38 @@ jobs:
       - run: go vet ./...
       - run: make test
       - run: make coverage-check
+      # Coverage to Codecov the way the shared otfabric/.github go-ci.yml
+      # does for the libraries (OIDC, no token secret), also when the gate
+      # above fails, so the report shows what dropped.
+      - name: Coverage summary
+        if: always() && hashFiles('coverage.txt') != ''
+        run: |
+          {
+            echo "## Coverage Report"
+            echo
+            echo '```text'
+            cat coverage.txt
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload coverage artifacts
+        if: always() && hashFiles('coverage.out') != ''
+        uses: actions/upload-artifact@v7
+        with:
+          name: coverage
+          path: |
+            coverage.out
+            coverage.txt
+          retention-days: 7
+      - name: Upload to Codecov
+        if: always() && hashFiles('coverage.out') != ''
+        uses: codecov/codecov-action@v7
+        with:
+          use_oidc: true
+          files: coverage.out
+          flags: unittests
+          name: modbus-trace-explorer
+          fail_ci_if_error: false
+          verbose: true
       - name: golangci-lint (includes the network and Modbus bans)
         uses: golangci/golangci-lint-action@v9
         with:

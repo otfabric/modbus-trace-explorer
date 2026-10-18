@@ -13,6 +13,7 @@ concurrency:
 
 permissions:
   contents: read
+  id-token: write # the build's Codecov upload (OIDC)
 
 jobs:
   # The same checks and builds a release runs, with a version that cannot be
