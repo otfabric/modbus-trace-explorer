@@ -57,7 +57,7 @@ type Phase =
   | { kind: 'empty' }
   | { kind: 'scanning'; file: FileInfo; job: JobState | null; jobId: string }
   | { kind: 'flows'; file: FileInfo; result: ScanResult; warning?: string }
-  | { kind: 'analyzing'; file: FileInfo; job: JobState | null; jobId: string; result?: ScanResult }
+  | { kind: 'analyzing'; file: FileInfo; job: JobState | null; jobId: string; result: ScanResult }
   | { kind: 'preparing'; file: FileInfo; job: JobState | null; jobId: string }
   | { kind: 'importing'; file: FileInfo; job: JobState | null; jobId: string }
   | { kind: 'ready'; file: FileInfo; warning?: string; live?: Live };
@@ -66,7 +66,7 @@ type Phase =
 interface Live {
   jobId: string;
   job: JobState;
-  result?: ScanResult;
+  result: ScanResult;
 }
 
 /** R4: the capture facts behind the file strip. */
@@ -115,6 +115,11 @@ function CaptureFacts({ ov }: { ov: Overview }) {
       )}
     </span>
   );
+}
+
+/** The error of a failed job. */
+function jobFailure(job: JobState): Error {
+  return new Error(job.error?.message ?? 'the job failed');
 }
 
 function FileStrip({ ov, analysing, onQuality, onExport }: { ov: Overview; analysing: boolean; onQuality: () => void; onExport: () => void }) {
@@ -325,12 +330,11 @@ export function App({ service, platform }: AppProps) {
         return;
       }
       if (job.state === 'failed') {
-        fail(new Error(job.error?.message ?? 'the analysis failed'));
+        fail(jobFailure(job));
         return;
       }
       if (job.state === 'canceled') {
-        if (live.result) setPhase({ kind: 'flows', file: cur.file, result: live.result });
-        else setPhase({ kind: 'empty' });
+        setPhase({ kind: 'flows', file: cur.file, result: live.result });
         return;
       }
       setPhase({ kind: 'ready', file: { ...cur.file, analyzed: true }, warning: job.warning });
@@ -357,7 +361,7 @@ export function App({ service, platform }: AppProps) {
       return;
     }
     if (job.state === 'failed') {
-      fail(new Error(job.error?.message ?? 'the job failed'));
+      fail(jobFailure(job));
       return;
     }
     if (cur.kind === 'preparing') {
