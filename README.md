@@ -178,6 +178,8 @@ Start with [AGENTS.md](AGENTS.md), then [docs/REQUIREMENTS.md](docs/REQUIREMENTS
 make frontend-install    # once: npm ci
 make check               # Go and frontend checks
 make build-gui           # ./bin/modbus-trace-explorer (cgo; the platform's webview)
+make bundle-macos        # macOS: bin/Modbus Trace Explorer.app with its icon, ad-hoc signed;
+                         #   then: open "bin/Modbus Trace Explorer.app"
 make smoke               # start it on testdata/smoke.pcapng and wait for the timeline (A15)
 make golden              # rewrite the schemas, the engine fixture and the smoke trace
 make frontend-coverage   # the frontend tests with coverage (frontend/coverage/lcov.info)
