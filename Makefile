@@ -1,4 +1,4 @@
-.PHONY: help all smoke smoke-corpus fuzz check test coverage coverage-check coverage-clean fmt fmt-check vet lint lint-ci vuln mod-check \
+.PHONY: help all smoke smoke-corpus demo-server fuzz check test coverage coverage-check coverage-clean fmt fmt-check vet lint lint-ci vuln mod-check \
 	frontend frontend-install frontend-check frontend-coverage frontend-urls golden scale build build-gui bundle-macos appicon winres spike dev clean
 
 help: ## This help
@@ -102,6 +102,13 @@ build-gui: frontend ## Build the desktop application (needs cgo and the platform
 
 smoke: build-gui ## Start the built application on testdata/smoke.pcapng and wait for its timeline (A15)
 	@bin/$(GUI_NAME) -smoke testdata/smoke.pcapng
+
+demo-server: frontend ## Serve the application to a browser on localhost:18780 on the demo trace (README screenshots and video)
+	@mkdir -p bin
+	@go build -tags server,production $(LDFLAGS) -o bin/$(GUI_NAME)-demo $(GUI_SRC)
+	@rm -rf /tmp/modbus-trace-explorer-demo && mkdir -p /tmp/modbus-trace-explorer-demo
+	@home=$$(mktemp -d) && echo "scratch home $$home; exports go to /tmp/modbus-trace-explorer-demo" && \
+		HOME=$$home MTE_DEMO_SAVE_DIR=/tmp/modbus-trace-explorer-demo WAILS_SERVER_PORT=18780 bin/$(GUI_NAME)-demo testdata/corpus/realistic/site-diagnosis.pcapng
 
 bundle-macos: build-gui ## Wrap the desktop binary in bin/Modbus Trace Explorer.app (macOS, ad-hoc signed)
 	@packaging/macos/bundle.sh bin/$(GUI_NAME) $(VERSION) bin

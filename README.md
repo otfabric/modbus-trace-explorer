@@ -5,15 +5,46 @@
 [![Code Coverage](https://codecov.io/gh/otfabric/modbus-trace-explorer/graph/badge.svg)](https://codecov.io/gh/otfabric/modbus-trace-explorer)
 [![Latest Release](https://img.shields.io/github/v/release/otfabric/modbus-trace-explorer?label=release)](https://github.com/otfabric/modbus-trace-explorer/releases)
 
-A desktop tool to understand Modbus/TCP traffic recorded by someone else. Open a packet trace (pcap or pcapng from tcpdump, Wireshark, dumpcap or tshark), confirm which flows are Modbus, and get a timeline in Modbus terms (connect, read 62 holding registers at 0x1000, write 1 register, exception, no response, disconnect), with breakdowns per device, unit, connection, poll pattern and address, a detail view down to the bytes and packets, and exports:
+**Open a packet trace of Modbus/TCP traffic and see it in Modbus terms: every request with its response, per device, per poll and per register, then export the real traffic to replay as a simulated device.**
 
-- **MBCAP**, so a passive capture of a real installation can be replayed as a virtual device with [`modbusctl server replay`](https://github.com/otfabric/modbusctl);
-- the timeline as CSV or JSON Lines;
-- a filtered sub-trace as pcapng.
+Built by OT Fabric on [go-modbus-trace](https://github.com/otfabric/go-modbus-trace). MIT licensed. Reads pcap and pcapng from tcpdump, Wireshark, dumpcap or tshark, and MBCAP captures. It never talks to devices, never writes to Modbus and does not capture live. The current release is on the [releases page](https://github.com/otfabric/modbus-trace-explorer/releases/latest).
 
-It does not capture live (use tcpdump or Wireshark), never talks to devices and never writes to Modbus. All trace understanding is in the library [go-modbus-trace](https://github.com/otfabric/go-modbus-trace), whose CLI `mbtracectl` is the headless way to do the same on a gateway or in CI.
+![A two-minute demo: open a trace, find slow devices, poll problems and wrong registers, export a device for replay](docs/media/demo.gif)
 
-**Status: version 0.1 released; v0.2 in progress** (see [RELEASE.md](RELEASE.md)).
+*The demo above, in full quality: [`docs/media/demo.mp4`](docs/media/demo.mp4) (two minutes, on the synthetic trace [`testdata/corpus/realistic/site-diagnosis.pcapng`](testdata/corpus/realistic/site-diagnosis.pcapng)).*
+
+## What it is for
+
+### 1. Find what goes wrong between a Modbus client and its devices
+
+Data arrives late, values are missing, a gateway is overloaded, a register reads garbage. A packet tool shows each packet in turn; the question is about devices, polls and registers. Here a trace becomes:
+
+- **Latency per device and unit**, with quantiles and a histogram: which device, or which unit behind a gateway, holds up the cycle.
+- **Poll plans per client**: what each client reads, how often and how regularly (interval, jitter), how often the answer changes. Duplicate polling, polls faster than the data changes, and cycles that stretch past their interval show up at once.
+- **Exceptions, no responses and gateway errors**, filterable (`status:exception`, `unit:4`, `addr:holding/4096-4160`) and explained in words.
+- **Wrong registers**: what was actually read and written per device, and the values of one register over time with the writes marked.
+- **Connections**: which side is the server, when connections open, reset and come back, gaps and retransmissions, and what the capture itself missed.
+
+### 2. Real data for a simulator or digital twin
+
+Recorded traffic beats invented test data. Export what devices really answered, for everything, the current filter or one device, as an **MBCAP capture**; the preview says what goes in and why the rest stays out before anything is written. [`modbusctl server replay`](https://github.com/otfabric/modbusctl) then serves those answers as a simulated device, for testing a client, a dashboard or an integration without the real installation. The Explorer opens MBCAP files too, to see what a replay will serve.
+
+The timeline also exports as CSV or JSON Lines, and a filtered sub-trace as pcapng.
+
+| | |
+|---|---|
+| ![The timeline with a transaction decoded](docs/images/timeline.png) | ![Latency per device and unit](docs/images/devices.png) |
+| **The timeline**: one row per transaction, request and response together, with function, registers, result and latency; the detail decodes both PDUs field by field, down to the bytes and the packets. | **Devices**: transactions, exceptions, no responses and latency quantiles per server and unit. Here, meters behind an RTU gateway answer in 90 to 400 ms and one is offline. |
+| ![Poll plans per client](docs/images/patterns.png) | ![Exceptions filtered in the timeline](docs/images/exceptions.png) |
+| **Patterns**: each client's polls with interval and jitter. An EMS reads the inverter every 250 ms on top of the SCADA's 1 s poll; the meter cycle meant for 1 s takes 1.6 s. | **Filters** in a short grammar or with controls. `status:exception` shows a SCADA reading 40001, a 4x address on a 0-based map: illegal data address. |
+| ![Coverage and the history of one register](docs/images/addresses.png) | ![Connections with roles, resets and gaps](docs/images/conversations.png) |
+| **Addresses**: what was read and written per device, and one register's values over time with the writes marked. Observed traffic, not a register map. | **Conversations**: every connection with its role, duration, how it ended, gaps and flags, and its own timeline. |
+| ![The MBCAP export with its preview](docs/images/export.png) | ![The export written, with the replay commands](docs/images/export-written.png) |
+| **Export** one device as MBCAP, labelled; the preview counts the samples and every exclusion with its reason. | **Replay it**: the dialog gives the `mbcapctl verify` and `modbusctl server replay` commands and their caveats. |
+
+Also: the [Flows step](docs/images/flows.png) that proposes the Modbus flows of a trace; the [Quality view](docs/images/quality.png) with every condition the library counted; large traces (the timeline appears while the analysis runs; a million rows page, filter and sort in milliseconds); ring-buffer files opened together and gzip traces as they are; a [light theme](docs/images/light.png) and full keyboard navigation.
+
+The trace understanding is the library [go-modbus-trace](https://github.com/otfabric/go-modbus-trace), whose CLI `mbtracectl` does the same headless, on a gateway or in CI.
 
 ## Install
 
@@ -147,7 +178,7 @@ Open the file, or select all the files of a ring buffer together: they are read 
 
 ## Sample files
 
-`testdata/corpus` has synthetic traces and captures to try the Explorer with, no capture of your own needed: `realistic/plant-scada.pcapng` (a small plant, 15 minutes), its ring-buffer parts, its MBCAP exports, `realistic/rtu-gateway.pcap` and `realistic/function-tour.pcapng`, plus hard and broken files; its README describes each one.
+`testdata/corpus` has synthetic traces and captures to try the Explorer with, no capture of your own needed: `realistic/site-diagnosis.pcapng` (the demo's site with its problems, 10 minutes), `realistic/plant-scada.pcapng` (a small plant, 15 minutes), its ring-buffer parts, its MBCAP exports, `realistic/rtu-gateway.pcap` and `realistic/function-tour.pcapng`, plus hard and broken files; its README describes each one.
 
 ## A short tour
 
@@ -191,7 +222,10 @@ make smoke-corpus        # the built application on every file of testdata/corpu
 make fuzz                # fuzz the engine with mutated corpus files (FUZZTIME=5m)
 cd frontend && npm run dev   # the user interface over the mock engine, in a browser (?rows=10000000, ?empty)
 make spike               # the M0 index measurements (SPIKE_ROWS, default 10,000,000)
+make demo-server         # the application served to a browser on localhost:18780, on the demo trace
 ```
+
+The screenshots and the demo video above are made by [`docs/media/record-demo.mjs`](docs/media/record-demo.mjs) against `make demo-server` (usage in its header): rerun it when the user interface changes visibly.
 
 ## License
 

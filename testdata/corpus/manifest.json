@@ -518,5 +518,17 @@
     "kind": "trace",
     "expect": "ok",
     "min_transactions": 400
+  },
+  {
+    "file": "realistic/site-diagnosis.pcapng",
+    "category": "realistic",
+    "about": "The demo and screenshot trace: 10 minutes of a site with the usual problems. SCADA polls a PV inverter, a battery and four energy meters behind a Modbus/TCP-to-RTU gateway; an EMS polls the inverter's block again every 250 ms (duplicate polling); the gateway's meters answer in 90 to 400 ms and meter 4 is offline (exception 0x0B after the gateway's 1 s timeout), so the SCADA's 1 s cycle stretches to about 1.5 s; meter 2 misses a poll now and then; SCADA reads the battery at 40001 (a 4x-offset mistake, illegal data address); an HMI writes the battery's setpoint every two minutes, once out of range (illegal data value); the EMS resets its connection once; one retransmission.",
+    "kind": "trace",
+    "expect": "ok",
+    "min_transactions": 4000,
+    "quality": {
+      "retransmitted": 1,
+      "unanswered": 5
+    }
   }
 ]

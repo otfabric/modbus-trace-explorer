@@ -282,47 +282,15 @@ func (a *App) ClearRecent(ctx context.Context) error {
 	return err
 }
 
-// saveFilters are the Save dialog's file types per export kind.
-var saveFilters = map[string][2]string{
-	"mbcap":  {"MBCAP capture", "*.mbcap"},
-	"jsonl":  {"JSON Lines", "*.jsonl"},
-	"csv":    {"CSV", "*.csv"},
-	"pcapng": {"pcapng trace", "*.pcapng"},
-	"json":   {"JSON", "*.json"},
-}
-
 // ChooseSave asks where to save a file with the native dialog, proposing
 // name; it returns "" when the user cancels.
-func (a *App) ChooseSave(name, kind string) (string, error) {
-	app := application.Get()
-	if app == nil {
-		return "", service.Errorf(service.CodeInternal, "no application")
-	}
-	d := app.Dialog.SaveFile().SetFilename(name).CanCreateDirectories(true)
-	if f, ok := saveFilters[kind]; ok {
-		d = d.AddFilter(f[0], f[1])
-	}
-	path, err := d.AddFilter("All files", "*.*").PromptForSingleSelection()
-	if err != nil {
-		return "", service.Wrap(service.CodeInternal, err, "save dialog")
-	}
-	return path, nil
-}
+func (a *App) ChooseSave(name, kind string) (string, error) { return saveDialog(name, kind) }
 
 // ChooseTraces lets the user pick trace files with the native dialog; it
 // returns nothing when the user cancels. Several files are one trace.
 func (a *App) ChooseTraces() ([]string, error) {
-	app := application.Get()
-	if app == nil {
-		return nil, service.Errorf(service.CodeInternal, "no application")
-	}
-	paths, err := app.Dialog.OpenFile().SetTitle("Open trace").CanChooseFiles(true).
-		AddFilter("Packet traces and MBCAP captures", "*.pcap;*.pcapng;*.cap;*.gz;*.mbcap;*.jsonl;*.csv").AddFilter("All files", "*.*").
-		PromptForMultipleSelection()
-	if err != nil {
-		return nil, service.Wrap(service.CodeInternal, err, "open dialog")
-	}
-	return Usable(paths), nil
+	paths, err := openDialog()
+	return Usable(paths), err
 }
 
 // OpenExternal opens an https link in the user's browser.

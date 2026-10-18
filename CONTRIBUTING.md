@@ -21,6 +21,8 @@ make build-gui               # ./bin/modbus-trace-explorer
 cd frontend && npm run dev  # the user interface over the mock Service, in a browser
 ```
 
+The README's screenshots and demo video are made by `docs/media/record-demo.mjs` (usage in its header) against `make demo-server`: rerun it when the user interface changes visibly.
+
 Run `make` (or `make help`) for the full list of targets. A fresh checkout compiles and tests without a frontend build (the embed holds a placeholder); a binary needs `make frontend` first.
 
 ## Rules
