@@ -56,6 +56,8 @@ export interface JobState {
   rate: number;
   error?: { code: string; message: string };
   warning?: string;
+  /** The rows analysed so far can be shown (R21): the index grows until the analysis ends. */
+  ready?: boolean;
 }
 
 export interface ExplorerEvent {

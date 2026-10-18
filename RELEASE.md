@@ -7,7 +7,7 @@
 
 ## Summary
 
-In progress: opening `.mbcap` captures with the views (R24), the timeline during the import, and smaller improvements.
+Opening `.mbcap` captures with the views (R24), the timeline while the analysis runs, a test corpus, and smaller improvements.
 
 ## Changes
 
@@ -16,7 +16,7 @@ In progress: opening `.mbcap` captures with the views (R24), the timeline during
 - **Open MBCAP captures** (R24): `.mbcap`, `.mbcap.jsonl` and `.mbcap.csv` open read-only, by themselves, without a Flows step. The samples are the timeline (the target as the device, the stream as the connection), each decoded in the detail pane; Devices, Conversations (streams), Patterns, Addresses with the value history of an address, and Quality with the capture's own facts (producer, tick, start, provenance, change-only, a missing end or a cut file) work as for a trace. Captures have no exports and no frame numbers. On macOS, `.mbcap` files open with the application.
 - **The status bar shows running exports and address histories** with their progress and a Cancel button, the cache's size, and the time zone offset of local time. An export can continue in the background ("Continue in the background" in the Export dialog); the status bar says when it finishes.
 - **The detail pane can be resized**: drag its left edge, or focus the edge and use the arrow keys (Shift for larger steps, Home and End for the limits); double-click restores the default. The width is remembered.
-
+- **The timeline appears while the analysis runs**: the rows analysed so far can be scrolled, filtered, sorted and opened in the detail pane, and the views show them, with a banner giving the progress and Cancel; the timeline grows in place and is complete at the end. Exports wait for the end. The analysis stays above R21's 50 MB/s (66 MB/s at a million transactions).
 - **A test corpus** in `testdata/corpus`: realistic traces and captures (a plant, a ring buffer, a gateway, every function code; also for screenshots and demos), hard but valid input, and broken files, each with how the application must take it, checked by the engine tests, a fuzz test and the built application in CI.
 
 ### Fixed

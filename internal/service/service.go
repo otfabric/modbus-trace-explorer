@@ -178,6 +178,9 @@ type JobState struct {
 	Rate    int64  `json:"rate"`  // bytes per second
 	Error   *Error `json:"error,omitempty"`
 	Warning string `json:"warning,omitempty"` // a finished job's caveat (for example a damaged tail)
+	// Ready: the rows analysed so far can be shown (R21): the trace's
+	// index is a snapshot that grows until the analysis ends.
+	Ready bool `json:"ready,omitempty"`
 }
 
 // Event is what Subscribe delivers.

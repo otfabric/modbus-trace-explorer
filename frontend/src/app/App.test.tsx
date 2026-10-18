@@ -5,7 +5,7 @@ import type { MenuAction, Platform } from './platform/platform';
 import { act } from 'react';
 import { App } from './App';
 import { MockService } from './service/mock';
-import type { JobRef } from './service/types';
+import type { AnalyzeConfig, JobRef } from './service/types';
 
 const copied: string[] = [];
 let menu: ((a: MenuAction) => void) | null = null;
@@ -429,5 +429,72 @@ describe('App', () => {
     const button = await screen.findByRole('button', { name: /^Export$/ });
     expect(button).toBeDisabled();
     expect(button).toHaveAttribute('title', 'Exports read the trace, which is not at its path');
+  });
+
+  it('shows the timeline while the analysis runs, then the whole trace (R21)', async () => {
+    const user = userEvent.setup();
+    render(<App service={new MockService({ rows: 5000, step: 250 })} platform={platform(['/x/site.pcapng'])} />);
+    await user.click(screen.getByRole('button', { name: /Open/ }));
+    await user.click(await screen.findByRole('button', { name: 'Analyze 2 flows' }, { timeout: 5000 }));
+    // The rows so far, with the analysis still running.
+    const banner = await screen.findByRole('status', { name: 'Analysis running' }, { timeout: 3000 });
+    expect(banner).toHaveTextContent(/Analysing the trace: \d+%/);
+    const grid = screen.getByRole('grid', { name: 'Timeline' });
+    expect(Number(grid.getAttribute('aria-rowcount'))).toBeLessThan(5001);
+    expect(screen.getByRole('button', { name: /^Export$/ })).toBeDisabled();
+    expect(screen.getByRole('button', { name: /^Export$/ })).toHaveAttribute('title', 'Exports wait for the analysis to finish');
+    // The rows grow in place while it runs (a refresh a second), and at
+    // the end the whole trace is there.
+    const before = Number(grid.getAttribute('aria-rowcount'));
+    await waitFor(
+      () => {
+        expect(screen.getByRole('status', { name: 'Analysis running' })).toBeInTheDocument();
+        expect(Number(grid.getAttribute('aria-rowcount'))).toBeGreaterThan(before);
+      },
+      { timeout: 3000 },
+    );
+    await waitFor(() => expect(grid).toHaveAttribute('aria-rowcount', '5001'), { timeout: 5000 });
+    await waitFor(() => expect(screen.queryByRole('status', { name: 'Analysis running' })).toBeNull());
+    expect(screen.getByRole('button', { name: /^Export$/ })).toBeEnabled();
+    await user.click(screen.getByRole('button', { name: /^Quality:/ }));
+    expect(await screen.findByRole('region', { name: 'Conditions' })).toBeInTheDocument();
+  }, 15_000);
+
+  it('shows a failure of the analysis behind the rows (without a message), and a progress without a total', async () => {
+    let fail = () => {};
+    let stall = () => {};
+    class Failing extends MockService {
+      override async analyze(fileId: string, cfg: AnalyzeConfig): Promise<JobRef> {
+        const ref = await super.analyze(fileId, cfg);
+        const job = { id: ref.id, kind: 'analyze' as const, file: 'mock', phase: 'analyze', read: 0, total: 0, rows: 7, rate: 0 };
+        stall = () => {
+          for (const l of this.listeners) l({ kind: 'job', job: { ...job, state: 'running', ready: true } });
+        };
+        fail = () => {
+          for (const l of this.listeners) l({ kind: 'job', job: { ...job, state: 'failed' } });
+        };
+        return ref;
+      }
+    }
+    const user = userEvent.setup();
+    render(<App service={new Failing({ rows: 5000, step: 80 })} platform={platform(['/x/site.pcapng'])} />);
+    await user.click(screen.getByRole('button', { name: /Open/ }));
+    await user.click(await screen.findByRole('button', { name: 'Analyze 2 flows' }, { timeout: 3000 }));
+    const banner = await screen.findByRole('status', { name: 'Analysis running' }, { timeout: 3000 });
+    act(() => stall());
+    expect(banner).toHaveTextContent('Analysing the trace: 7 rows so far.');
+    act(() => fail());
+    expect(await screen.findByText(/the job failed/)).toBeInTheDocument();
+    expect(banner).not.toBeInTheDocument();
+  });
+
+  it('cancels a running analysis from its banner back to the Flows step', async () => {
+    const user = userEvent.setup();
+    render(<App service={new MockService({ rows: 5000, step: 80 })} platform={platform(['/x/site.pcapng'])} />);
+    await user.click(screen.getByRole('button', { name: /Open/ }));
+    await user.click(await screen.findByRole('button', { name: 'Analyze 2 flows' }, { timeout: 3000 }));
+    const banner = await screen.findByRole('status', { name: 'Analysis running' }, { timeout: 3000 });
+    await user.click(within(banner).getByRole('button', { name: 'Cancel' }));
+    expect(await screen.findByRole('button', { name: 'Analyze 2 flows' }, { timeout: 3000 })).toBeInTheDocument();
   });
 });

@@ -58,6 +58,26 @@ describe('MockService', () => {
     expect(seen.at(-1)?.job?.state).toBe('canceled');
   });
 
+  it('shows the rows analysed so far while an analysis runs, and locates in a selection', async () => {
+    const live = new MockService({ rows: 1000, step: 1 });
+    const totals: number[] = [];
+    let ready = false;
+    live.subscribe((e) => {
+      if (e.job?.ready && !ready) {
+        ready = true;
+        void live.timeline('mock', { filter: {}, order: 'time', desc: false, offset: 0, limit: 1 }).then((p) => totals.push(p.total));
+      }
+    });
+    await live.analyze('mock', { flows: [1], server_ports: [502], servers: [] });
+    await new Promise((r) => setTimeout(r, 200));
+    expect(totals[0]).toBeGreaterThan(0);
+    expect(totals[0]).toBeLessThan(1000);
+    expect((await live.timeline('mock', { filter: {}, order: 'time', desc: false, offset: 0, limit: 1 })).total).toBe(1000);
+    const writes = await svc.timeline('mock', { filter: { classes: ['write'] }, order: 'time', desc: false, offset: 0, limit: 5 });
+    const at = await svc.locate('mock', { filter: { classes: ['write'] }, order: 'time', desc: false, t_ns: writes.rows[2]?.t_ns });
+    expect(at).toMatchObject({ found: true, rank: 2, seq: writes.rows[2]?.seq });
+  });
+
   it('parses a subset of the filter grammar and reports bad terms', async () => {
     const res = await svc.parseFilter('mock', 'unit:1,2 fc:3 -flag:retransmitted color:red -unit:1');
     expect(res.filter).toMatchObject({ units: [1, 2], functions: [3], not_flags: ['retransmitted'] });

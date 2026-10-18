@@ -51,7 +51,7 @@ Server ports to analyze: [502, 1502, 5021 ]  (found: 502, 1502, 5021)
                                                                                    [Cancel]  [Analyze 2 flows]
 ```
 
-Rows are selectable; the role override ("this endpoint is the server") is in the row menu; rows classed TLS or other are unchecked and explained. If exactly one server port group is Modbus-like, the dialog shows a single primary button. Analyzing shows progress with Cancel, and the main screen appears when the first rows are available (SHOULD) or at the end.
+Rows are selectable; the role override ("this endpoint is the server") is in the row menu; rows classed TLS or other are unchecked and explained. If exactly one server port group is Modbus-like, the dialog shows a single primary button. Analyzing shows progress with Cancel, and the main screen appears when the first rows are available (SHOULD; v0.2), with a banner giving the progress and Cancel until the analysis ends, or at the end.
 
 **Errors** (plain language, with a next step): "No Modbus/TCP found. The trace has 3 TCP flows on ports 22, 443 and 8080. If your devices use another port, enter it above." / "This trace contains Modbus/TCP Security (TLS) on port 802; the payload is encrypted and cannot be decoded." / "The capture ends in the middle of a packet; the rest of the file was read." / "Link type 105 (IEEE 802.11) is not supported." / "This file is not a pcap or pcapng file (it starts with 50 4b 03 04, which looks like a ZIP archive)."
 

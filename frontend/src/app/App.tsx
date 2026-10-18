@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { AboutDialog } from './components/AboutDialog';
-import { Chip } from './components/ui';
+import { Button, Chip } from './components/ui';
 import { DetailPane } from './components/DetailPane';
 import { EmptyState } from './components/EmptyState';
 import { ExportDialog } from './components/ExportDialog';
@@ -57,10 +57,17 @@ type Phase =
   | { kind: 'empty' }
   | { kind: 'scanning'; file: FileInfo; job: JobState | null; jobId: string }
   | { kind: 'flows'; file: FileInfo; result: ScanResult; warning?: string }
-  | { kind: 'analyzing'; file: FileInfo; job: JobState | null; jobId: string; result?: ScanResult }
+  | { kind: 'analyzing'; file: FileInfo; job: JobState | null; jobId: string; result: ScanResult }
   | { kind: 'preparing'; file: FileInfo; job: JobState | null; jobId: string }
   | { kind: 'importing'; file: FileInfo; job: JobState | null; jobId: string }
-  | { kind: 'ready'; file: FileInfo; warning?: string };
+  | { kind: 'ready'; file: FileInfo; warning?: string; live?: Live };
+
+/** An analysis still running while its rows are shown (R21). */
+interface Live {
+  jobId: string;
+  job: JobState;
+  result: ScanResult;
+}
 
 /** R4: the capture facts behind the file strip. */
 function CaptureFacts({ ov }: { ov: Overview }) {
@@ -110,7 +117,12 @@ function CaptureFacts({ ov }: { ov: Overview }) {
   );
 }
 
-function FileStrip({ ov, onQuality, onExport }: { ov: Overview; onQuality: () => void; onExport: () => void }) {
+/** The error of a failed job. */
+function jobFailure(job: JobState): Error {
+  return new Error(job.error?.message ?? 'the job failed');
+}
+
+function FileStrip({ ov, analysing, onQuality, onExport }: { ov: Overview; analysing: boolean; onQuality: () => void; onExport: () => void }) {
   const badge = { ok: 'Quality: OK', warnings: `Quality: ${ov.quality_count} warnings`, problems: `Quality: ${ov.quality_count} problems` }[ov.quality];
   return (
     <div className="flex shrink-0 flex-wrap items-center gap-x-6 gap-y-1 border-b border-line px-4 py-2 font-mono text-[13px]">
@@ -153,9 +165,15 @@ function FileStrip({ ov, onQuality, onExport }: { ov: Overview; onQuality: () =>
         <button
           type="button"
           onClick={onExport}
-          disabled={ov.trace_missing || ov.capture !== undefined}
+          disabled={ov.trace_missing || ov.capture !== undefined || analysing}
           title={
-            ov.capture ? 'Exports work on traces; this is already a capture' : ov.trace_missing ? 'Exports read the trace, which is not at its path' : 'Export (Ctrl/Cmd+E)'
+            analysing
+              ? 'Exports wait for the analysis to finish'
+              : ov.capture
+                ? 'Exports work on traces; this is already a capture'
+                : ov.trace_missing
+                  ? 'Exports read the trace, which is not at its path'
+                  : 'Export (Ctrl/Cmd+E)'
           }
           className="inline-flex items-center gap-1 hover:text-accent disabled:cursor-not-allowed disabled:opacity-50"
         >
@@ -244,15 +262,20 @@ export function App({ service, platform }: AppProps) {
 
   // A trace is ready: its overview, and a fresh view state.
   const ready = useCallback(
-    (file: FileInfo, warning?: string) => {
+    (file: FileInfo, warning?: string, live?: Live) => {
       setFilter({});
       setSelected(null);
       setDetail(null);
-      setPhase({ kind: 'ready', file, warning });
+      setPhase({ kind: 'ready', file, warning, live });
       service.overview(file.id).then(setOverview, fail);
     },
     [service, fail],
   );
+  // Rows arriving during the analysis: the shown page and the file strip
+  // are fetched again (at most once a second); the views at its end.
+  const [refresh, setRefresh] = useState(0);
+  const [viewsVersion, setViewsVersion] = useState(0);
+  const lastRefresh = useRef(0);
 
   const open = useCallback(
     async (paths: string[]) => {
@@ -294,6 +317,32 @@ export function App({ service, platform }: AppProps) {
   const onJob = useRef<(job: JobState) => void>(() => {});
   onJob.current = (job: JobState) => {
     const cur = phaseRef.current;
+    if (cur.kind === 'ready' && cur.live && job.id === cur.live.jobId) {
+      // The analysis behind the rows shown goes on, ends, fails or is cancelled.
+      const live = cur.live;
+      if (job.state === 'running') {
+        setPhase({ ...cur, live: { ...live, job } });
+        if (Date.now() - lastRefresh.current >= 1000) {
+          lastRefresh.current = Date.now();
+          setRefresh((n) => n + 1);
+          service.overview(cur.file.id).then(setOverview, () => {});
+        }
+        return;
+      }
+      if (job.state === 'failed') {
+        fail(jobFailure(job));
+        return;
+      }
+      if (job.state === 'canceled') {
+        setPhase({ kind: 'flows', file: cur.file, result: live.result });
+        return;
+      }
+      setPhase({ kind: 'ready', file: { ...cur.file, analyzed: true }, warning: job.warning });
+      setRefresh((n) => n + 1);
+      setViewsVersion((n) => n + 1);
+      service.overview(cur.file.id).then(setOverview, fail);
+      return;
+    }
     if ((cur.kind !== 'scanning' && cur.kind !== 'analyzing' && cur.kind !== 'preparing' && cur.kind !== 'importing') || job.id !== cur.jobId) {
       if (job.state !== 'running') {
         earlyEnds.current.set(job.id, job);
@@ -302,11 +351,17 @@ export function App({ service, platform }: AppProps) {
       return;
     }
     if (job.state === 'running') {
+      if (cur.kind === 'analyzing' && job.ready) {
+        // The first rows can be shown: the timeline opens while the analysis goes on.
+        lastRefresh.current = Date.now();
+        ready(cur.file, undefined, { jobId: cur.jobId, job, result: cur.result });
+        return;
+      }
       setPhase({ ...cur, job });
       return;
     }
     if (job.state === 'failed') {
-      fail(new Error(job.error?.message ?? 'the job failed'));
+      fail(jobFailure(job));
       return;
     }
     if (cur.kind === 'preparing') {
@@ -374,7 +429,7 @@ export function App({ service, platform }: AppProps) {
         closeTrace();
         break;
       case 'export':
-        if (ready && phaseRef.current.kind === 'ready' && phaseRef.current.file.kind !== 'capture') setDialog('export');
+        if (ready && phaseRef.current.kind === 'ready' && phaseRef.current.file.kind !== 'capture' && !phaseRef.current.live) setDialog('export');
         break;
       case 'settings':
         setDialog('settings');
@@ -487,7 +542,7 @@ export function App({ service, platform }: AppProps) {
         void platform.chooseTraces().then(open);
       } else if (mod && e.key.toLowerCase() === 'e') {
         e.preventDefault();
-        if (phaseRef.current.kind === 'ready' && phaseRef.current.file.kind !== 'capture') setDialog('export');
+        if (phaseRef.current.kind === 'ready' && phaseRef.current.file.kind !== 'capture' && !phaseRef.current.live) setDialog('export');
       } else if (mod && e.key === ',') {
         e.preventDefault();
         setDialog('settings');
@@ -550,7 +605,19 @@ export function App({ service, platform }: AppProps) {
     case 'ready':
       body = (
         <>
-          {overview && <FileStrip ov={overview} onQuality={() => setView('quality')} onExport={() => setDialog('export')} />}
+          {overview && <FileStrip ov={overview} analysing={phase.live !== undefined} onQuality={() => setView('quality')} onExport={() => setDialog('export')} />}
+          {phase.live && (
+            <div role="status" aria-label="Analysis running" className="flex shrink-0 items-center gap-3 border-b border-line bg-accent-soft px-4 py-1.5 text-[13px] text-accent-strong">
+              <span>
+                Analysing the trace: {phase.live.job.total > 0 ? `${Math.round((100 * phase.live.job.read) / phase.live.job.total)}%, ` : ''}
+                {formatCount(phase.live.job.rows)} rows so far. The timeline grows as the analysis goes on; the views and filters cover the rows so far, exports wait
+                for the end.
+              </span>
+              <Button className="ml-auto" onClick={() => phase.live && void service.cancelJob(phase.live.jobId)}>
+                Cancel
+              </Button>
+            </div>
+          )}
           {phase.warning && (
             <p role="alert" className="flex shrink-0 items-center gap-2 border-b border-line px-4 py-1 text-wire">
               <WarningIcon size={14} /> {phase.warning}
@@ -584,7 +651,8 @@ export function App({ service, platform }: AppProps) {
                 </button>
               ))}
             </nav>
-            <main className="flex min-w-0 flex-1 flex-col">
+            {/* The views read the index when they open: they open again when an analysis ends. */}
+            <main key={view === 'timeline' ? 'timeline' : `view-${viewsVersion}`} className="flex min-w-0 flex-1 flex-col">
               {view === 'timeline' ? (
                 <TimelineTable
                   fetchPage={fetchPage}
@@ -600,6 +668,7 @@ export function App({ service, platform }: AppProps) {
                     setTotalKnown(true);
                   }}
                   goTo={goTo}
+                  refresh={refresh}
                 />
               ) : view === 'devices' ? (
                 <DevicesView service={service} fileId={fileId} filter={filter} timeMode={timeMode} firstNs={firstNs} onShow={show} />

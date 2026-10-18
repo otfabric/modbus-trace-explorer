@@ -47,20 +47,22 @@ type cacheEntry struct {
 // NewCache opens (or creates) the cache at root, 0700. now is the clock for
 // the last-use times (time.Now outside tests).
 func NewCache(root string, capBytes int64, now func() time.Time) (*Cache, error) {
-	if err := os.MkdirAll(root, DirMode); err != nil {
-		return nil, err
+	err := os.MkdirAll(root, DirMode)
+	if err == nil {
+		err = os.Chmod(root, DirMode) // an existing directory too
 	}
-	if err := os.Chmod(root, DirMode); err != nil {
+	if err != nil {
 		return nil, err
 	}
 	if capBytes <= 0 {
 		capBytes = DefaultCap
 	}
 	c := &Cache{root: root, now: now, inUse: map[string]int{}, capped: capBytes}
-	// Imports and decompressions that a crash or a kill left behind.
+	// Imports, decompressions and live snapshots that a crash or a kill
+	// left behind.
 	ents, _ := os.ReadDir(root)
 	for _, e := range ents {
-		if strings.HasSuffix(e.Name(), ".partial") {
+		if strings.HasSuffix(e.Name(), ".partial") || strings.Contains(e.Name(), ".live-") {
 			_ = os.RemoveAll(filepath.Join(root, e.Name()))
 		}
 	}
@@ -163,6 +165,13 @@ func (c *Cache) Commit(fp string, w *Writer, meta Meta, docs map[string]any) err
 	return c.Evict()
 }
 
+// LiveDir is the directory of snapshot k of the import of fp (an index
+// readable while it is written); the engine removes it when the import
+// ends, and a start removes any a crash left.
+func (c *Cache) LiveDir(fp string, k int) string {
+	return filepath.Join(c.root, fmt.Sprintf("ix-%s.live-%d", fp, k))
+}
+
 // Hold marks an entry (a fingerprint's index and its decompressed trace)
 // as in use until the returned release is called: it is not evicted.
 func (c *Cache) Hold(fp string) func() {
@@ -230,7 +239,7 @@ func (c *Cache) entries() []entry {
 	var out []entry
 	for _, e := range ents {
 		name := e.Name()
-		if name == "index.json" || strings.HasSuffix(name, ".partial") {
+		if name == "index.json" || strings.HasSuffix(name, ".partial") || strings.Contains(name, ".live-") {
 			continue
 		}
 		fp := strings.TrimPrefix(strings.TrimPrefix(name, "ix-"), "gz-")

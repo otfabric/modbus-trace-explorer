@@ -34,10 +34,19 @@ type mapped struct {
 	unmap []func() error
 }
 
-func mapColumns(dir string, n uint64) (*mapped, error) {
+// errShort: a file holds fewer bytes than the rows need.
+var errShort = errors.New("store: file shorter than its rows")
+
+// mapColumnsOf maps the column files for n rows; prefix maps only those
+// rows of files that may be longer (still being written).
+func mapColumnsOf(dir string, n uint64, prefix bool) (*mapped, error) {
 	m := &mapped{n: n, cols: map[string][]byte{}}
 	for _, c := range columns {
-		b, un, err := mapFile(filepath.Join(dir, "col", c.name+".bin"))
+		want := int64(-1)
+		if prefix {
+			want = int64(n) * int64(c.width)
+		}
+		b, un, err := mapPrefix(filepath.Join(dir, "col", c.name+".bin"), want)
 		if err != nil {
 			m.close()
 			return nil, err
@@ -117,7 +126,15 @@ func (ix *Index) Acquire() bool {
 func (ix *Index) Release() { ix.life.RUnlock() }
 
 // Open opens a complete index directory of this format version.
-func Open(dir string) (*Index, error) {
+func Open(dir string) (*Index, error) { return open(dir, dir, false) }
+
+// OpenLive opens a snapshot (Writer.Snapshot) of an index still being
+// written: the snapshot's dictionaries, permutations and metadata from
+// snap, the first rows of the columns and references from data, the
+// writer's directory.
+func OpenLive(data, snap string) (*Index, error) { return open(data, snap, true) }
+
+func open(data, dir string, live bool) (*Index, error) {
 	ix := &Index{dir: dir}
 	if err := readJSON(filepath.Join(dir, "meta.json"), &ix.Meta); err != nil {
 		return nil, fmt.Errorf("%w: %v", ErrFormat, err)
@@ -125,13 +142,16 @@ func Open(dir string) (*Index, error) {
 	if !ix.Meta.Complete || ix.Meta.Format != FormatVersion {
 		return nil, ErrFormat
 	}
+	if ix.Meta.Live != live {
+		return nil, fmt.Errorf("%w: a snapshot is opened with OpenLive, an index with Open", ErrFormat)
+	}
 	for name, v := range map[string]any{"devices.json": &ix.Devices, "clients.json": &ix.Clients,
 		"summaries.json": &ix.Summaries, "extra.json": &ix.extra} {
 		if err := readJSON(filepath.Join(dir, name), v); err != nil {
 			return nil, fmt.Errorf("%w: %v", ErrFormat, err)
 		}
 	}
-	cols, err := mapColumns(dir, ix.Meta.Rows)
+	cols, err := mapColumnsOf(data, ix.Meta.Rows, live)
 	if err != nil {
 		return nil, err
 	}
@@ -149,7 +169,11 @@ func Open(dir string) (*Index, error) {
 		}
 		ix.perms[i] = view[uint32](b, ix.Meta.Rows)
 	}
-	b, un, err := mapFile(filepath.Join(dir, "refs.bin"))
+	refsLen := int64(-1)
+	if live {
+		refsLen = int64(ix.Meta.RefsBytes)
+	}
+	b, un, err := mapPrefix(filepath.Join(data, "refs.bin"), refsLen)
 	if err != nil {
 		_ = ix.Close()
 		return nil, err
