@@ -175,6 +175,18 @@ func TestWriterErrors(t *testing.T) {
 	}
 	_ = w.Abort()
 
+	// A column file that cannot be closed (its buffer already written).
+	w, _ = Create(filepath.Join(root, "d.partial"))
+	appendRows(t, w, 0, 10)
+	if err := w.flushBuffers(); err != nil {
+		t.Fatal(err)
+	}
+	_ = w.files[0].Close()
+	if err := w.Finish(Meta{}, nil); err == nil {
+		t.Error("finish with a column file that cannot be closed")
+	}
+	_ = w.Abort()
+
 	if runtime.GOOS == "windows" {
 		return // permissions below are POSIX
 	}

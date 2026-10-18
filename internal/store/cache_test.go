@@ -74,6 +74,17 @@ func TestFingerprint(t *testing.T) {
 	}
 }
 
+// A cache whose root cannot be a directory is refused.
+func TestNewCacheRefused(t *testing.T) {
+	file := filepath.Join(t.TempDir(), "file")
+	if err := os.WriteFile(file, nil, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := NewCache(filepath.Join(file, "cache"), 0, time.Now); err == nil {
+		t.Error("a cache under a file")
+	}
+}
+
 func TestCacheLifecycle(t *testing.T) {
 	c := newCache(t, 0)
 	if fi, _ := os.Stat(c.Root()); fi.Mode().Perm() != DirMode || c.Cap() != DefaultCap {

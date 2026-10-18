@@ -47,10 +47,11 @@ type cacheEntry struct {
 // NewCache opens (or creates) the cache at root, 0700. now is the clock for
 // the last-use times (time.Now outside tests).
 func NewCache(root string, capBytes int64, now func() time.Time) (*Cache, error) {
-	if err := os.MkdirAll(root, DirMode); err != nil {
-		return nil, err
+	err := os.MkdirAll(root, DirMode)
+	if err == nil {
+		err = os.Chmod(root, DirMode) // an existing directory too
 	}
-	if err := os.Chmod(root, DirMode); err != nil {
+	if err != nil {
 		return nil, err
 	}
 	if capBytes <= 0 {
