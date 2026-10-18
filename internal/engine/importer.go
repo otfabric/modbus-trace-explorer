@@ -247,6 +247,9 @@ func (e *Engine) analyze(ctx context.Context, t *openTrace, j *job, opts trace.O
 		return "", service.Wrap(service.CodeUnavailable, err, "cannot write the analysis cache")
 	}
 	b := newBuilder(w)
+	lv := newLive(e, t, j, w, b.connList)
+	b.onRows = lv.maybe
+	defer lv.end()
 	var read, total int64
 	opts.Progress = func(r, tot int64) {
 		read, total = r, tot
@@ -254,6 +257,7 @@ func (e *Engine) analyze(ctx context.Context, t *openTrace, j *job, opts trace.O
 	}
 	sum, err := trace.Analyze(ctx, f, opts, trace.SinkFunc(b.event))
 	if sum == nil || errors.Is(err, context.Canceled) || b.err != nil {
+		lv.end()
 		_ = w.Abort()
 		if b.err != nil {
 			return "", service.Wrap(service.CodeInternal, b.err, "cannot write the analysis cache")
@@ -268,6 +272,7 @@ func (e *Engine) analyze(ctx context.Context, t *openTrace, j *job, opts trace.O
 	choices, _ := json.Marshal(cfg)
 	meta := store.Meta{Library: e.lib, Semantics: model.EventSemanticsVersion, Fingerprint: t.info.ID, Paths: t.info.Paths, Choices: choices}
 	docs := map[string]any{"summary.json": sum, "conns.json": b.connList()}
+	lv.end()
 	if err := e.cache.Commit(t.info.ID, w, meta, docs); err != nil {
 		return "", service.Wrap(service.CodeInternal, err, "cannot write the analysis cache")
 	}
@@ -287,11 +292,12 @@ func (e *Engine) analyze(ctx context.Context, t *openTrace, j *job, opts trace.O
 
 // builder turns the library's events into index rows.
 type builder struct {
-	w     *store.Writer
-	conns map[uint32]model.Connection
-	order []uint32
-	last  int64 // time of the last event with a time: gaps, resyncs and notes have none
-	err   error
+	w      *store.Writer
+	onRows func() // called every 4096 rows (live snapshots)
+	conns  map[uint32]model.Connection
+	order  []uint32
+	last   int64 // time of the last event with a time: gaps, resyncs and notes have none
+	err    error
 }
 
 func newBuilder(w *store.Writer) *builder {
@@ -428,6 +434,9 @@ func (b *builder) event(ev *model.Event) error {
 		return b.err
 	}
 	b.err = b.w.Append(r, req, resp)
+	if b.err == nil && b.onRows != nil && b.w.Rows()&0xFFF == 0 {
+		b.onRows()
+	}
 	return b.err
 }
 

@@ -22,6 +22,8 @@ interface Props {
   onTotal?: (total: number) => void;
   /** Select and show the row at this rank (go to time or frame, next or previous row); a new nonce repeats it. */
   goTo?: { rank: number; nonce: number } | null;
+  /** A new value fetches the shown rows again where they are (rows arriving during the import). */
+  refresh?: number;
 }
 
 interface Window {
@@ -77,12 +79,14 @@ function ResultCell({ row }: { row: Row }): ReactNode {
  * visible rows and a margin are fetched; a change of filter or order aborts
  * the request in flight.
  */
-export function TimelineTable({ fetchPage, filter, order, desc, timeMode, firstNs, selectedSeq, onSelect, onTotal, goTo }: Props) {
+export function TimelineTable({ fetchPage, filter, order, desc, timeMode, firstNs, selectedSeq, onSelect, onTotal, goTo, refresh = 0 }: Props) {
   const scroller = useRef<HTMLDivElement>(null);
   const [viewport, setViewport] = useState(600);
   const [first, setFirst] = useState(0);
   const [win, setWin] = useState<Window>({ key: '', offset: 0, rows: [], total: 0 });
   const [error, setError] = useState<string | null>(null);
+  // The refresh the loaded window was fetched for.
+  const fetchedFor = useRef(refresh);
   const programmatic = useRef(false);
   // The first visible row as of the last input, ahead of React's render.
   const firstRef = useRef(0);
@@ -117,7 +121,8 @@ export function TimelineTable({ fetchPage, filter, order, desc, timeMode, firstN
     // Nothing to fetch when the loaded window is of this query and covers
     // every visible row (an empty result covers everything).
     const covered = first >= win.offset && Math.min(win.total, first + visible) <= win.offset + win.rows.length;
-    if (win.key === queryKey && covered) return;
+    if (win.key === queryKey && covered && fetchedFor.current === refresh) return;
+    fetchedFor.current = refresh;
     const ctl = new AbortController();
     const offset = Math.max(0, first - MARGIN);
     fetchPage({ filter, order, desc, offset, limit: visible + 2 * MARGIN }, ctl.signal)
@@ -132,7 +137,7 @@ export function TimelineTable({ fetchPage, filter, order, desc, timeMode, firstN
     return () => ctl.abort();
     // win is deliberately not a dependency: a new window must not refetch itself.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fetchPage, queryKey, first, visible]);
+  }, [fetchPage, queryKey, first, visible, refresh]);
 
   const moveTo = useCallback(
     (rank: number) => {

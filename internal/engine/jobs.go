@@ -67,6 +67,17 @@ func (e *Engine) start(kind, file string, fn func(ctx context.Context, j *job) (
 	return service.JobRef{ID: id, Kind: kind}
 }
 
+// setReady marks that the rows so far can be shown; the next event says so.
+func (j *job) setReady() {
+	j.mu.Lock()
+	first := !j.state.Ready
+	j.state.Ready = true
+	j.mu.Unlock()
+	if first {
+		j.emit(true) // the window switches to the timeline on this event
+	}
+}
+
 // progress updates the job's counters and emits at most every
 // progressInterval.
 func (j *job) progress(phase string, read, total int64, rows uint64) {

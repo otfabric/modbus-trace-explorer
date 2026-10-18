@@ -244,6 +244,13 @@ export class MockService implements Service {
   private results = new Map<string, ExportResult>();
   private prefs: Settings = { time_mode: 'local', server_ports: [], one_based: false, cache_cap: 2 * 1024 ** 3 };
   private cacheCleared = false;
+  /** During a simulated analysis: the rows analysed so far (null: all of them). */
+  private shown: number | null = null;
+
+  /** The rows the timeline shows: all, or those analysed so far. */
+  private get visible(): number {
+    return this.shown ?? this.rows;
+  }
 
   constructor(opts: MockOptions = {}) {
     this.rows = opts.rows ?? 1_000_000;
@@ -302,17 +309,28 @@ export class MockService implements Service {
       const read = Math.min(total, Math.round((total * k) / steps));
       const phase = phases[Math.min(phases.length - 1, Math.floor((k * phases.length) / (steps + 1)))] ?? kind;
       if (k <= steps) {
-        this.emit({ id, kind, file: 'mock', state: 'running', phase, read, total, rows: kind === 'analyze' ? Math.round((this.rows * k) / steps) : 0, rate: 180e6 });
+        // An analysis shows its rows from the third step on (R21).
+        const ready = kind === 'analyze' && k >= 3;
+        if (ready) {
+          this.analyzed = true;
+          this.shown = Math.round((this.rows * k) / steps);
+        }
+        this.emit({ id, kind, file: 'mock', state: 'running', phase, read, total, rows: kind === 'analyze' ? Math.round((this.rows * k) / steps) : 0, rate: 180e6, ready: ready || undefined });
         setTimeout(tick, this.step);
         return;
       }
       this.jobs.delete(id);
+      if (kind === 'analyze') this.shown = null;
       then();
       this.emit({ id, kind, file: 'mock', state: 'done', phase, read: total, total, rows: kind === 'analyze' ? this.rows : 0, rate: 180e6 });
     };
     this.jobs.set(id, () => {
       stopped = true;
       this.jobs.delete(id);
+      if (kind === 'analyze') {
+        this.shown = null;
+        this.analyzed = false;
+      }
       this.emit({ id, kind, file: 'mock', state: 'canceled', phase: kind, read: 0, total, rows: 0, rate: 0 });
     });
     setTimeout(tick, this.step);
@@ -388,12 +406,12 @@ export class MockService implements Service {
       file: this.paths[0]?.split('/').pop() ?? '',
       size: this.rows * 190,
       first_ns: START_NS,
-      last_ns: START_NS + this.rows * STEP_NS,
+      last_ns: START_NS + this.visible * STEP_NS,
       packets: this.rows * 2 + 40,
       connections: DEVICES.length,
       devices: DEVICES.length,
-      transactions: this.rows,
-      rows: this.rows,
+      transactions: this.visible,
+      rows: this.visible,
       quality: 'warnings',
       quality_count: 3,
       trace_missing: false,
@@ -411,11 +429,11 @@ export class MockService implements Service {
     if (isEmpty(q.filter) && q.order === 'time') {
       return null;
     }
-    const key = JSON.stringify([q.filter, q.order]);
+    const key = JSON.stringify([q.filter, q.order, this.visible]);
     if (key !== this.cacheKey || !this.cache) {
-      const out = new Int32Array(this.rows);
+      const out = new Int32Array(this.visible);
       let n = 0;
-      for (let i = 0; i < this.rows; i++) {
+      for (let i = 0; i < this.visible; i++) {
         const r = generate(i);
         if (matches(r, q.filter) && (q.order !== 'latency' || r.latency_ns !== undefined)) {
           out[n++] = i;
@@ -435,7 +453,7 @@ export class MockService implements Service {
   async timeline(_fileId: string, q: TimelineQuery, signal?: AbortSignal): Promise<TimelinePage> {
     signal?.throwIfAborted();
     const sel = this.selection(q);
-    const total = sel ? sel.length : this.rows;
+    const total = sel ? sel.length : this.visible;
     const offset = Math.max(0, Math.min(q.offset, Math.max(0, total - 1)));
     const end = Math.min(total, offset + Math.max(0, q.limit));
     const rows: Row[] = [];
@@ -648,7 +666,7 @@ export class MockService implements Service {
 
   async locate(_fileId: string, q: LocateQuery): Promise<Location> {
     const sel = this.selection({ filter: q.filter, order: q.seq !== undefined ? q.order : 'time', desc: false, offset: 0, limit: 0 });
-    const total = sel ? sel.length : this.rows;
+    const total = sel ? sel.length : this.visible;
     if (total === 0) return { found: false, rank: 0, seq: 0, exact: false, note: 'No rows match the filter.' };
     const rowAt = (k: number) => (sel ? (sel[k] as number) : k);
     const at = (k: number, exact: boolean, note?: string): Location => ({ found: true, rank: q.desc ? total - 1 - k : k, seq: rowAt(k) + 1, exact, note });

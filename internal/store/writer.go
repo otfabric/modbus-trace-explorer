@@ -232,6 +232,10 @@ type Meta struct {
 	LastNS      int64           `json:"last_ns"`
 	Choices     json.RawMessage `json:"choices,omitempty"`
 	Complete    bool            `json:"complete"`
+	// Live: a snapshot of an index still being written (OpenLive), the
+	// first Rows rows and RefsBytes bytes of references.
+	Live      bool   `json:"live,omitempty"`
+	RefsBytes uint64 `json:"refs_bytes,omitempty"`
 }
 
 // Finish flushes the columns, builds the time and latency permutations,
@@ -243,28 +247,7 @@ func (w *Writer) Finish(meta Meta, docs map[string]any) error {
 		return err
 	}
 	meta.Format, meta.Rows, meta.Complete = FormatVersion, w.n, false
-	cols, err := mapColumns(w.dir, w.n)
-	if err != nil {
-		return err
-	}
-	defer cols.close()
-	t, lat := cols.int64s("t_ns"), cols.uint32s("lat_us")
-	if w.n > 0 {
-		meta.FirstNS, meta.LastNS = slices.Min(t), slices.Max(t)
-	}
-	perm := make([]uint32, w.n)
-	for i := range perm {
-		perm[i] = uint32(i)
-	}
-	slices.SortFunc(perm, func(a, b uint32) int { return cmp.Or(cmp.Compare(t[a], t[b]), cmp.Compare(a, b)) })
-	if err := writeU32s(filepath.Join(w.dir, "perm", "time.bin"), perm); err != nil {
-		return err
-	}
-	for i := range perm {
-		perm[i] = uint32(i)
-	}
-	slices.SortFunc(perm, func(a, b uint32) int { return cmp.Or(cmp.Compare(lat[a], lat[b]), cmp.Compare(a, b)) })
-	if err := writeU32s(filepath.Join(w.dir, "perm", "latency.bin"), perm); err != nil {
+	if err := w.permutations(w.dir, &meta, false); err != nil {
 		return err
 	}
 	all := map[string]any{"devices.json": w.devices, "clients.json": w.clients, "summaries.json": w.summaries, "extra.json": w.extra}
@@ -278,6 +261,74 @@ func (w *Writer) Finish(meta Meta, docs map[string]any) error {
 	}
 	meta.Complete = true
 	return writeJSON(filepath.Join(w.dir, "meta.json"), meta)
+}
+
+// Snapshot makes the rows appended so far readable while the writer goes
+// on (OpenLive(w.Dir(), dir)): it flushes the buffered rows and writes into
+// dir, which must not exist, the dictionaries, the time and latency
+// permutations of those rows and a metadata file marked live. The column
+// and reference files stay in the writer's directory and only grow.
+func (w *Writer) Snapshot(dir string, meta Meta) error {
+	if w.err != nil {
+		return w.err
+	}
+	if w.files == nil {
+		return errors.New("store: a snapshot of a finished index")
+	}
+	for _, b := range w.bufs {
+		if err := b.Flush(); err != nil {
+			return err
+		}
+	}
+	if err := w.refs.Flush(); err != nil {
+		return err
+	}
+	if err := os.Mkdir(dir, DirMode); err != nil {
+		return err
+	}
+	if err := os.Mkdir(filepath.Join(dir, "perm"), DirMode); err != nil {
+		return err
+	}
+	meta.Format, meta.Rows, meta.Live, meta.RefsBytes = FormatVersion, w.n, true, w.refOff
+	if err := w.permutations(dir, &meta, true); err != nil {
+		return err
+	}
+	all := map[string]any{"devices.json": w.devices, "clients.json": w.clients, "summaries.json": w.summaries, "extra.json": w.extra}
+	for name, v := range all {
+		if err := writeJSON(filepath.Join(dir, name), v); err != nil {
+			return err
+		}
+	}
+	meta.Complete = true
+	return writeJSON(filepath.Join(dir, "meta.json"), meta)
+}
+
+// permutations writes the time and latency orders of the rows into
+// dir/perm, sorting with the columns mapped (prefix: of files still being
+// written), and sets the first and last time.
+func (w *Writer) permutations(dir string, meta *Meta, prefix bool) error {
+	cols, err := mapColumnsOf(w.dir, w.n, prefix)
+	if err != nil {
+		return err
+	}
+	defer cols.close()
+	t, lat := cols.int64s("t_ns"), cols.uint32s("lat_us")
+	if w.n > 0 {
+		meta.FirstNS, meta.LastNS = slices.Min(t), slices.Max(t)
+	}
+	perm := make([]uint32, w.n)
+	for i := range perm {
+		perm[i] = uint32(i)
+	}
+	slices.SortFunc(perm, func(a, b uint32) int { return cmp.Or(cmp.Compare(t[a], t[b]), cmp.Compare(a, b)) })
+	if err := writeU32s(filepath.Join(dir, "perm", "time.bin"), perm); err != nil {
+		return err
+	}
+	for i := range perm {
+		perm[i] = uint32(i)
+	}
+	slices.SortFunc(perm, func(a, b uint32) int { return cmp.Or(cmp.Compare(lat[a], lat[b]), cmp.Compare(a, b)) })
+	return writeU32s(filepath.Join(dir, "perm", "latency.bin"), perm)
 }
 
 // Abort closes and removes the directory.

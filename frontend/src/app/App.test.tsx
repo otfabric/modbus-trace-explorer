@@ -430,4 +430,32 @@ describe('App', () => {
     expect(button).toBeDisabled();
     expect(button).toHaveAttribute('title', 'Exports read the trace, which is not at its path');
   });
+
+  it('shows the timeline while the analysis runs, then the whole trace (R21)', async () => {
+    const user = userEvent.setup();
+    render(<App service={new MockService({ rows: 5000, step: 60 })} platform={platform(['/x/site.pcapng'])} />);
+    await user.click(screen.getByRole('button', { name: /Open/ }));
+    await user.click(await screen.findByRole('button', { name: 'Analyze 2 flows' }, { timeout: 3000 }));
+    // The rows so far, with the analysis still running.
+    const banner = await screen.findByRole('status', { name: 'Analysis running' }, { timeout: 3000 });
+    expect(banner).toHaveTextContent(/Analysing the trace: \d+%/);
+    const grid = screen.getByRole('grid', { name: 'Timeline' });
+    expect(Number(grid.getAttribute('aria-rowcount'))).toBeLessThan(5001);
+    expect(screen.getByRole('button', { name: /^Export$/ })).toBeDisabled();
+    expect(screen.getByRole('button', { name: /^Export$/ })).toHaveAttribute('title', 'Exports wait for the analysis to finish');
+    // The rows grow in place, and at the end the whole trace is there.
+    await waitFor(() => expect(grid).toHaveAttribute('aria-rowcount', '5001'), { timeout: 4000 });
+    await waitFor(() => expect(screen.queryByRole('status', { name: 'Analysis running' })).toBeNull());
+    expect(screen.getByRole('button', { name: /^Export$/ })).toBeEnabled();
+  });
+
+  it('cancels a running analysis from its banner back to the Flows step', async () => {
+    const user = userEvent.setup();
+    render(<App service={new MockService({ rows: 5000, step: 80 })} platform={platform(['/x/site.pcapng'])} />);
+    await user.click(screen.getByRole('button', { name: /Open/ }));
+    await user.click(await screen.findByRole('button', { name: 'Analyze 2 flows' }, { timeout: 3000 }));
+    const banner = await screen.findByRole('status', { name: 'Analysis running' }, { timeout: 3000 });
+    await user.click(within(banner).getByRole('button', { name: 'Cancel' }));
+    expect(await screen.findByRole('button', { name: 'Analyze 2 flows' }, { timeout: 3000 })).toBeInTheDocument();
+  });
 });

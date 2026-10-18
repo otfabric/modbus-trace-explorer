@@ -136,6 +136,9 @@
         "read": {
           "type": "integer"
         },
+        "ready": {
+          "type": "boolean"
+        },
         "rows": {
           "minimum": 0,
           "type": "integer"
