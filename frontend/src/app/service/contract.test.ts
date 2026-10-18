@@ -80,6 +80,18 @@ describe('the mock Service keeps the engine contract (A17)', () => {
     check('cache-info', await m.cacheInfo());
   });
 
+  it('answers for an MBCAP capture with data that validates (R24)', async () => {
+    const m: Service = new MockService({ rows: 500, step: 1 });
+    const info = await m.open(['/captures/site.mbcap']);
+    check('file-info', info);
+    expect(info.kind).toBe('capture');
+    const ref = await m.importCapture(info.id);
+    for (const ev of await finish(m, ref)) check('event', ev);
+    const ov = await m.overview(info.id);
+    check('overview', ov);
+    expect(ov.capture?.samples).toBe(500);
+  });
+
   it('rejects what the schemas forbid', () => {
     const s = loadSchema('location');
     expect(validate(s, { found: true, rank: 1, seq: 2, exact: true })).toEqual([]);

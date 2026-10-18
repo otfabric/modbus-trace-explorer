@@ -19,7 +19,7 @@ export function EmptyState({ onOpen, onOpenRecent, recent, error }: Props) {
       >
         <DropIcon size={40} className="text-accent" />
         <h1 className="font-display text-2xl font-semibold text-fg-strong">Drop a pcap or pcapng here, or open one</h1>
-        <p className="text-muted">pcap and pcapng from tcpdump, Wireshark, dumpcap and tshark; .gz too. Several files are read as one trace.</p>
+        <p className="text-muted">pcap and pcapng from tcpdump, Wireshark, dumpcap and tshark; .gz too. Several files are read as one trace. An MBCAP capture (.mbcap, .mbcap.jsonl, .mbcap.csv) opens on its own, to see what it holds.</p>
         <Button variant="primary" icon={<OpenFileIcon size={16} />} onClick={onOpen}>
           Open…
         </Button>

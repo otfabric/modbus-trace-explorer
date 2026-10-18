@@ -75,7 +75,10 @@ type openTrace struct {
 	ix    *store.Index
 	conns map[uint32]model.Connection
 	sum   *trace.FileSummary
-	busy  bool // a scan or an analysis runs
+	// A capture (R24): its facts, and its PDUs in the cache entry.
+	capture *service.CaptureFacts
+	pdus    *pduReader
+	busy    bool // a scan or an analysis runs
 }
 
 // DefaultCacheDir returns the per-user cache location.
@@ -153,6 +156,10 @@ func (t *openTrace) close() error {
 		err = t.ix.Close()
 		t.ix = nil
 	}
+	if t.pdus != nil {
+		err = errors.Join(err, t.pdus.close())
+		t.pdus = nil
+	}
 	for i, d := range t.data {
 		if i < len(t.info.Paths) && d != t.info.Paths[i] && t.removeCopy != nil {
 			err = errors.Join(err, t.removeCopy(d))
@@ -199,8 +206,20 @@ func (e *Engine) Open(ctx context.Context, paths []string) (service.FileInfo, er
 			gz = true
 		}
 	}
-	// Several files are one trace in the order of their first packets (R1).
-	paths = byFirstPacket(ctx, paths)
+	// An MBCAP capture (R24) is opened on its own; several trace files are
+	// one trace in the order of their first packets (R1).
+	kind := "trace"
+	for _, p := range paths {
+		if captureEncoding(p) != "" {
+			kind = "capture"
+		}
+	}
+	if kind == "capture" && len(paths) > 1 {
+		return service.FileInfo{}, service.Errorf(service.CodeInvalidArgument, "an MBCAP capture is opened on its own, not with other files")
+	}
+	if kind == "trace" {
+		paths = byFirstPacket(ctx, paths)
+	}
 	fp, err := store.Fingerprint(paths, e.lib, model.EventSemanticsVersion)
 	if err != nil {
 		return service.FileInfo{}, service.Wrap(service.CodeUnavailable, err, "cannot read the trace")
@@ -209,7 +228,7 @@ func (e *Engine) Open(ctx context.Context, paths []string) (service.FileInfo, er
 	if len(paths) > 1 {
 		name += " + " + strconv.Itoa(len(paths)-1) + " more"
 	}
-	info := service.FileInfo{ID: fp, Paths: slices.Clone(paths), Name: name, Size: size, Gzip: gz}
+	info := service.FileInfo{ID: fp, Paths: slices.Clone(paths), Name: name, Size: size, Gzip: gz, Kind: kind}
 	t := &openTrace{info: info, data: slices.Clone(paths), release: e.cache.Hold(fp), removeCopy: e.cache.RemoveCopy}
 	if ix, err := e.cache.Lookup(fp); err == nil {
 		if err := t.attach(ix); err == nil {
@@ -241,9 +260,19 @@ func (e *Engine) Open(ctx context.Context, paths []string) (service.FileInfo, er
 
 // attach makes ix the trace's index, with the documents written beside it.
 func (t *openTrace) attach(ix *store.Index) error {
-	var sum trace.FileSummary
-	if err := readJSON(filepath.Join(ix.Dir(), "summary.json"), &sum); err != nil {
-		return err
+	// A trace has its file summary; a capture (R24) its facts instead.
+	var sum *trace.FileSummary
+	var facts *service.CaptureFacts
+	if _, err := os.Stat(filepath.Join(ix.Dir(), captureDoc)); err == nil {
+		facts = &service.CaptureFacts{}
+		if err := readJSON(filepath.Join(ix.Dir(), captureDoc), facts); err != nil {
+			return err
+		}
+	} else {
+		sum = &trace.FileSummary{}
+		if err := readJSON(filepath.Join(ix.Dir(), "summary.json"), sum); err != nil {
+			return err
+		}
 	}
 	var conns []model.Connection
 	if err := readJSON(filepath.Join(ix.Dir(), "conns.json"), &conns); err != nil {
@@ -254,7 +283,11 @@ func (t *openTrace) attach(ix *store.Index) error {
 	if t.ix != nil {
 		_ = t.ix.Close()
 	}
-	t.ix, t.sum = ix, &sum
+	if t.pdus != nil {
+		_ = t.pdus.close()
+		t.pdus = nil
+	}
+	t.ix, t.sum, t.capture = ix, sum, facts
 	t.conns = map[uint32]model.Connection{}
 	for _, c := range conns {
 		t.conns[c.ID] = c

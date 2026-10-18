@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { AboutDialog } from './components/AboutDialog';
+import { Chip } from './components/ui';
 import { DetailPane } from './components/DetailPane';
 import { EmptyState } from './components/EmptyState';
 import { ExportDialog } from './components/ExportDialog';
@@ -58,6 +59,7 @@ type Phase =
   | { kind: 'flows'; file: FileInfo; result: ScanResult; warning?: string }
   | { kind: 'analyzing'; file: FileInfo; job: JobState | null; jobId: string; result?: ScanResult }
   | { kind: 'preparing'; file: FileInfo; job: JobState | null; jobId: string }
+  | { kind: 'importing'; file: FileInfo; job: JobState | null; jobId: string }
   | { kind: 'ready'; file: FileInfo; warning?: string };
 
 /** R4: the capture facts behind the file strip. */
@@ -117,9 +119,22 @@ function FileStrip({ ov, onQuality, onExport }: { ov: Overview; onQuality: () =>
       <span>
         {formatTime(ov.first_ns, 'local')} – {formatTime(ov.last_ns, 'local')} ({formatDuration(ov.last_ns - ov.first_ns)})
       </span>
-      <span>{formatCount(ov.devices)} devices</span>
-      <span>{formatCount(ov.transactions)} transactions</span>
-      <span>{formatCount(ov.connections)} connections</span>
+      {ov.capture ? (
+        <>
+          <Chip tone="accent" title={`MBCAP capture (${ov.capture.encoding}) by ${ov.capture.producer}: samples, not packets`}>
+            MBCAP capture
+          </Chip>
+          <span>{formatCount(ov.devices)} targets</span>
+          <span>{formatCount(ov.transactions)} samples</span>
+          <span>{formatCount(ov.connections)} streams</span>
+        </>
+      ) : (
+        <>
+          <span>{formatCount(ov.devices)} devices</span>
+          <span>{formatCount(ov.transactions)} transactions</span>
+          <span>{formatCount(ov.connections)} connections</span>
+        </>
+      )}
       <span className="ml-auto flex items-center gap-3">
         <CaptureFacts ov={ov} />
         {ov.trace_missing && (
@@ -138,8 +153,10 @@ function FileStrip({ ov, onQuality, onExport }: { ov: Overview; onQuality: () =>
         <button
           type="button"
           onClick={onExport}
-          disabled={ov.trace_missing}
-          title={ov.trace_missing ? 'Exports read the trace, which is not at its path' : 'Export (Ctrl/Cmd+E)'}
+          disabled={ov.trace_missing || ov.capture !== undefined}
+          title={
+            ov.capture ? 'Exports work on traces; this is already a capture' : ov.trace_missing ? 'Exports read the trace, which is not at its path' : 'Export (Ctrl/Cmd+E)'
+          }
           className="inline-flex items-center gap-1 hover:text-accent disabled:cursor-not-allowed disabled:opacity-50"
         >
           <ExportIcon size={14} /> Export
@@ -250,6 +267,12 @@ export function App({ service, platform }: AppProps) {
           return;
         }
         setOverview(null);
+        if (file.kind === 'capture') {
+          // An MBCAP capture (R24): no scan and no Flows step.
+          const ref = await service.importCapture(file.id);
+          setPhase({ kind: 'importing', file, job: null, jobId: ref.id });
+          return;
+        }
         const ref = await service.scan(file.id);
         setPhase({ kind: 'scanning', file, job: null, jobId: ref.id });
       } catch (err) {
@@ -266,7 +289,7 @@ export function App({ service, platform }: AppProps) {
   const onJob = useRef<(job: JobState) => void>(() => {});
   onJob.current = (job: JobState) => {
     const cur = phaseRef.current;
-    if ((cur.kind !== 'scanning' && cur.kind !== 'analyzing' && cur.kind !== 'preparing') || job.id !== cur.jobId) {
+    if ((cur.kind !== 'scanning' && cur.kind !== 'analyzing' && cur.kind !== 'preparing' && cur.kind !== 'importing') || job.id !== cur.jobId) {
       if (job.state !== 'running') {
         earlyEnds.current.set(job.id, job);
         if (earlyEnds.current.size > 16) earlyEnds.current.delete(earlyEnds.current.keys().next().value as string);
@@ -286,6 +309,11 @@ export function App({ service, platform }: AppProps) {
       else ready({ ...cur.file, prepare: false });
       return;
     }
+    if (cur.kind === 'importing') {
+      if (job.state === 'canceled') setPhase({ kind: 'empty' });
+      else ready({ ...cur.file, analyzed: true }, job.warning);
+      return;
+    }
     if (cur.kind === 'scanning') {
       if (job.state === 'canceled') {
         setPhase({ kind: 'empty' });
@@ -302,7 +330,7 @@ export function App({ service, platform }: AppProps) {
     ready({ ...cur.file, analyzed: true }, job.warning);
   };
   useEffect(() => service.subscribe((ev) => ev.job && onJob.current(ev.job)), [service]);
-  const waitingFor = phase.kind === 'scanning' || phase.kind === 'analyzing' || phase.kind === 'preparing' ? phase.jobId : null;
+  const waitingFor = phase.kind === 'scanning' || phase.kind === 'analyzing' || phase.kind === 'preparing' || phase.kind === 'importing' ? phase.jobId : null;
   useEffect(() => {
     if (!waitingFor) return;
     const ended = earlyEnds.current.get(waitingFor);
@@ -341,7 +369,7 @@ export function App({ service, platform }: AppProps) {
         closeTrace();
         break;
       case 'export':
-        if (ready) setDialog('export');
+        if (ready && phaseRef.current.kind === 'ready' && phaseRef.current.file.kind !== 'capture') setDialog('export');
         break;
       case 'settings':
         setDialog('settings');
@@ -454,7 +482,7 @@ export function App({ service, platform }: AppProps) {
         void platform.chooseTraces().then(open);
       } else if (mod && e.key.toLowerCase() === 'e') {
         e.preventDefault();
-        if (phaseRef.current.kind === 'ready') setDialog('export');
+        if (phaseRef.current.kind === 'ready' && phaseRef.current.file.kind !== 'capture') setDialog('export');
       } else if (mod && e.key === ',') {
         e.preventDefault();
         setDialog('settings');
@@ -481,7 +509,7 @@ export function App({ service, platform }: AppProps) {
   }, [platform, open]);
 
   const cancelJob = () => {
-    if (phase.kind === 'scanning' || phase.kind === 'analyzing' || phase.kind === 'preparing') void service.cancelJob(phase.jobId);
+    if (phase.kind === 'scanning' || phase.kind === 'analyzing' || phase.kind === 'preparing' || phase.kind === 'importing') void service.cancelJob(phase.jobId);
   };
 
   let body: ReactNode;
@@ -494,6 +522,9 @@ export function App({ service, platform }: AppProps) {
       break;
     case 'preparing':
       body = <ImportProgress title="Decompressing the trace" name={phase.file.name} job={phase.job} onCancel={cancelJob} />;
+      break;
+    case 'importing':
+      body = <ImportProgress title="Importing the capture" name={phase.file.name} job={phase.job} onCancel={cancelJob} />;
       break;
     case 'analyzing':
       body = <ImportProgress title="Analysing the selected flows" name={phase.file.name} job={phase.job} onCancel={cancelJob} />;

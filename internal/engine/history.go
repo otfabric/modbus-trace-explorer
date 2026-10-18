@@ -44,10 +44,34 @@ func (e *Engine) AddressHistory(_ context.Context, id string, q service.HistoryQ
 	if limit <= 0 {
 		limit = DefaultHistoryLimit
 	}
+	capture := t.info.Kind == "capture"
 	return e.start("history", id, func(ctx context.Context, j *job) (string, error) {
-		f, err := t.file()
-		if err != nil {
-			return "", service.Wrap(service.CodeUnavailable, err, "cannot open the trace")
+		// A trace's bytes are re-read from its packets, a capture's from
+		// the PDUs its import kept (R24).
+		var adus func(r store.Row, i uint32) (req, resp []byte, err error)
+		if capture {
+			adus = func(_ store.Row, i uint32) ([]byte, []byte, error) { return t.captureADUs(ix, i) }
+		} else {
+			f, err := t.file()
+			if err != nil {
+				return "", service.Wrap(service.CodeUnavailable, err, "cannot open the trace")
+			}
+			adus = func(r store.Row, _ uint32) ([]byte, []byte, error) {
+				req, resp, err := ix.Refs(r)
+				if err != nil {
+					return nil, nil, err
+				}
+				// Bytes that cannot be read leave the ADU empty: the row is skipped.
+				reqADU, rerr := aduBytes(f, req)
+				respADU, serr := aduBytes(f, resp)
+				if rerr != nil {
+					reqADU = nil
+				}
+				if serr != nil {
+					respADU = nil
+				}
+				return reqADU, respADU, nil
+			}
 		}
 		cands, err := historyCandidates(ctx, ix, q, space)
 		if err != nil {
@@ -79,12 +103,11 @@ func (e *Engine) AddressHistory(_ context.Context, id string, q service.HistoryQ
 			}
 			i := cands[k]
 			r := ix.Row(i)
-			req, resp, err := ix.Refs(r)
+			reqADU, respADU, err := adus(r, i)
 			if err != nil {
 				return "", service.Wrap(service.CodeInternal, err, "the analysis cache is damaged")
 			}
-			reqADU, err := aduBytes(f, req)
-			if err != nil || len(reqADU) <= mbtcp.HeaderLen {
+			if len(reqADU) <= mbtcp.HeaderLen {
 				chunk.Scanned++
 				continue
 			}
@@ -93,8 +116,7 @@ func (e *Engine) AddressHistory(_ context.Context, id string, q service.HistoryQ
 			if ok {
 				p.Write, p.Value = true, v
 			} else {
-				respADU, err := aduBytes(f, resp)
-				if err != nil || len(respADU) <= mbtcp.HeaderLen {
+				if len(respADU) <= mbtcp.HeaderLen {
 					chunk.Scanned++
 					continue
 				}

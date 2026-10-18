@@ -13,6 +13,7 @@ In progress: opening `.mbcap` captures with the views (R24), the timeline during
 
 ### Added
 
+- **Open MBCAP captures** (R24): `.mbcap`, `.mbcap.jsonl` and `.mbcap.csv` open read-only, by themselves, without a Flows step. The samples are the timeline (the target as the device, the stream as the connection), each decoded in the detail pane; Devices, Conversations (streams), Patterns, Addresses with the value history of an address, and Quality with the capture's own facts (producer, tick, start, provenance, change-only, a missing end or a cut file) work as for a trace. Captures have no exports and no frame numbers. On macOS, `.mbcap` files open with the application.
 - **The status bar shows running exports and address histories** with their progress and a Cancel button, the cache's size, and the time zone offset of local time. An export can continue in the background ("Continue in the background" in the Export dialog); the status bar says when it finishes.
 - **The detail pane can be resized**: drag its left edge, or focus the edge and use the arrow keys (Shift for larger steps, Home and End for the limits); double-click restores the default. The width is remembered.
 
