@@ -358,7 +358,7 @@ export class MockService implements Service {
 
   /** The mock opens a name ending in .mbcap (or .mbcap.jsonl, .mbcap.csv) as a capture. */
   private isCapture(): boolean {
-    return /\.mbcap(\.jsonl|\.csv)?$/.test(this.paths[0] ?? '');
+    return this.paths.some((p) => /\.mbcap(\.jsonl|\.csv)?$/.test(p));
   }
 
   async importCapture(): Promise<JobRef> {

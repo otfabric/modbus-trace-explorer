@@ -513,9 +513,8 @@ export function App({ service, platform }: AppProps) {
     return () => window.removeEventListener('keydown', onKey);
   }, [platform, open]);
 
-  const cancelJob = () => {
-    if (phase.kind === 'scanning' || phase.kind === 'analyzing' || phase.kind === 'preparing' || phase.kind === 'importing') void service.cancelJob(phase.jobId);
-  };
+  // Cancel on the import screens: each phase that shows one has its job.
+  const cancelJob = (jobId: string) => () => void service.cancelJob(jobId);
 
   let body: ReactNode;
   switch (phase.kind) {
@@ -523,16 +522,16 @@ export function App({ service, platform }: AppProps) {
       body = <EmptyState onOpen={() => void platform.chooseTraces().then(open)} onOpenRecent={(p) => void open(p)} recent={recent} error={error} />;
       break;
     case 'scanning':
-      body = <ImportProgress title="Scanning the trace" name={phase.file.name} job={phase.job} onCancel={cancelJob} />;
+      body = <ImportProgress title="Scanning the trace" name={phase.file.name} job={phase.job} onCancel={cancelJob(phase.jobId)} />;
       break;
     case 'preparing':
-      body = <ImportProgress title="Decompressing the trace" name={phase.file.name} job={phase.job} onCancel={cancelJob} />;
+      body = <ImportProgress title="Decompressing the trace" name={phase.file.name} job={phase.job} onCancel={cancelJob(phase.jobId)} />;
       break;
     case 'importing':
-      body = <ImportProgress title="Importing the capture" name={phase.file.name} job={phase.job} onCancel={cancelJob} />;
+      body = <ImportProgress title="Importing the capture" name={phase.file.name} job={phase.job} onCancel={cancelJob(phase.jobId)} />;
       break;
     case 'analyzing':
-      body = <ImportProgress title="Analysing the selected flows" name={phase.file.name} job={phase.job} onCancel={cancelJob} />;
+      body = <ImportProgress title="Analysing the selected flows" name={phase.file.name} job={phase.job} onCancel={cancelJob(phase.jobId)} />;
       break;
     case 'flows':
       body = (

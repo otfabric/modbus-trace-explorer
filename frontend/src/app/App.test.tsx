@@ -374,4 +374,60 @@ describe('App', () => {
     await user.keyboard('{Control>}e{/Control}');
     expect(screen.queryByRole('dialog', { name: 'Export' })).toBeNull();
   });
+
+  it('cancels a capture import back to the empty state, and refuses to import a trace', async () => {
+    const user = userEvent.setup();
+    render(<App service={new MockService({ rows: 100, step: 500 })} platform={platform(['/x/site.mbcap'])} />);
+    await user.click(screen.getByRole('button', { name: /Open/ }));
+    expect(await screen.findByText('Importing the capture')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Cancel' }));
+    expect(await screen.findByText(/Drop a pcap or pcapng here/)).toBeInTheDocument();
+    const trace = new MockService({ rows: 10 });
+    await trace.open(['/x/site.pcapng']);
+    await expect(trace.importCapture()).rejects.toThrow(/this is a trace/);
+  });
+
+  it('answers the menu Export for a trace and not for a capture', async () => {
+    const user = userEvent.setup();
+    const { unmount } = render(<App service={new MockService({ rows: 100, analyzed: true, step: 1 })} platform={platform(['/x/site.pcapng'])} />);
+    await user.click(screen.getByRole('button', { name: /Open/ }));
+    await screen.findByRole('grid', { name: 'Timeline' });
+    act(() => menu?.({ action: 'export' }));
+    expect(await screen.findByRole('dialog', { name: 'Export' })).toBeInTheDocument();
+    unmount();
+    render(<App service={new MockService({ rows: 100, analyzed: true, step: 1 })} platform={platform(['/x/site.mbcap'])} />);
+    await user.click(screen.getByRole('button', { name: /Open/ }));
+    await screen.findByRole('grid', { name: 'Timeline' });
+    act(() => menu?.({ action: 'export' }));
+    expect(screen.queryByRole('dialog', { name: 'Export' })).toBeNull();
+  });
+
+  it('reports the smoke test: rows shown, or an empty timeline', async () => {
+    for (const [rows, want] of [
+      [50, [50, '']],
+      [0, [0, 'the timeline is empty']],
+    ] as const) {
+      const reports: [number, string][] = [];
+      const user = userEvent.setup();
+      const p = { ...platform(['/x/site.pcapng']), smokeMode: async () => true, smokeDone: (n: number, why: string) => void reports.push([n, why]) };
+      const { unmount } = render(<App service={new MockService({ rows, analyzed: true, step: 1 })} platform={p} />);
+      await user.click(screen.getByRole('button', { name: /Open/ }));
+      await waitFor(() => expect(reports).toEqual([want]));
+      unmount();
+    }
+  });
+
+  it('explains a disabled Export when the trace is not at its path', async () => {
+    class Moved extends MockService {
+      override async overview() {
+        return { ...(await super.overview()), trace_missing: true };
+      }
+    }
+    const user = userEvent.setup();
+    render(<App service={new Moved({ rows: 100, analyzed: true, step: 1 })} platform={platform(['/x/site.pcapng'])} />);
+    await user.click(screen.getByRole('button', { name: /Open/ }));
+    const button = await screen.findByRole('button', { name: /^Export$/ });
+    expect(button).toBeDisabled();
+    expect(button).toHaveAttribute('title', 'Exports read the trace, which is not at its path');
+  });
 });
