@@ -82,7 +82,7 @@ What this application needs from `go-modbus-trace`. Each item has a requirement 
 | C10 | A version constant for event semantics so the cache invalidates when the library's output meaning changes | to be added to L9 | `model.EventSemanticsVersion` |
 | C11 | `trace/tracetest` for application tests (synthetic traces with ground truth) | `TESTING.md` | `trace/tracetest` (and `testdata/plant.pcapng`) |
 
-The app records the library version it was built against in its cache and in exports (`Header.Producer`). Depend on a tag (v0.1.0 once released) or a pseudo-version of the library's main; develop locally with an uncommitted `go.work`; CI rejects a `replace` in `go.mod` (`make mod-check`). M0 imports nothing from the library, so `go.mod` names it from M1 on.
+The app records the library version it was built against in its cache and in exports (`Header.Producer`). Depend on a tag (v0.1.0 since v0.3.0 of the Explorer; before, a pseudo-version of the same commit) or a pseudo-version of the library's main; develop locally with an uncommitted `go.work`; CI rejects a `replace` in `go.mod` (`make mod-check`). M0 imports nothing from the library, so `go.mod` names it from M1 on.
 
 ## 4. Import pipeline
 
@@ -222,7 +222,7 @@ Seen working at run time on macOS (WKWebView) by the user on 2026-10-16: a `.pca
 |---|---|
 | Go | `go 1.25.0` as the Explorer (Wails v3 needs it); native runners. Dependencies are pinned at versions that keep 1.25: `golang.org/x/sys` v0.46.0 and `modernc.org/sqlite` v1.53.0 in the spike's test (v1.60 needs Go 1.26) |
 | Wails | `github.com/wailsapp/wails/v3 v3.0.0-beta.29` pinned (latest v3 tag on 2026-10-15 *(verified in the Explorer's go.mod and the proposal's check)*); `@wailsio/runtime` aligned |
-| Library | `github.com/otfabric/go-modbus-trace` at a tag or pseudo-version; `go-modbus-capture` arrives through it (direct import only if the `.mbcap` viewer, R24, is built) |
+| Library | `github.com/otfabric/go-modbus-trace` at a tag (v0.1.0) or pseudo-version; `go-modbus-capture` arrives through it (direct import only if the `.mbcap` viewer, R24, is built) |
 | Index | own column files (section 5); `modernc.org/sqlite` v1.53.0 only in the spike's test, to keep the measurement repeatable |
 | Schemas in tests | `github.com/santhosh-tekuri/jsonschema/v6` as the Explorer |
 | Frontend | section 11; no charting, no virtualization, no icon library. The dependency set is the SunSpec Explorer's lockfile (React 19.3, Vite 8, Tailwind 4.3, TypeScript 7, Vitest 5, `@wailsio/runtime` 3.0.0-beta.29), installed from it unchanged *(M0)* |

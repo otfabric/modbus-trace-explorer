@@ -2,8 +2,12 @@
 
 ## v0.3.0
 
-**Date:** not released yet
+**Date:** 2026-10-18
 **Previous release:** v0.2.0
+
+## Summary
+
+A README that shows what the Explorer is for, with a two-minute demo and screenshots made from the application itself, and go-modbus-trace at its release v0.1.0.
 
 ## Changes
 
@@ -12,6 +16,12 @@
 - **A README about what the Explorer is for**, with a two-minute demo video and screenshots: finding what goes wrong between a Modbus client and its devices, and exporting real traffic to replay as a simulated device.
 - **A demo trace** in the test corpus, `realistic/site-diagnosis.pcapng`: a site with the usual problems (slow meters behind an RTU gateway, an offline unit, duplicate polling, a 4x-offset register, a refused write, a connection reset).
 - `make demo-server` and `docs/media/record-demo.mjs`, which make the screenshots and the video from the application itself.
+
+### Changed
+
+- go-modbus-trace is required as its release v0.1.0 instead of a pseudo-version of the same commit: the code is unchanged, but the version recorded in the cache and in exports is now `v0.1.0`, so traces opened before are analysed again once.
+
+---
 
 ## v0.2.0
 
