@@ -1,4 +1,4 @@
-.PHONY: help all smoke check test coverage coverage-check coverage-clean fmt fmt-check vet lint lint-ci vuln mod-check \
+.PHONY: help all smoke smoke-corpus fuzz check test coverage coverage-check coverage-clean fmt fmt-check vet lint lint-ci vuln mod-check \
 	frontend frontend-install frontend-check frontend-coverage frontend-urls golden scale build build-gui bundle-macos appicon winres spike dev clean
 
 help: ## This help
@@ -114,8 +114,15 @@ winres: ## Regenerate the Windows resources (icon, manifest) linked into the des
 		--icon appicon.png --product-name "Modbus Trace Explorer" --file-description "OT Fabric Modbus Trace Explorer" \
 		--copyright "Copyright (c) 2026 OT Fabric. MIT License." --original-filename modbus-trace-explorer.exe --out rsrc
 
-golden: ## Regenerate the JSON Schemas of the DTOs in docs/schema
-	@MTE_UPDATE=1 go test -count=1 -run '^TestSchemasUpToDate$$' ./internal/engine
+golden: ## Regenerate the test corpus, then the DTO schemas, the engine fixtures and the smoke trace
+	@MTE_UPDATE=1 go test -count=1 -run '^TestCorpus$$' ./internal/corpus
+	@MTE_UPDATE=1 go test -count=1 -run '^(TestSchemasUpToDate|TestEngineFixture|TestCorpusFixtures|TestSmokeTrace)$$' ./internal/engine
+
+fuzz: ## Fuzz the engine with mutated corpus files (FUZZTIME, default 5m)
+	@go test -run '^$$' -fuzz '^FuzzOpen$$' -fuzztime $${FUZZTIME:-5m} ./internal/engine
+
+smoke-corpus: build-gui ## Run the built application on every file of testdata/corpus and check how it takes each
+	@python3 scripts/smoke_corpus.py bin/$(GUI_NAME)
 
 scale: ## Import a generated trace of SCALE transactions (default 1,000,000) and time it (R21, A4)
 	@MTE_SCALE=$${SCALE:-1000000} go test -count=1 -run '^TestScale$$' -v -timeout 60m ./internal/engine

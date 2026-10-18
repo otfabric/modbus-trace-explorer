@@ -20,7 +20,7 @@ import (
 	"github.com/otfabric/modbus-trace-explorer/internal/service"
 )
 
-func newEngine(t *testing.T) *Engine {
+func newEngine(t testing.TB) *Engine {
 	t.Helper()
 	e, err := New(Options{CacheDir: filepath.Join(t.TempDir(), "cache"), ConfigDir: filepath.Join(t.TempDir(), "config")})
 	if err != nil {

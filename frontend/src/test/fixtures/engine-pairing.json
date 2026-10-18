@@ -1,0 +1,4098 @@
+{
+  "file_info": {
+    "id": "pairing",
+    "paths": [
+      "/traces/tid-and-pairing.pcapng"
+    ],
+    "name": "tid-and-pairing.pcapng",
+    "size": 4012,
+    "gzip": false,
+    "kind": "trace",
+    "analyzed": true,
+    "choices": {
+      "flows": [
+        1
+      ],
+      "server_ports": [
+        502
+      ],
+      "servers": null
+    }
+  },
+  "scan_result": {
+    "summary": {
+      "file": "tid-and-pairing.pcapng",
+      "format": "pcapng",
+      "gzip": false,
+      "input_bytes": 4012,
+      "sha256": "4c9590f1d52ba2a89bbd6c6361fac310762ae39b93037cb4612e885cf38afb35",
+      "inputs": [
+        {
+          "file": "tid-and-pairing.pcapng",
+          "format": "pcapng",
+          "gzip": false,
+          "input_bytes": 4012,
+          "sha256": "4c9590f1d52ba2a89bbd6c6361fac310762ae39b93037cb4612e885cf38afb35",
+          "packets": 40
+        }
+      ],
+      "packets": 40,
+      "bytes": 2588,
+      "first": "2026-10-14T06:58:00Z",
+      "last": "2026-10-14T06:58:00.1739Z",
+      "interfaces": [
+        {
+          "id": 0,
+          "part": 0,
+          "section": 0,
+          "link_type": 1,
+          "link": "ethernet",
+          "snaplen": 0,
+          "tsresol": 6,
+          "packets": 40
+        }
+      ],
+      "sections": [
+        {
+          "part": 0
+        }
+      ],
+      "snaplen": {
+        "max": 0,
+        "truncated_packets": 0,
+        "payload_bytes_cut": 0
+      },
+      "unsupported": {},
+      "fragments": {
+        "reassembled": 0,
+        "dropped": 0,
+        "incomplete": 0
+      },
+      "reader": {
+        "simple_packets": 0,
+        "skipped_blocks": 0,
+        "unknown_blocks": 0,
+        "bad_options": 0,
+        "other_frames": 0,
+        "truncated_tail": false
+      },
+      "connections": {
+        "total": 1,
+        "midstream": 0,
+        "evicted": 0,
+        "superseded": 0,
+        "max_tracked": 1,
+        "packets_after_close": 1
+      },
+      "quality": {
+        "retransmitted": 0,
+        "out_of_order": 0,
+        "overlap_conflict": 0,
+        "keepalives": 0,
+        "syn_retransmits": 0,
+        "gaps": 0,
+        "gap_bytes": 0,
+        "reassembly_overflow": 0,
+        "reassembly_budget": 0,
+        "resyncs": 0,
+        "resync_failed": 0,
+        "junk_bytes": 0,
+        "foreign_protocol": 1,
+        "snaplen_truncated": 0
+      },
+      "time_backwards": 0
+    },
+    "flows": [
+      {
+        "id": 1,
+        "a": "10.0.0.10:40000",
+        "b": "10.0.0.2:502",
+        "role_source": "syn",
+        "role_guessed": false,
+        "role_confidence": 1,
+        "open": "syn",
+        "close": "fin",
+        "first": "2026-10-14T06:58:00Z",
+        "last": "2026-10-14T06:58:00.1738Z",
+        "interface": 0,
+        "multiple_interfaces": false,
+        "packets": [
+          21,
+          18
+        ],
+        "bytes": [
+          216,
+          176
+        ],
+        "class": "modbus_tcp",
+        "score": 1,
+        "adus": [
+          17,
+          16
+        ],
+        "max_run": [
+          10,
+          16
+        ],
+        "foreign_protocol": 1,
+        "resyncs": 0,
+        "junk_bytes": 0,
+        "server_port": 502,
+        "gaps": 0,
+        "gap_bytes": 0,
+        "retransmitted": 0,
+        "out_of_order": 0,
+        "overlap_conflict": 0
+      }
+    ],
+    "server_ports": [
+      502
+    ],
+    "selected": [
+      1
+    ],
+    "one_click": true
+  },
+  "overview": {
+    "file": "tid-and-pairing.pcapng",
+    "size": 4012,
+    "first_ns": 1791961080000000000,
+    "last_ns": 1791961080173900000,
+    "packets": 40,
+    "connections": 1,
+    "devices": 3,
+    "transactions": 19,
+    "rows": 21,
+    "quality": "warnings",
+    "quality_count": 4,
+    "trace_missing": false,
+    "summary": {
+      "file": "tid-and-pairing.pcapng",
+      "format": "pcapng",
+      "gzip": false,
+      "input_bytes": 4012,
+      "sha256": "4c9590f1d52ba2a89bbd6c6361fac310762ae39b93037cb4612e885cf38afb35",
+      "inputs": [
+        {
+          "file": "tid-and-pairing.pcapng",
+          "format": "pcapng",
+          "gzip": false,
+          "input_bytes": 4012,
+          "sha256": "4c9590f1d52ba2a89bbd6c6361fac310762ae39b93037cb4612e885cf38afb35",
+          "packets": 40
+        }
+      ],
+      "packets": 40,
+      "bytes": 2588,
+      "first": "2026-10-14T06:58:00Z",
+      "last": "2026-10-14T06:58:00.1739Z",
+      "interfaces": [
+        {
+          "id": 0,
+          "part": 0,
+          "section": 0,
+          "link_type": 1,
+          "link": "ethernet",
+          "snaplen": 0,
+          "tsresol": 6,
+          "packets": 40
+        }
+      ],
+      "sections": [
+        {
+          "part": 0
+        }
+      ],
+      "snaplen": {
+        "max": 0,
+        "truncated_packets": 0,
+        "payload_bytes_cut": 0
+      },
+      "unsupported": {},
+      "fragments": {
+        "reassembled": 0,
+        "dropped": 0,
+        "incomplete": 0
+      },
+      "reader": {
+        "simple_packets": 0,
+        "skipped_blocks": 0,
+        "unknown_blocks": 0,
+        "bad_options": 0,
+        "other_frames": 0,
+        "truncated_tail": false
+      },
+      "connections": {
+        "total": 1,
+        "midstream": 0,
+        "evicted": 0,
+        "superseded": 0,
+        "max_tracked": 1,
+        "packets_after_close": 1
+      },
+      "quality": {
+        "retransmitted": 0,
+        "out_of_order": 0,
+        "overlap_conflict": 0,
+        "keepalives": 0,
+        "syn_retransmits": 0,
+        "gaps": 0,
+        "gap_bytes": 0,
+        "reassembly_overflow": 0,
+        "reassembly_budget": 0,
+        "resyncs": 0,
+        "resync_failed": 0,
+        "junk_bytes": 0,
+        "foreign_protocol": 1,
+        "snaplen_truncated": 0
+      },
+      "time_backwards": 0,
+      "transactions": {
+        "ambiguous": 2,
+        "exception": 1,
+        "malformed": 1,
+        "ok": 12,
+        "orphan_response": 1,
+        "unanswered": 2
+      },
+      "transaction_flags": {
+        "broadcast": 1,
+        "foreign_protocol": 1,
+        "invalid_pdu": 2
+      }
+    }
+  },
+  "timeline": {
+    "offset": 0,
+    "rows": [
+      {
+        "seq": 1,
+        "kind": "conn_open",
+        "t_ns": 1791961080000000000,
+        "conn": 1,
+        "client": "10.0.0.10",
+        "server": "10.0.0.2:502",
+        "flags": [],
+        "summary": "Connection opened (SYN)",
+        "result": ""
+      },
+      {
+        "seq": 2,
+        "kind": "txn",
+        "t_ns": 1791961080000300000,
+        "conn": 1,
+        "client": "10.0.0.10",
+        "server": "10.0.0.2:502",
+        "unit": 1,
+        "tid": 1,
+        "fc": 3,
+        "class": "read",
+        "status": "ambiguous",
+        "latency_ns": 10200000,
+        "flags": [],
+        "summary": "Read 1 holding register @ 0",
+        "result": "Ambiguous"
+      },
+      {
+        "seq": 3,
+        "kind": "txn",
+        "t_ns": 1791961080005400000,
+        "conn": 1,
+        "client": "10.0.0.10",
+        "server": "10.0.0.2:502",
+        "unit": 1,
+        "tid": 1,
+        "fc": 3,
+        "class": "read",
+        "status": "ambiguous",
+        "latency_ns": 10200000,
+        "flags": [],
+        "summary": "Read 1 holding register @ 10",
+        "result": "Ambiguous"
+      },
+      {
+        "seq": 4,
+        "kind": "txn",
+        "t_ns": 1791961080020700000,
+        "conn": 1,
+        "client": "10.0.0.10",
+        "server": "10.0.0.2:502",
+        "unit": 1,
+        "tid": 9,
+        "fc": 3,
+        "class": "read",
+        "status": "orphan_response",
+        "flags": [],
+        "summary": "Response to Read 0  @ 0",
+        "result": "Response without request"
+      },
+      {
+        "seq": 19,
+        "kind": "txn",
+        "t_ns": 1791961080025800000,
+        "conn": 1,
+        "client": "10.0.0.10",
+        "server": "10.0.0.2:502",
+        "unit": 1,
+        "tid": 10,
+        "fc": 3,
+        "class": "read",
+        "status": "unanswered",
+        "flags": [],
+        "summary": "Read 1 holding register @ 20",
+        "result": "No response observed"
+      },
+      {
+        "seq": 5,
+        "kind": "txn",
+        "t_ns": 1791961080030900000,
+        "conn": 1,
+        "client": "10.0.0.10",
+        "server": "10.0.0.2:502",
+        "unit": 1,
+        "tid": 11,
+        "fc": 3,
+        "class": "read",
+        "status": "ok",
+        "latency_ns": 5100000,
+        "flags": [
+          "invalid_pdu"
+        ],
+        "summary": "Read 2 holding registers @ 0",
+        "result": "2 words"
+      },
+      {
+        "seq": 6,
+        "kind": "txn",
+        "t_ns": 1791961080041100000,
+        "conn": 1,
+        "client": "10.0.0.10",
+        "server": "10.0.0.2:502",
+        "unit": 1,
+        "tid": 12,
+        "fc": 3,
+        "class": "read",
+        "status": "exception",
+        "latency_ns": 5100000,
+        "flags": [
+          "invalid_pdu"
+        ],
+        "summary": "Read 1 holding register @ 0",
+        "result": "Exception 00 Unknown exception"
+      },
+      {
+        "seq": 20,
+        "kind": "txn",
+        "t_ns": 1791961080051300000,
+        "conn": 1,
+        "client": "10.0.0.10",
+        "server": "10.0.0.2:502",
+        "unit": 0,
+        "tid": 13,
+        "fc": 6,
+        "class": "write",
+        "status": "unanswered",
+        "flags": [
+          "broadcast"
+        ],
+        "summary": "Write holding register @ 1 = 1",
+        "result": "No response observed"
+      },
+      {
+        "seq": 7,
+        "kind": "txn",
+        "t_ns": 1791961080056400000,
+        "conn": 1,
+        "client": "10.0.0.10",
+        "server": "10.0.0.2:502",
+        "unit": 255,
+        "tid": 14,
+        "fc": 4,
+        "class": "read",
+        "status": "ok",
+        "latency_ns": 5100000,
+        "flags": [],
+        "summary": "Read 1 input register @ 0",
+        "result": "1 words"
+      },
+      {
+        "seq": 8,
+        "kind": "txn",
+        "t_ns": 1791961080066600000,
+        "conn": 1,
+        "client": "10.0.0.10",
+        "server": "10.0.0.2:502",
+        "unit": 1,
+        "tid": 15,
+        "fc": 3,
+        "class": "read",
+        "status": "malformed",
+        "flags": [
+          "foreign_protocol"
+        ],
+        "summary": "Read 1 holding register @ 0",
+        "result": "Malformed"
+      },
+      {
+        "seq": 9,
+        "kind": "txn",
+        "t_ns": 1791961080071700000,
+        "conn": 1,
+        "client": "10.0.0.10",
+        "server": "10.0.0.2:502",
+        "unit": 1,
+        "tid": 16,
+        "fc": 3,
+        "class": "read",
+        "status": "ok",
+        "latency_ns": 5100000,
+        "flags": [],
+        "summary": "Read 1 holding register @ 0",
+        "result": "1 words"
+      },
+      {
+        "seq": 10,
+        "kind": "txn",
+        "t_ns": 1791961080081900000,
+        "conn": 1,
+        "client": "10.0.0.10",
+        "server": "10.0.0.2:502",
+        "unit": 1,
+        "tid": 17,
+        "fc": 3,
+        "class": "read",
+        "status": "ok",
+        "latency_ns": 5100000,
+        "flags": [],
+        "summary": "Read 1 holding register @ 0",
+        "result": "1 words"
+      },
+      {
+        "seq": 11,
+        "kind": "txn",
+        "t_ns": 1791961080092100000,
+        "conn": 1,
+        "client": "10.0.0.10",
+        "server": "10.0.0.2:502",
+        "unit": 1,
+        "tid": 18,
+        "fc": 3,
+        "class": "read",
+        "status": "ok",
+        "latency_ns": 5100000,
+        "flags": [],
+        "summary": "Read 1 holding register @ 0",
+        "result": "1 words"
+      },
+      {
+        "seq": 12,
+        "kind": "txn",
+        "t_ns": 1791961080102300000,
+        "conn": 1,
+        "client": "10.0.0.10",
+        "server": "10.0.0.2:502",
+        "unit": 1,
+        "tid": 19,
+        "fc": 3,
+        "class": "read",
+        "status": "ok",
+        "latency_ns": 5100000,
+        "flags": [],
+        "summary": "Read 1 holding register @ 0",
+        "result": "1 words"
+      },
+      {
+        "seq": 13,
+        "kind": "txn",
+        "t_ns": 1791961080112500000,
+        "conn": 1,
+        "client": "10.0.0.10",
+        "server": "10.0.0.2:502",
+        "unit": 1,
+        "tid": 20,
+        "fc": 3,
+        "class": "read",
+        "status": "ok",
+        "latency_ns": 5100000,
+        "flags": [],
+        "summary": "Read 1 holding register @ 0",
+        "result": "1 words"
+      },
+      {
+        "seq": 14,
+        "kind": "txn",
+        "t_ns": 1791961080122700000,
+        "conn": 1,
+        "client": "10.0.0.10",
+        "server": "10.0.0.2:502",
+        "unit": 1,
+        "tid": 21,
+        "fc": 3,
+        "class": "read",
+        "status": "ok",
+        "latency_ns": 5100000,
+        "flags": [],
+        "summary": "Read 1 holding register @ 0",
+        "result": "1 words"
+      },
+      {
+        "seq": 15,
+        "kind": "txn",
+        "t_ns": 1791961080132900000,
+        "conn": 1,
+        "client": "10.0.0.10",
+        "server": "10.0.0.2:502",
+        "unit": 1,
+        "tid": 22,
+        "fc": 3,
+        "class": "read",
+        "status": "ok",
+        "latency_ns": 5100000,
+        "flags": [],
+        "summary": "Read 1 holding register @ 0",
+        "result": "1 words"
+      },
+      {
+        "seq": 16,
+        "kind": "txn",
+        "t_ns": 1791961080143100000,
+        "conn": 1,
+        "client": "10.0.0.10",
+        "server": "10.0.0.2:502",
+        "unit": 1,
+        "tid": 23,
+        "fc": 3,
+        "class": "read",
+        "status": "ok",
+        "latency_ns": 5100000,
+        "flags": [],
+        "summary": "Read 1 holding register @ 0",
+        "result": "1 words"
+      },
+      {
+        "seq": 17,
+        "kind": "txn",
+        "t_ns": 1791961080153300000,
+        "conn": 1,
+        "client": "10.0.0.10",
+        "server": "10.0.0.2:502",
+        "unit": 1,
+        "tid": 24,
+        "fc": 3,
+        "class": "read",
+        "status": "ok",
+        "latency_ns": 5100000,
+        "flags": [],
+        "summary": "Read 1 holding register @ 0",
+        "result": "1 words"
+      },
+      {
+        "seq": 18,
+        "kind": "txn",
+        "t_ns": 1791961080163500000,
+        "conn": 1,
+        "client": "10.0.0.10",
+        "server": "10.0.0.2:502",
+        "unit": 1,
+        "tid": 25,
+        "fc": 3,
+        "class": "read",
+        "status": "ok",
+        "latency_ns": 5100000,
+        "flags": [],
+        "summary": "Read 1 holding register @ 0",
+        "result": "1 words"
+      },
+      {
+        "seq": 21,
+        "kind": "conn_close",
+        "t_ns": 1791961080173800000,
+        "conn": 1,
+        "client": "10.0.0.10",
+        "server": "10.0.0.2:502",
+        "flags": [],
+        "summary": "Connection closed (FIN) after 19 transactions",
+        "result": ""
+      }
+    ],
+    "total": 21
+  },
+  "details": {
+    "1": {
+      "row": {
+        "seq": 1,
+        "kind": "conn_open",
+        "t_ns": 1791961080000000000,
+        "conn": 1,
+        "client": "10.0.0.10",
+        "server": "10.0.0.2:502",
+        "flags": [],
+        "summary": "Connection opened (SYN)",
+        "result": ""
+      },
+      "text": "Connection opened (SYN)",
+      "notes": [],
+      "conn": {
+        "id": 1,
+        "client": "10.0.0.10:40000",
+        "server": "10.0.0.2:502",
+        "open": "syn",
+        "close": "fin",
+        "role_source": "syn",
+        "role_confidence": 1,
+        "transactions": 19
+      },
+      "extra": {
+        "bytes": [
+          0,
+          0
+        ],
+        "client": "10.0.0.10:40000",
+        "first": "2026-10-14T06:58:00Z",
+        "id": 1,
+        "interface": 0,
+        "open": "syn",
+        "packets": [
+          0,
+          0
+        ],
+        "role_confidence": 1,
+        "role_source": "syn",
+        "server": "10.0.0.2:502",
+        "transactions": 0
+      }
+    },
+    "10": {
+      "row": {
+        "seq": 10,
+        "kind": "txn",
+        "t_ns": 1791961080081900000,
+        "conn": 1,
+        "client": "10.0.0.10",
+        "server": "10.0.0.2:502",
+        "unit": 1,
+        "tid": 17,
+        "fc": 3,
+        "class": "read",
+        "status": "ok",
+        "latency_ns": 5100000,
+        "flags": [],
+        "summary": "Read 1 holding register @ 0",
+        "result": "1 words"
+      },
+      "request": {
+        "hex": "001100000006010300000001",
+        "name": "Read Holding Registers",
+        "fields": [
+          {
+            "name": "transaction_id",
+            "offset": 0,
+            "length": 2,
+            "value": 17
+          },
+          {
+            "name": "protocol_id",
+            "offset": 2,
+            "length": 2,
+            "value": 0
+          },
+          {
+            "name": "length",
+            "offset": 4,
+            "length": 2,
+            "value": 6
+          },
+          {
+            "name": "unit_id",
+            "offset": 6,
+            "length": 1,
+            "value": 1
+          },
+          {
+            "name": "function",
+            "offset": 7,
+            "length": 1,
+            "value": 3
+          },
+          {
+            "name": "address",
+            "offset": 8,
+            "length": 2,
+            "value": 0
+          },
+          {
+            "name": "quantity",
+            "offset": 10,
+            "length": 2,
+            "value": 1
+          }
+        ],
+        "warnings": [],
+        "packets": [
+          {
+            "frame": 20,
+            "part": 0,
+            "t_ns": 1791961080081900000,
+            "interface": 0,
+            "offset": 1936,
+            "payload_offset": 54,
+            "payload_length": 12,
+            "display_filter": "frame.number == 20"
+          }
+        ]
+      },
+      "response": {
+        "hex": "0011000000050103020011",
+        "name": "Read Holding Registers",
+        "fields": [
+          {
+            "name": "transaction_id",
+            "offset": 0,
+            "length": 2,
+            "value": 17
+          },
+          {
+            "name": "protocol_id",
+            "offset": 2,
+            "length": 2,
+            "value": 0
+          },
+          {
+            "name": "length",
+            "offset": 4,
+            "length": 2,
+            "value": 5
+          },
+          {
+            "name": "unit_id",
+            "offset": 6,
+            "length": 1,
+            "value": 1
+          },
+          {
+            "name": "function",
+            "offset": 7,
+            "length": 1,
+            "value": 3
+          },
+          {
+            "name": "byte_count",
+            "offset": 8,
+            "length": 1,
+            "value": 2
+          },
+          {
+            "name": "registers",
+            "offset": 9,
+            "length": 2,
+            "hex": "0011"
+          }
+        ],
+        "warnings": [],
+        "packets": [
+          {
+            "frame": 21,
+            "part": 0,
+            "t_ns": 1791961080087000000,
+            "interface": 0,
+            "offset": 2036,
+            "payload_offset": 54,
+            "payload_length": 11,
+            "display_filter": "frame.number == 21"
+          }
+        ]
+      },
+      "text": "10.0.0.10 asked 10.0.0.2:502 unit 1: read 1 holding register @ 0. It answered in 5.1 ms: 1 words.",
+      "notes": [
+        {
+          "kind": "fact",
+          "code": "connection",
+          "meaning": "Connection 1 opened with a handshake; the server was decided by syn (confidence 1.00)."
+        }
+      ],
+      "conn": {
+        "id": 1,
+        "client": "10.0.0.10:40000",
+        "server": "10.0.0.2:502",
+        "open": "syn",
+        "close": "fin",
+        "role_source": "syn",
+        "role_confidence": 1,
+        "transactions": 19
+      },
+      "mbcap": "Will be exported to MBCAP."
+    },
+    "11": {
+      "row": {
+        "seq": 11,
+        "kind": "txn",
+        "t_ns": 1791961080092100000,
+        "conn": 1,
+        "client": "10.0.0.10",
+        "server": "10.0.0.2:502",
+        "unit": 1,
+        "tid": 18,
+        "fc": 3,
+        "class": "read",
+        "status": "ok",
+        "latency_ns": 5100000,
+        "flags": [],
+        "summary": "Read 1 holding register @ 0",
+        "result": "1 words"
+      },
+      "request": {
+        "hex": "001200000006010300000001",
+        "name": "Read Holding Registers",
+        "fields": [
+          {
+            "name": "transaction_id",
+            "offset": 0,
+            "length": 2,
+            "value": 18
+          },
+          {
+            "name": "protocol_id",
+            "offset": 2,
+            "length": 2,
+            "value": 0
+          },
+          {
+            "name": "length",
+            "offset": 4,
+            "length": 2,
+            "value": 6
+          },
+          {
+            "name": "unit_id",
+            "offset": 6,
+            "length": 1,
+            "value": 1
+          },
+          {
+            "name": "function",
+            "offset": 7,
+            "length": 1,
+            "value": 3
+          },
+          {
+            "name": "address",
+            "offset": 8,
+            "length": 2,
+            "value": 0
+          },
+          {
+            "name": "quantity",
+            "offset": 10,
+            "length": 2,
+            "value": 1
+          }
+        ],
+        "warnings": [],
+        "packets": [
+          {
+            "frame": 22,
+            "part": 0,
+            "t_ns": 1791961080092100000,
+            "interface": 0,
+            "offset": 2136,
+            "payload_offset": 54,
+            "payload_length": 12,
+            "display_filter": "frame.number == 22"
+          }
+        ]
+      },
+      "response": {
+        "hex": "0012000000050103020012",
+        "name": "Read Holding Registers",
+        "fields": [
+          {
+            "name": "transaction_id",
+            "offset": 0,
+            "length": 2,
+            "value": 18
+          },
+          {
+            "name": "protocol_id",
+            "offset": 2,
+            "length": 2,
+            "value": 0
+          },
+          {
+            "name": "length",
+            "offset": 4,
+            "length": 2,
+            "value": 5
+          },
+          {
+            "name": "unit_id",
+            "offset": 6,
+            "length": 1,
+            "value": 1
+          },
+          {
+            "name": "function",
+            "offset": 7,
+            "length": 1,
+            "value": 3
+          },
+          {
+            "name": "byte_count",
+            "offset": 8,
+            "length": 1,
+            "value": 2
+          },
+          {
+            "name": "registers",
+            "offset": 9,
+            "length": 2,
+            "hex": "0012"
+          }
+        ],
+        "warnings": [],
+        "packets": [
+          {
+            "frame": 23,
+            "part": 0,
+            "t_ns": 1791961080097200000,
+            "interface": 0,
+            "offset": 2236,
+            "payload_offset": 54,
+            "payload_length": 11,
+            "display_filter": "frame.number == 23"
+          }
+        ]
+      },
+      "text": "10.0.0.10 asked 10.0.0.2:502 unit 1: read 1 holding register @ 0. It answered in 5.1 ms: 1 words.",
+      "notes": [
+        {
+          "kind": "fact",
+          "code": "connection",
+          "meaning": "Connection 1 opened with a handshake; the server was decided by syn (confidence 1.00)."
+        }
+      ],
+      "conn": {
+        "id": 1,
+        "client": "10.0.0.10:40000",
+        "server": "10.0.0.2:502",
+        "open": "syn",
+        "close": "fin",
+        "role_source": "syn",
+        "role_confidence": 1,
+        "transactions": 19
+      },
+      "mbcap": "Will be exported to MBCAP."
+    },
+    "12": {
+      "row": {
+        "seq": 12,
+        "kind": "txn",
+        "t_ns": 1791961080102300000,
+        "conn": 1,
+        "client": "10.0.0.10",
+        "server": "10.0.0.2:502",
+        "unit": 1,
+        "tid": 19,
+        "fc": 3,
+        "class": "read",
+        "status": "ok",
+        "latency_ns": 5100000,
+        "flags": [],
+        "summary": "Read 1 holding register @ 0",
+        "result": "1 words"
+      },
+      "request": {
+        "hex": "001300000006010300000001",
+        "name": "Read Holding Registers",
+        "fields": [
+          {
+            "name": "transaction_id",
+            "offset": 0,
+            "length": 2,
+            "value": 19
+          },
+          {
+            "name": "protocol_id",
+            "offset": 2,
+            "length": 2,
+            "value": 0
+          },
+          {
+            "name": "length",
+            "offset": 4,
+            "length": 2,
+            "value": 6
+          },
+          {
+            "name": "unit_id",
+            "offset": 6,
+            "length": 1,
+            "value": 1
+          },
+          {
+            "name": "function",
+            "offset": 7,
+            "length": 1,
+            "value": 3
+          },
+          {
+            "name": "address",
+            "offset": 8,
+            "length": 2,
+            "value": 0
+          },
+          {
+            "name": "quantity",
+            "offset": 10,
+            "length": 2,
+            "value": 1
+          }
+        ],
+        "warnings": [],
+        "packets": [
+          {
+            "frame": 24,
+            "part": 0,
+            "t_ns": 1791961080102300000,
+            "interface": 0,
+            "offset": 2336,
+            "payload_offset": 54,
+            "payload_length": 12,
+            "display_filter": "frame.number == 24"
+          }
+        ]
+      },
+      "response": {
+        "hex": "0013000000050103020013",
+        "name": "Read Holding Registers",
+        "fields": [
+          {
+            "name": "transaction_id",
+            "offset": 0,
+            "length": 2,
+            "value": 19
+          },
+          {
+            "name": "protocol_id",
+            "offset": 2,
+            "length": 2,
+            "value": 0
+          },
+          {
+            "name": "length",
+            "offset": 4,
+            "length": 2,
+            "value": 5
+          },
+          {
+            "name": "unit_id",
+            "offset": 6,
+            "length": 1,
+            "value": 1
+          },
+          {
+            "name": "function",
+            "offset": 7,
+            "length": 1,
+            "value": 3
+          },
+          {
+            "name": "byte_count",
+            "offset": 8,
+            "length": 1,
+            "value": 2
+          },
+          {
+            "name": "registers",
+            "offset": 9,
+            "length": 2,
+            "hex": "0013"
+          }
+        ],
+        "warnings": [],
+        "packets": [
+          {
+            "frame": 25,
+            "part": 0,
+            "t_ns": 1791961080107400000,
+            "interface": 0,
+            "offset": 2436,
+            "payload_offset": 54,
+            "payload_length": 11,
+            "display_filter": "frame.number == 25"
+          }
+        ]
+      },
+      "text": "10.0.0.10 asked 10.0.0.2:502 unit 1: read 1 holding register @ 0. It answered in 5.1 ms: 1 words.",
+      "notes": [
+        {
+          "kind": "fact",
+          "code": "connection",
+          "meaning": "Connection 1 opened with a handshake; the server was decided by syn (confidence 1.00)."
+        }
+      ],
+      "conn": {
+        "id": 1,
+        "client": "10.0.0.10:40000",
+        "server": "10.0.0.2:502",
+        "open": "syn",
+        "close": "fin",
+        "role_source": "syn",
+        "role_confidence": 1,
+        "transactions": 19
+      },
+      "mbcap": "Will be exported to MBCAP."
+    },
+    "13": {
+      "row": {
+        "seq": 13,
+        "kind": "txn",
+        "t_ns": 1791961080112500000,
+        "conn": 1,
+        "client": "10.0.0.10",
+        "server": "10.0.0.2:502",
+        "unit": 1,
+        "tid": 20,
+        "fc": 3,
+        "class": "read",
+        "status": "ok",
+        "latency_ns": 5100000,
+        "flags": [],
+        "summary": "Read 1 holding register @ 0",
+        "result": "1 words"
+      },
+      "request": {
+        "hex": "001400000006010300000001",
+        "name": "Read Holding Registers",
+        "fields": [
+          {
+            "name": "transaction_id",
+            "offset": 0,
+            "length": 2,
+            "value": 20
+          },
+          {
+            "name": "protocol_id",
+            "offset": 2,
+            "length": 2,
+            "value": 0
+          },
+          {
+            "name": "length",
+            "offset": 4,
+            "length": 2,
+            "value": 6
+          },
+          {
+            "name": "unit_id",
+            "offset": 6,
+            "length": 1,
+            "value": 1
+          },
+          {
+            "name": "function",
+            "offset": 7,
+            "length": 1,
+            "value": 3
+          },
+          {
+            "name": "address",
+            "offset": 8,
+            "length": 2,
+            "value": 0
+          },
+          {
+            "name": "quantity",
+            "offset": 10,
+            "length": 2,
+            "value": 1
+          }
+        ],
+        "warnings": [],
+        "packets": [
+          {
+            "frame": 26,
+            "part": 0,
+            "t_ns": 1791961080112500000,
+            "interface": 0,
+            "offset": 2536,
+            "payload_offset": 54,
+            "payload_length": 12,
+            "display_filter": "frame.number == 26"
+          }
+        ]
+      },
+      "response": {
+        "hex": "0014000000050103020014",
+        "name": "Read Holding Registers",
+        "fields": [
+          {
+            "name": "transaction_id",
+            "offset": 0,
+            "length": 2,
+            "value": 20
+          },
+          {
+            "name": "protocol_id",
+            "offset": 2,
+            "length": 2,
+            "value": 0
+          },
+          {
+            "name": "length",
+            "offset": 4,
+            "length": 2,
+            "value": 5
+          },
+          {
+            "name": "unit_id",
+            "offset": 6,
+            "length": 1,
+            "value": 1
+          },
+          {
+            "name": "function",
+            "offset": 7,
+            "length": 1,
+            "value": 3
+          },
+          {
+            "name": "byte_count",
+            "offset": 8,
+            "length": 1,
+            "value": 2
+          },
+          {
+            "name": "registers",
+            "offset": 9,
+            "length": 2,
+            "hex": "0014"
+          }
+        ],
+        "warnings": [],
+        "packets": [
+          {
+            "frame": 27,
+            "part": 0,
+            "t_ns": 1791961080117600000,
+            "interface": 0,
+            "offset": 2636,
+            "payload_offset": 54,
+            "payload_length": 11,
+            "display_filter": "frame.number == 27"
+          }
+        ]
+      },
+      "text": "10.0.0.10 asked 10.0.0.2:502 unit 1: read 1 holding register @ 0. It answered in 5.1 ms: 1 words.",
+      "notes": [
+        {
+          "kind": "fact",
+          "code": "connection",
+          "meaning": "Connection 1 opened with a handshake; the server was decided by syn (confidence 1.00)."
+        }
+      ],
+      "conn": {
+        "id": 1,
+        "client": "10.0.0.10:40000",
+        "server": "10.0.0.2:502",
+        "open": "syn",
+        "close": "fin",
+        "role_source": "syn",
+        "role_confidence": 1,
+        "transactions": 19
+      },
+      "mbcap": "Will be exported to MBCAP."
+    },
+    "14": {
+      "row": {
+        "seq": 14,
+        "kind": "txn",
+        "t_ns": 1791961080122700000,
+        "conn": 1,
+        "client": "10.0.0.10",
+        "server": "10.0.0.2:502",
+        "unit": 1,
+        "tid": 21,
+        "fc": 3,
+        "class": "read",
+        "status": "ok",
+        "latency_ns": 5100000,
+        "flags": [],
+        "summary": "Read 1 holding register @ 0",
+        "result": "1 words"
+      },
+      "request": {
+        "hex": "001500000006010300000001",
+        "name": "Read Holding Registers",
+        "fields": [
+          {
+            "name": "transaction_id",
+            "offset": 0,
+            "length": 2,
+            "value": 21
+          },
+          {
+            "name": "protocol_id",
+            "offset": 2,
+            "length": 2,
+            "value": 0
+          },
+          {
+            "name": "length",
+            "offset": 4,
+            "length": 2,
+            "value": 6
+          },
+          {
+            "name": "unit_id",
+            "offset": 6,
+            "length": 1,
+            "value": 1
+          },
+          {
+            "name": "function",
+            "offset": 7,
+            "length": 1,
+            "value": 3
+          },
+          {
+            "name": "address",
+            "offset": 8,
+            "length": 2,
+            "value": 0
+          },
+          {
+            "name": "quantity",
+            "offset": 10,
+            "length": 2,
+            "value": 1
+          }
+        ],
+        "warnings": [],
+        "packets": [
+          {
+            "frame": 28,
+            "part": 0,
+            "t_ns": 1791961080122700000,
+            "interface": 0,
+            "offset": 2736,
+            "payload_offset": 54,
+            "payload_length": 12,
+            "display_filter": "frame.number == 28"
+          }
+        ]
+      },
+      "response": {
+        "hex": "0015000000050103020015",
+        "name": "Read Holding Registers",
+        "fields": [
+          {
+            "name": "transaction_id",
+            "offset": 0,
+            "length": 2,
+            "value": 21
+          },
+          {
+            "name": "protocol_id",
+            "offset": 2,
+            "length": 2,
+            "value": 0
+          },
+          {
+            "name": "length",
+            "offset": 4,
+            "length": 2,
+            "value": 5
+          },
+          {
+            "name": "unit_id",
+            "offset": 6,
+            "length": 1,
+            "value": 1
+          },
+          {
+            "name": "function",
+            "offset": 7,
+            "length": 1,
+            "value": 3
+          },
+          {
+            "name": "byte_count",
+            "offset": 8,
+            "length": 1,
+            "value": 2
+          },
+          {
+            "name": "registers",
+            "offset": 9,
+            "length": 2,
+            "hex": "0015"
+          }
+        ],
+        "warnings": [],
+        "packets": [
+          {
+            "frame": 29,
+            "part": 0,
+            "t_ns": 1791961080127800000,
+            "interface": 0,
+            "offset": 2836,
+            "payload_offset": 54,
+            "payload_length": 11,
+            "display_filter": "frame.number == 29"
+          }
+        ]
+      },
+      "text": "10.0.0.10 asked 10.0.0.2:502 unit 1: read 1 holding register @ 0. It answered in 5.1 ms: 1 words.",
+      "notes": [
+        {
+          "kind": "fact",
+          "code": "connection",
+          "meaning": "Connection 1 opened with a handshake; the server was decided by syn (confidence 1.00)."
+        }
+      ],
+      "conn": {
+        "id": 1,
+        "client": "10.0.0.10:40000",
+        "server": "10.0.0.2:502",
+        "open": "syn",
+        "close": "fin",
+        "role_source": "syn",
+        "role_confidence": 1,
+        "transactions": 19
+      },
+      "mbcap": "Will be exported to MBCAP."
+    },
+    "15": {
+      "row": {
+        "seq": 15,
+        "kind": "txn",
+        "t_ns": 1791961080132900000,
+        "conn": 1,
+        "client": "10.0.0.10",
+        "server": "10.0.0.2:502",
+        "unit": 1,
+        "tid": 22,
+        "fc": 3,
+        "class": "read",
+        "status": "ok",
+        "latency_ns": 5100000,
+        "flags": [],
+        "summary": "Read 1 holding register @ 0",
+        "result": "1 words"
+      },
+      "request": {
+        "hex": "001600000006010300000001",
+        "name": "Read Holding Registers",
+        "fields": [
+          {
+            "name": "transaction_id",
+            "offset": 0,
+            "length": 2,
+            "value": 22
+          },
+          {
+            "name": "protocol_id",
+            "offset": 2,
+            "length": 2,
+            "value": 0
+          },
+          {
+            "name": "length",
+            "offset": 4,
+            "length": 2,
+            "value": 6
+          },
+          {
+            "name": "unit_id",
+            "offset": 6,
+            "length": 1,
+            "value": 1
+          },
+          {
+            "name": "function",
+            "offset": 7,
+            "length": 1,
+            "value": 3
+          },
+          {
+            "name": "address",
+            "offset": 8,
+            "length": 2,
+            "value": 0
+          },
+          {
+            "name": "quantity",
+            "offset": 10,
+            "length": 2,
+            "value": 1
+          }
+        ],
+        "warnings": [],
+        "packets": [
+          {
+            "frame": 30,
+            "part": 0,
+            "t_ns": 1791961080132900000,
+            "interface": 0,
+            "offset": 2936,
+            "payload_offset": 54,
+            "payload_length": 12,
+            "display_filter": "frame.number == 30"
+          }
+        ]
+      },
+      "response": {
+        "hex": "0016000000050103020016",
+        "name": "Read Holding Registers",
+        "fields": [
+          {
+            "name": "transaction_id",
+            "offset": 0,
+            "length": 2,
+            "value": 22
+          },
+          {
+            "name": "protocol_id",
+            "offset": 2,
+            "length": 2,
+            "value": 0
+          },
+          {
+            "name": "length",
+            "offset": 4,
+            "length": 2,
+            "value": 5
+          },
+          {
+            "name": "unit_id",
+            "offset": 6,
+            "length": 1,
+            "value": 1
+          },
+          {
+            "name": "function",
+            "offset": 7,
+            "length": 1,
+            "value": 3
+          },
+          {
+            "name": "byte_count",
+            "offset": 8,
+            "length": 1,
+            "value": 2
+          },
+          {
+            "name": "registers",
+            "offset": 9,
+            "length": 2,
+            "hex": "0016"
+          }
+        ],
+        "warnings": [],
+        "packets": [
+          {
+            "frame": 31,
+            "part": 0,
+            "t_ns": 1791961080138000000,
+            "interface": 0,
+            "offset": 3036,
+            "payload_offset": 54,
+            "payload_length": 11,
+            "display_filter": "frame.number == 31"
+          }
+        ]
+      },
+      "text": "10.0.0.10 asked 10.0.0.2:502 unit 1: read 1 holding register @ 0. It answered in 5.1 ms: 1 words.",
+      "notes": [
+        {
+          "kind": "fact",
+          "code": "connection",
+          "meaning": "Connection 1 opened with a handshake; the server was decided by syn (confidence 1.00)."
+        }
+      ],
+      "conn": {
+        "id": 1,
+        "client": "10.0.0.10:40000",
+        "server": "10.0.0.2:502",
+        "open": "syn",
+        "close": "fin",
+        "role_source": "syn",
+        "role_confidence": 1,
+        "transactions": 19
+      },
+      "mbcap": "Will be exported to MBCAP."
+    },
+    "16": {
+      "row": {
+        "seq": 16,
+        "kind": "txn",
+        "t_ns": 1791961080143100000,
+        "conn": 1,
+        "client": "10.0.0.10",
+        "server": "10.0.0.2:502",
+        "unit": 1,
+        "tid": 23,
+        "fc": 3,
+        "class": "read",
+        "status": "ok",
+        "latency_ns": 5100000,
+        "flags": [],
+        "summary": "Read 1 holding register @ 0",
+        "result": "1 words"
+      },
+      "request": {
+        "hex": "001700000006010300000001",
+        "name": "Read Holding Registers",
+        "fields": [
+          {
+            "name": "transaction_id",
+            "offset": 0,
+            "length": 2,
+            "value": 23
+          },
+          {
+            "name": "protocol_id",
+            "offset": 2,
+            "length": 2,
+            "value": 0
+          },
+          {
+            "name": "length",
+            "offset": 4,
+            "length": 2,
+            "value": 6
+          },
+          {
+            "name": "unit_id",
+            "offset": 6,
+            "length": 1,
+            "value": 1
+          },
+          {
+            "name": "function",
+            "offset": 7,
+            "length": 1,
+            "value": 3
+          },
+          {
+            "name": "address",
+            "offset": 8,
+            "length": 2,
+            "value": 0
+          },
+          {
+            "name": "quantity",
+            "offset": 10,
+            "length": 2,
+            "value": 1
+          }
+        ],
+        "warnings": [],
+        "packets": [
+          {
+            "frame": 32,
+            "part": 0,
+            "t_ns": 1791961080143100000,
+            "interface": 0,
+            "offset": 3136,
+            "payload_offset": 54,
+            "payload_length": 12,
+            "display_filter": "frame.number == 32"
+          }
+        ]
+      },
+      "response": {
+        "hex": "0017000000050103020017",
+        "name": "Read Holding Registers",
+        "fields": [
+          {
+            "name": "transaction_id",
+            "offset": 0,
+            "length": 2,
+            "value": 23
+          },
+          {
+            "name": "protocol_id",
+            "offset": 2,
+            "length": 2,
+            "value": 0
+          },
+          {
+            "name": "length",
+            "offset": 4,
+            "length": 2,
+            "value": 5
+          },
+          {
+            "name": "unit_id",
+            "offset": 6,
+            "length": 1,
+            "value": 1
+          },
+          {
+            "name": "function",
+            "offset": 7,
+            "length": 1,
+            "value": 3
+          },
+          {
+            "name": "byte_count",
+            "offset": 8,
+            "length": 1,
+            "value": 2
+          },
+          {
+            "name": "registers",
+            "offset": 9,
+            "length": 2,
+            "hex": "0017"
+          }
+        ],
+        "warnings": [],
+        "packets": [
+          {
+            "frame": 33,
+            "part": 0,
+            "t_ns": 1791961080148200000,
+            "interface": 0,
+            "offset": 3236,
+            "payload_offset": 54,
+            "payload_length": 11,
+            "display_filter": "frame.number == 33"
+          }
+        ]
+      },
+      "text": "10.0.0.10 asked 10.0.0.2:502 unit 1: read 1 holding register @ 0. It answered in 5.1 ms: 1 words.",
+      "notes": [
+        {
+          "kind": "fact",
+          "code": "connection",
+          "meaning": "Connection 1 opened with a handshake; the server was decided by syn (confidence 1.00)."
+        }
+      ],
+      "conn": {
+        "id": 1,
+        "client": "10.0.0.10:40000",
+        "server": "10.0.0.2:502",
+        "open": "syn",
+        "close": "fin",
+        "role_source": "syn",
+        "role_confidence": 1,
+        "transactions": 19
+      },
+      "mbcap": "Will be exported to MBCAP."
+    },
+    "17": {
+      "row": {
+        "seq": 17,
+        "kind": "txn",
+        "t_ns": 1791961080153300000,
+        "conn": 1,
+        "client": "10.0.0.10",
+        "server": "10.0.0.2:502",
+        "unit": 1,
+        "tid": 24,
+        "fc": 3,
+        "class": "read",
+        "status": "ok",
+        "latency_ns": 5100000,
+        "flags": [],
+        "summary": "Read 1 holding register @ 0",
+        "result": "1 words"
+      },
+      "request": {
+        "hex": "001800000006010300000001",
+        "name": "Read Holding Registers",
+        "fields": [
+          {
+            "name": "transaction_id",
+            "offset": 0,
+            "length": 2,
+            "value": 24
+          },
+          {
+            "name": "protocol_id",
+            "offset": 2,
+            "length": 2,
+            "value": 0
+          },
+          {
+            "name": "length",
+            "offset": 4,
+            "length": 2,
+            "value": 6
+          },
+          {
+            "name": "unit_id",
+            "offset": 6,
+            "length": 1,
+            "value": 1
+          },
+          {
+            "name": "function",
+            "offset": 7,
+            "length": 1,
+            "value": 3
+          },
+          {
+            "name": "address",
+            "offset": 8,
+            "length": 2,
+            "value": 0
+          },
+          {
+            "name": "quantity",
+            "offset": 10,
+            "length": 2,
+            "value": 1
+          }
+        ],
+        "warnings": [],
+        "packets": [
+          {
+            "frame": 34,
+            "part": 0,
+            "t_ns": 1791961080153300000,
+            "interface": 0,
+            "offset": 3336,
+            "payload_offset": 54,
+            "payload_length": 12,
+            "display_filter": "frame.number == 34"
+          }
+        ]
+      },
+      "response": {
+        "hex": "0018000000050103020018",
+        "name": "Read Holding Registers",
+        "fields": [
+          {
+            "name": "transaction_id",
+            "offset": 0,
+            "length": 2,
+            "value": 24
+          },
+          {
+            "name": "protocol_id",
+            "offset": 2,
+            "length": 2,
+            "value": 0
+          },
+          {
+            "name": "length",
+            "offset": 4,
+            "length": 2,
+            "value": 5
+          },
+          {
+            "name": "unit_id",
+            "offset": 6,
+            "length": 1,
+            "value": 1
+          },
+          {
+            "name": "function",
+            "offset": 7,
+            "length": 1,
+            "value": 3
+          },
+          {
+            "name": "byte_count",
+            "offset": 8,
+            "length": 1,
+            "value": 2
+          },
+          {
+            "name": "registers",
+            "offset": 9,
+            "length": 2,
+            "hex": "0018"
+          }
+        ],
+        "warnings": [],
+        "packets": [
+          {
+            "frame": 35,
+            "part": 0,
+            "t_ns": 1791961080158400000,
+            "interface": 0,
+            "offset": 3436,
+            "payload_offset": 54,
+            "payload_length": 11,
+            "display_filter": "frame.number == 35"
+          }
+        ]
+      },
+      "text": "10.0.0.10 asked 10.0.0.2:502 unit 1: read 1 holding register @ 0. It answered in 5.1 ms: 1 words.",
+      "notes": [
+        {
+          "kind": "fact",
+          "code": "connection",
+          "meaning": "Connection 1 opened with a handshake; the server was decided by syn (confidence 1.00)."
+        }
+      ],
+      "conn": {
+        "id": 1,
+        "client": "10.0.0.10:40000",
+        "server": "10.0.0.2:502",
+        "open": "syn",
+        "close": "fin",
+        "role_source": "syn",
+        "role_confidence": 1,
+        "transactions": 19
+      },
+      "mbcap": "Will be exported to MBCAP."
+    },
+    "18": {
+      "row": {
+        "seq": 18,
+        "kind": "txn",
+        "t_ns": 1791961080163500000,
+        "conn": 1,
+        "client": "10.0.0.10",
+        "server": "10.0.0.2:502",
+        "unit": 1,
+        "tid": 25,
+        "fc": 3,
+        "class": "read",
+        "status": "ok",
+        "latency_ns": 5100000,
+        "flags": [],
+        "summary": "Read 1 holding register @ 0",
+        "result": "1 words"
+      },
+      "request": {
+        "hex": "001900000006010300000001",
+        "name": "Read Holding Registers",
+        "fields": [
+          {
+            "name": "transaction_id",
+            "offset": 0,
+            "length": 2,
+            "value": 25
+          },
+          {
+            "name": "protocol_id",
+            "offset": 2,
+            "length": 2,
+            "value": 0
+          },
+          {
+            "name": "length",
+            "offset": 4,
+            "length": 2,
+            "value": 6
+          },
+          {
+            "name": "unit_id",
+            "offset": 6,
+            "length": 1,
+            "value": 1
+          },
+          {
+            "name": "function",
+            "offset": 7,
+            "length": 1,
+            "value": 3
+          },
+          {
+            "name": "address",
+            "offset": 8,
+            "length": 2,
+            "value": 0
+          },
+          {
+            "name": "quantity",
+            "offset": 10,
+            "length": 2,
+            "value": 1
+          }
+        ],
+        "warnings": [],
+        "packets": [
+          {
+            "frame": 36,
+            "part": 0,
+            "t_ns": 1791961080163500000,
+            "interface": 0,
+            "offset": 3536,
+            "payload_offset": 54,
+            "payload_length": 12,
+            "display_filter": "frame.number == 36"
+          }
+        ]
+      },
+      "response": {
+        "hex": "0019000000050103020019",
+        "name": "Read Holding Registers",
+        "fields": [
+          {
+            "name": "transaction_id",
+            "offset": 0,
+            "length": 2,
+            "value": 25
+          },
+          {
+            "name": "protocol_id",
+            "offset": 2,
+            "length": 2,
+            "value": 0
+          },
+          {
+            "name": "length",
+            "offset": 4,
+            "length": 2,
+            "value": 5
+          },
+          {
+            "name": "unit_id",
+            "offset": 6,
+            "length": 1,
+            "value": 1
+          },
+          {
+            "name": "function",
+            "offset": 7,
+            "length": 1,
+            "value": 3
+          },
+          {
+            "name": "byte_count",
+            "offset": 8,
+            "length": 1,
+            "value": 2
+          },
+          {
+            "name": "registers",
+            "offset": 9,
+            "length": 2,
+            "hex": "0019"
+          }
+        ],
+        "warnings": [],
+        "packets": [
+          {
+            "frame": 37,
+            "part": 0,
+            "t_ns": 1791961080168600000,
+            "interface": 0,
+            "offset": 3636,
+            "payload_offset": 54,
+            "payload_length": 11,
+            "display_filter": "frame.number == 37"
+          }
+        ]
+      },
+      "text": "10.0.0.10 asked 10.0.0.2:502 unit 1: read 1 holding register @ 0. It answered in 5.1 ms: 1 words.",
+      "notes": [
+        {
+          "kind": "fact",
+          "code": "connection",
+          "meaning": "Connection 1 opened with a handshake; the server was decided by syn (confidence 1.00)."
+        }
+      ],
+      "conn": {
+        "id": 1,
+        "client": "10.0.0.10:40000",
+        "server": "10.0.0.2:502",
+        "open": "syn",
+        "close": "fin",
+        "role_source": "syn",
+        "role_confidence": 1,
+        "transactions": 19
+      },
+      "mbcap": "Will be exported to MBCAP."
+    },
+    "19": {
+      "row": {
+        "seq": 19,
+        "kind": "txn",
+        "t_ns": 1791961080025800000,
+        "conn": 1,
+        "client": "10.0.0.10",
+        "server": "10.0.0.2:502",
+        "unit": 1,
+        "tid": 10,
+        "fc": 3,
+        "class": "read",
+        "status": "unanswered",
+        "flags": [],
+        "summary": "Read 1 holding register @ 20",
+        "result": "No response observed"
+      },
+      "request": {
+        "hex": "000a00000006010300140001",
+        "name": "Read Holding Registers",
+        "fields": [
+          {
+            "name": "transaction_id",
+            "offset": 0,
+            "length": 2,
+            "value": 10
+          },
+          {
+            "name": "protocol_id",
+            "offset": 2,
+            "length": 2,
+            "value": 0
+          },
+          {
+            "name": "length",
+            "offset": 4,
+            "length": 2,
+            "value": 6
+          },
+          {
+            "name": "unit_id",
+            "offset": 6,
+            "length": 1,
+            "value": 1
+          },
+          {
+            "name": "function",
+            "offset": 7,
+            "length": 1,
+            "value": 3
+          },
+          {
+            "name": "address",
+            "offset": 8,
+            "length": 2,
+            "value": 20
+          },
+          {
+            "name": "quantity",
+            "offset": 10,
+            "length": 2,
+            "value": 1
+          }
+        ],
+        "warnings": [],
+        "packets": [
+          {
+            "frame": 9,
+            "part": 0,
+            "t_ns": 1791961080025800000,
+            "interface": 0,
+            "offset": 840,
+            "payload_offset": 54,
+            "payload_length": 12,
+            "display_filter": "frame.number == 9"
+          }
+        ]
+      },
+      "text": "10.0.0.10 asked 10.0.0.2:502 unit 1: read 1 holding register @ 20. No response observed.",
+      "notes": [
+        {
+          "kind": "fact",
+          "code": "connection",
+          "meaning": "Connection 1 opened with a handshake; the server was decided by syn (confidence 1.00)."
+        }
+      ],
+      "conn": {
+        "id": 1,
+        "client": "10.0.0.10:40000",
+        "server": "10.0.0.2:502",
+        "open": "syn",
+        "close": "fin",
+        "role_source": "syn",
+        "role_confidence": 1,
+        "transactions": 19
+      },
+      "mbcap": "Not exported: no response was observed."
+    },
+    "2": {
+      "row": {
+        "seq": 2,
+        "kind": "txn",
+        "t_ns": 1791961080000300000,
+        "conn": 1,
+        "client": "10.0.0.10",
+        "server": "10.0.0.2:502",
+        "unit": 1,
+        "tid": 1,
+        "fc": 3,
+        "class": "read",
+        "status": "ambiguous",
+        "latency_ns": 10200000,
+        "flags": [],
+        "summary": "Read 1 holding register @ 0",
+        "result": "Ambiguous"
+      },
+      "request": {
+        "hex": "000100000006010300000001",
+        "name": "Read Holding Registers",
+        "fields": [
+          {
+            "name": "transaction_id",
+            "offset": 0,
+            "length": 2,
+            "value": 1
+          },
+          {
+            "name": "protocol_id",
+            "offset": 2,
+            "length": 2,
+            "value": 0
+          },
+          {
+            "name": "length",
+            "offset": 4,
+            "length": 2,
+            "value": 6
+          },
+          {
+            "name": "unit_id",
+            "offset": 6,
+            "length": 1,
+            "value": 1
+          },
+          {
+            "name": "function",
+            "offset": 7,
+            "length": 1,
+            "value": 3
+          },
+          {
+            "name": "address",
+            "offset": 8,
+            "length": 2,
+            "value": 0
+          },
+          {
+            "name": "quantity",
+            "offset": 10,
+            "length": 2,
+            "value": 1
+          }
+        ],
+        "warnings": [],
+        "packets": [
+          {
+            "frame": 4,
+            "part": 0,
+            "t_ns": 1791961080000300000,
+            "interface": 0,
+            "offset": 340,
+            "payload_offset": 54,
+            "payload_length": 12,
+            "display_filter": "frame.number == 4"
+          }
+        ]
+      },
+      "response": {
+        "hex": "0001000000050103020005",
+        "name": "Read Holding Registers",
+        "fields": [
+          {
+            "name": "transaction_id",
+            "offset": 0,
+            "length": 2,
+            "value": 1
+          },
+          {
+            "name": "protocol_id",
+            "offset": 2,
+            "length": 2,
+            "value": 0
+          },
+          {
+            "name": "length",
+            "offset": 4,
+            "length": 2,
+            "value": 5
+          },
+          {
+            "name": "unit_id",
+            "offset": 6,
+            "length": 1,
+            "value": 1
+          },
+          {
+            "name": "function",
+            "offset": 7,
+            "length": 1,
+            "value": 3
+          },
+          {
+            "name": "byte_count",
+            "offset": 8,
+            "length": 1,
+            "value": 2
+          },
+          {
+            "name": "registers",
+            "offset": 9,
+            "length": 2,
+            "hex": "0005"
+          }
+        ],
+        "warnings": [],
+        "packets": [
+          {
+            "frame": 6,
+            "part": 0,
+            "t_ns": 1791961080010500000,
+            "interface": 0,
+            "offset": 540,
+            "payload_offset": 54,
+            "payload_length": 11,
+            "display_filter": "frame.number == 6"
+          }
+        ]
+      },
+      "text": "10.0.0.10 asked 10.0.0.2:502 unit 1: read 1 holding register @ 0. Ambiguous.",
+      "notes": [
+        {
+          "kind": "fact",
+          "code": "connection",
+          "meaning": "Connection 1 opened with a handshake; the server was decided by syn (confidence 1.00)."
+        }
+      ],
+      "conn": {
+        "id": 1,
+        "client": "10.0.0.10:40000",
+        "server": "10.0.0.2:502",
+        "open": "syn",
+        "close": "fin",
+        "role_source": "syn",
+        "role_confidence": 1,
+        "transactions": 19
+      },
+      "mbcap": "Not exported: the response could belong to more than one request."
+    },
+    "20": {
+      "row": {
+        "seq": 20,
+        "kind": "txn",
+        "t_ns": 1791961080051300000,
+        "conn": 1,
+        "client": "10.0.0.10",
+        "server": "10.0.0.2:502",
+        "unit": 0,
+        "tid": 13,
+        "fc": 6,
+        "class": "write",
+        "status": "unanswered",
+        "flags": [
+          "broadcast"
+        ],
+        "summary": "Write holding register @ 1 = 1",
+        "result": "No response observed"
+      },
+      "request": {
+        "hex": "000d00000006000600010001",
+        "name": "Write Single Register",
+        "fields": [
+          {
+            "name": "transaction_id",
+            "offset": 0,
+            "length": 2,
+            "value": 13
+          },
+          {
+            "name": "protocol_id",
+            "offset": 2,
+            "length": 2,
+            "value": 0
+          },
+          {
+            "name": "length",
+            "offset": 4,
+            "length": 2,
+            "value": 6
+          },
+          {
+            "name": "unit_id",
+            "offset": 6,
+            "length": 1,
+            "value": 0
+          },
+          {
+            "name": "function",
+            "offset": 7,
+            "length": 1,
+            "value": 6
+          },
+          {
+            "name": "address",
+            "offset": 8,
+            "length": 2,
+            "value": 1
+          },
+          {
+            "name": "value",
+            "offset": 10,
+            "length": 2,
+            "value": 1
+          }
+        ],
+        "warnings": [],
+        "packets": [
+          {
+            "frame": 14,
+            "part": 0,
+            "t_ns": 1791961080051300000,
+            "interface": 0,
+            "offset": 1336,
+            "payload_offset": 54,
+            "payload_length": 12,
+            "display_filter": "frame.number == 14"
+          }
+        ]
+      },
+      "text": "10.0.0.10 asked 10.0.0.2:502 unit 0: write holding register @ 1 = 1. No response observed.",
+      "notes": [
+        {
+          "kind": "flag",
+          "code": "broadcast",
+          "meaning": "Unit 0 got no response, as expected for a broadcast."
+        },
+        {
+          "kind": "fact",
+          "code": "connection",
+          "meaning": "Connection 1 opened with a handshake; the server was decided by syn (confidence 1.00)."
+        }
+      ],
+      "conn": {
+        "id": 1,
+        "client": "10.0.0.10:40000",
+        "server": "10.0.0.2:502",
+        "open": "syn",
+        "close": "fin",
+        "role_source": "syn",
+        "role_confidence": 1,
+        "transactions": 19
+      },
+      "mbcap": "Not exported: writes are not part of replay data."
+    },
+    "21": {
+      "row": {
+        "seq": 21,
+        "kind": "conn_close",
+        "t_ns": 1791961080173800000,
+        "conn": 1,
+        "client": "10.0.0.10",
+        "server": "10.0.0.2:502",
+        "flags": [],
+        "summary": "Connection closed (FIN) after 19 transactions",
+        "result": ""
+      },
+      "text": "Connection closed (FIN) after 19 transactions",
+      "notes": [],
+      "conn": {
+        "id": 1,
+        "client": "10.0.0.10:40000",
+        "server": "10.0.0.2:502",
+        "open": "syn",
+        "close": "fin",
+        "role_source": "syn",
+        "role_confidence": 1,
+        "transactions": 19
+      },
+      "extra": {
+        "bytes": [
+          216,
+          176
+        ],
+        "client": "10.0.0.10:40000",
+        "close": "fin",
+        "first": "2026-10-14T06:58:00Z",
+        "id": 1,
+        "interface": 0,
+        "last": "2026-10-14T06:58:00.1738Z",
+        "open": "syn",
+        "packets": [
+          21,
+          18
+        ],
+        "role_confidence": 1,
+        "role_source": "syn",
+        "server": "10.0.0.2:502",
+        "transactions": 19
+      }
+    },
+    "3": {
+      "row": {
+        "seq": 3,
+        "kind": "txn",
+        "t_ns": 1791961080005400000,
+        "conn": 1,
+        "client": "10.0.0.10",
+        "server": "10.0.0.2:502",
+        "unit": 1,
+        "tid": 1,
+        "fc": 3,
+        "class": "read",
+        "status": "ambiguous",
+        "latency_ns": 10200000,
+        "flags": [],
+        "summary": "Read 1 holding register @ 10",
+        "result": "Ambiguous"
+      },
+      "request": {
+        "hex": "0001000000060103000a0001",
+        "name": "Read Holding Registers",
+        "fields": [
+          {
+            "name": "transaction_id",
+            "offset": 0,
+            "length": 2,
+            "value": 1
+          },
+          {
+            "name": "protocol_id",
+            "offset": 2,
+            "length": 2,
+            "value": 0
+          },
+          {
+            "name": "length",
+            "offset": 4,
+            "length": 2,
+            "value": 6
+          },
+          {
+            "name": "unit_id",
+            "offset": 6,
+            "length": 1,
+            "value": 1
+          },
+          {
+            "name": "function",
+            "offset": 7,
+            "length": 1,
+            "value": 3
+          },
+          {
+            "name": "address",
+            "offset": 8,
+            "length": 2,
+            "value": 10
+          },
+          {
+            "name": "quantity",
+            "offset": 10,
+            "length": 2,
+            "value": 1
+          }
+        ],
+        "warnings": [],
+        "packets": [
+          {
+            "frame": 5,
+            "part": 0,
+            "t_ns": 1791961080005400000,
+            "interface": 0,
+            "offset": 440,
+            "payload_offset": 54,
+            "payload_length": 12,
+            "display_filter": "frame.number == 5"
+          }
+        ]
+      },
+      "response": {
+        "hex": "0001000000050103020006",
+        "name": "Read Holding Registers",
+        "fields": [
+          {
+            "name": "transaction_id",
+            "offset": 0,
+            "length": 2,
+            "value": 1
+          },
+          {
+            "name": "protocol_id",
+            "offset": 2,
+            "length": 2,
+            "value": 0
+          },
+          {
+            "name": "length",
+            "offset": 4,
+            "length": 2,
+            "value": 5
+          },
+          {
+            "name": "unit_id",
+            "offset": 6,
+            "length": 1,
+            "value": 1
+          },
+          {
+            "name": "function",
+            "offset": 7,
+            "length": 1,
+            "value": 3
+          },
+          {
+            "name": "byte_count",
+            "offset": 8,
+            "length": 1,
+            "value": 2
+          },
+          {
+            "name": "registers",
+            "offset": 9,
+            "length": 2,
+            "hex": "0006"
+          }
+        ],
+        "warnings": [],
+        "packets": [
+          {
+            "frame": 7,
+            "part": 0,
+            "t_ns": 1791961080015600000,
+            "interface": 0,
+            "offset": 640,
+            "payload_offset": 54,
+            "payload_length": 11,
+            "display_filter": "frame.number == 7"
+          }
+        ]
+      },
+      "text": "10.0.0.10 asked 10.0.0.2:502 unit 1: read 1 holding register @ 10. Ambiguous.",
+      "notes": [
+        {
+          "kind": "fact",
+          "code": "connection",
+          "meaning": "Connection 1 opened with a handshake; the server was decided by syn (confidence 1.00)."
+        }
+      ],
+      "conn": {
+        "id": 1,
+        "client": "10.0.0.10:40000",
+        "server": "10.0.0.2:502",
+        "open": "syn",
+        "close": "fin",
+        "role_source": "syn",
+        "role_confidence": 1,
+        "transactions": 19
+      },
+      "mbcap": "Not exported: the response could belong to more than one request."
+    },
+    "4": {
+      "row": {
+        "seq": 4,
+        "kind": "txn",
+        "t_ns": 1791961080020700000,
+        "conn": 1,
+        "client": "10.0.0.10",
+        "server": "10.0.0.2:502",
+        "unit": 1,
+        "tid": 9,
+        "fc": 3,
+        "class": "read",
+        "status": "orphan_response",
+        "flags": [],
+        "summary": "Response to Read 0  @ 0",
+        "result": "Response without request"
+      },
+      "response": {
+        "hex": "0009000000050103020007",
+        "name": "Read Holding Registers",
+        "fields": [
+          {
+            "name": "transaction_id",
+            "offset": 0,
+            "length": 2,
+            "value": 9
+          },
+          {
+            "name": "protocol_id",
+            "offset": 2,
+            "length": 2,
+            "value": 0
+          },
+          {
+            "name": "length",
+            "offset": 4,
+            "length": 2,
+            "value": 5
+          },
+          {
+            "name": "unit_id",
+            "offset": 6,
+            "length": 1,
+            "value": 1
+          },
+          {
+            "name": "function",
+            "offset": 7,
+            "length": 1,
+            "value": 3
+          },
+          {
+            "name": "byte_count",
+            "offset": 8,
+            "length": 1,
+            "value": 2
+          },
+          {
+            "name": "registers",
+            "offset": 9,
+            "length": 2,
+            "hex": "0007"
+          }
+        ],
+        "warnings": [],
+        "packets": [
+          {
+            "frame": 8,
+            "part": 0,
+            "t_ns": 1791961080020700000,
+            "interface": 0,
+            "offset": 740,
+            "payload_offset": 54,
+            "payload_length": 11,
+            "display_filter": "frame.number == 8"
+          }
+        ]
+      },
+      "text": "10.0.0.10 asked 10.0.0.2:502 unit 1: response to Read 0  @ 0. Response without request.",
+      "notes": [
+        {
+          "kind": "fact",
+          "code": "connection",
+          "meaning": "Connection 1 opened with a handshake; the server was decided by syn (confidence 1.00)."
+        }
+      ],
+      "conn": {
+        "id": 1,
+        "client": "10.0.0.10:40000",
+        "server": "10.0.0.2:502",
+        "open": "syn",
+        "close": "fin",
+        "role_source": "syn",
+        "role_confidence": 1,
+        "transactions": 19
+      },
+      "mbcap": "Not exported: the response has no request."
+    },
+    "5": {
+      "row": {
+        "seq": 5,
+        "kind": "txn",
+        "t_ns": 1791961080030900000,
+        "conn": 1,
+        "client": "10.0.0.10",
+        "server": "10.0.0.2:502",
+        "unit": 1,
+        "tid": 11,
+        "fc": 3,
+        "class": "read",
+        "status": "ok",
+        "latency_ns": 5100000,
+        "flags": [
+          "invalid_pdu"
+        ],
+        "summary": "Read 2 holding registers @ 0",
+        "result": "2 words"
+      },
+      "request": {
+        "hex": "000b00000006010300000002",
+        "name": "Read Holding Registers",
+        "fields": [
+          {
+            "name": "transaction_id",
+            "offset": 0,
+            "length": 2,
+            "value": 11
+          },
+          {
+            "name": "protocol_id",
+            "offset": 2,
+            "length": 2,
+            "value": 0
+          },
+          {
+            "name": "length",
+            "offset": 4,
+            "length": 2,
+            "value": 6
+          },
+          {
+            "name": "unit_id",
+            "offset": 6,
+            "length": 1,
+            "value": 1
+          },
+          {
+            "name": "function",
+            "offset": 7,
+            "length": 1,
+            "value": 3
+          },
+          {
+            "name": "address",
+            "offset": 8,
+            "length": 2,
+            "value": 0
+          },
+          {
+            "name": "quantity",
+            "offset": 10,
+            "length": 2,
+            "value": 2
+          }
+        ],
+        "warnings": [],
+        "packets": [
+          {
+            "frame": 10,
+            "part": 0,
+            "t_ns": 1791961080030900000,
+            "interface": 0,
+            "offset": 940,
+            "payload_offset": 54,
+            "payload_length": 12,
+            "display_filter": "frame.number == 10"
+          }
+        ]
+      },
+      "response": {
+        "hex": "000b0000000701030900010002",
+        "name": "Read Holding Registers",
+        "fields": [
+          {
+            "name": "transaction_id",
+            "offset": 0,
+            "length": 2,
+            "value": 11
+          },
+          {
+            "name": "protocol_id",
+            "offset": 2,
+            "length": 2,
+            "value": 0
+          },
+          {
+            "name": "length",
+            "offset": 4,
+            "length": 2,
+            "value": 7
+          },
+          {
+            "name": "unit_id",
+            "offset": 6,
+            "length": 1,
+            "value": 1
+          },
+          {
+            "name": "function",
+            "offset": 7,
+            "length": 1,
+            "value": 3
+          },
+          {
+            "name": "byte_count",
+            "offset": 8,
+            "length": 1,
+            "value": 9
+          },
+          {
+            "name": "registers",
+            "offset": 9,
+            "length": 4,
+            "hex": "00010002"
+          }
+        ],
+        "warnings": [
+          "byte_count_mismatch",
+          "response_mismatch",
+          "response_mismatch"
+        ],
+        "packets": [
+          {
+            "frame": 11,
+            "part": 0,
+            "t_ns": 1791961080036000000,
+            "interface": 0,
+            "offset": 1040,
+            "payload_offset": 54,
+            "payload_length": 13,
+            "display_filter": "frame.number == 11"
+          }
+        ]
+      },
+      "text": "10.0.0.10 asked 10.0.0.2:502 unit 1: read 2 holding registers @ 0. It answered in 5.1 ms: 2 words.",
+      "notes": [
+        {
+          "kind": "flag",
+          "code": "invalid_pdu",
+          "meaning": "A PDU breaks a rule of the Modbus specification (see the warnings)."
+        },
+        {
+          "kind": "fact",
+          "code": "connection",
+          "meaning": "Connection 1 opened with a handshake; the server was decided by syn (confidence 1.00)."
+        },
+        {
+          "kind": "warning",
+          "code": "byte_count_mismatch",
+          "meaning": "A rule of the Modbus specification is broken (byte_count_mismatch)."
+        },
+        {
+          "kind": "warning",
+          "code": "response_mismatch",
+          "meaning": "A rule of the Modbus specification is broken (response_mismatch)."
+        },
+        {
+          "kind": "warning",
+          "code": "response_mismatch",
+          "meaning": "A rule of the Modbus specification is broken (response_mismatch)."
+        }
+      ],
+      "conn": {
+        "id": 1,
+        "client": "10.0.0.10:40000",
+        "server": "10.0.0.2:502",
+        "open": "syn",
+        "close": "fin",
+        "role_source": "syn",
+        "role_confidence": 1,
+        "transactions": 19
+      },
+      "mbcap": "Not exported: the PDU breaks the specification or does not fit its request."
+    },
+    "6": {
+      "row": {
+        "seq": 6,
+        "kind": "txn",
+        "t_ns": 1791961080041100000,
+        "conn": 1,
+        "client": "10.0.0.10",
+        "server": "10.0.0.2:502",
+        "unit": 1,
+        "tid": 12,
+        "fc": 3,
+        "class": "read",
+        "status": "exception",
+        "latency_ns": 5100000,
+        "flags": [
+          "invalid_pdu"
+        ],
+        "summary": "Read 1 holding register @ 0",
+        "result": "Exception 00 Unknown exception"
+      },
+      "request": {
+        "hex": "000c00000006010300000001",
+        "name": "Read Holding Registers",
+        "fields": [
+          {
+            "name": "transaction_id",
+            "offset": 0,
+            "length": 2,
+            "value": 12
+          },
+          {
+            "name": "protocol_id",
+            "offset": 2,
+            "length": 2,
+            "value": 0
+          },
+          {
+            "name": "length",
+            "offset": 4,
+            "length": 2,
+            "value": 6
+          },
+          {
+            "name": "unit_id",
+            "offset": 6,
+            "length": 1,
+            "value": 1
+          },
+          {
+            "name": "function",
+            "offset": 7,
+            "length": 1,
+            "value": 3
+          },
+          {
+            "name": "address",
+            "offset": 8,
+            "length": 2,
+            "value": 0
+          },
+          {
+            "name": "quantity",
+            "offset": 10,
+            "length": 2,
+            "value": 1
+          }
+        ],
+        "warnings": [],
+        "packets": [
+          {
+            "frame": 12,
+            "part": 0,
+            "t_ns": 1791961080041100000,
+            "interface": 0,
+            "offset": 1140,
+            "payload_offset": 54,
+            "payload_length": 12,
+            "display_filter": "frame.number == 12"
+          }
+        ]
+      },
+      "response": {
+        "hex": "000c00000003018300",
+        "name": "Read Holding Registers",
+        "fields": [
+          {
+            "name": "transaction_id",
+            "offset": 0,
+            "length": 2,
+            "value": 12
+          },
+          {
+            "name": "protocol_id",
+            "offset": 2,
+            "length": 2,
+            "value": 0
+          },
+          {
+            "name": "length",
+            "offset": 4,
+            "length": 2,
+            "value": 3
+          },
+          {
+            "name": "unit_id",
+            "offset": 6,
+            "length": 1,
+            "value": 1
+          },
+          {
+            "name": "function",
+            "offset": 7,
+            "length": 1,
+            "value": 131
+          },
+          {
+            "name": "exception_code",
+            "offset": 8,
+            "length": 1,
+            "value": 0
+          }
+        ],
+        "warnings": [
+          "unknown_exception_code"
+        ],
+        "packets": [
+          {
+            "frame": 13,
+            "part": 0,
+            "t_ns": 1791961080046200000,
+            "interface": 0,
+            "offset": 1240,
+            "payload_offset": 54,
+            "payload_length": 9,
+            "display_filter": "frame.number == 13"
+          }
+        ]
+      },
+      "text": "10.0.0.10 asked 10.0.0.2:502 unit 1: read 1 holding register @ 0. It answered in 5.1 ms: Exception 00 Unknown exception.",
+      "notes": [
+        {
+          "kind": "flag",
+          "code": "invalid_pdu",
+          "meaning": "A PDU breaks a rule of the Modbus specification (see the warnings)."
+        },
+        {
+          "kind": "fact",
+          "code": "connection",
+          "meaning": "Connection 1 opened with a handshake; the server was decided by syn (confidence 1.00)."
+        },
+        {
+          "kind": "warning",
+          "code": "unknown_exception_code",
+          "meaning": "A rule of the Modbus specification is broken (unknown_exception_code)."
+        }
+      ],
+      "conn": {
+        "id": 1,
+        "client": "10.0.0.10:40000",
+        "server": "10.0.0.2:502",
+        "open": "syn",
+        "close": "fin",
+        "role_source": "syn",
+        "role_confidence": 1,
+        "transactions": 19
+      },
+      "mbcap": "Not exported: the PDU breaks the specification or does not fit its request."
+    },
+    "7": {
+      "row": {
+        "seq": 7,
+        "kind": "txn",
+        "t_ns": 1791961080056400000,
+        "conn": 1,
+        "client": "10.0.0.10",
+        "server": "10.0.0.2:502",
+        "unit": 255,
+        "tid": 14,
+        "fc": 4,
+        "class": "read",
+        "status": "ok",
+        "latency_ns": 5100000,
+        "flags": [],
+        "summary": "Read 1 input register @ 0",
+        "result": "1 words"
+      },
+      "request": {
+        "hex": "000e00000006ff0400000001",
+        "name": "Read Input Registers",
+        "fields": [
+          {
+            "name": "transaction_id",
+            "offset": 0,
+            "length": 2,
+            "value": 14
+          },
+          {
+            "name": "protocol_id",
+            "offset": 2,
+            "length": 2,
+            "value": 0
+          },
+          {
+            "name": "length",
+            "offset": 4,
+            "length": 2,
+            "value": 6
+          },
+          {
+            "name": "unit_id",
+            "offset": 6,
+            "length": 1,
+            "value": 255
+          },
+          {
+            "name": "function",
+            "offset": 7,
+            "length": 1,
+            "value": 4
+          },
+          {
+            "name": "address",
+            "offset": 8,
+            "length": 2,
+            "value": 0
+          },
+          {
+            "name": "quantity",
+            "offset": 10,
+            "length": 2,
+            "value": 1
+          }
+        ],
+        "warnings": [],
+        "packets": [
+          {
+            "frame": 15,
+            "part": 0,
+            "t_ns": 1791961080056400000,
+            "interface": 0,
+            "offset": 1436,
+            "payload_offset": 54,
+            "payload_length": 12,
+            "display_filter": "frame.number == 15"
+          }
+        ]
+      },
+      "response": {
+        "hex": "000e00000005ff04020001",
+        "name": "Read Input Registers",
+        "fields": [
+          {
+            "name": "transaction_id",
+            "offset": 0,
+            "length": 2,
+            "value": 14
+          },
+          {
+            "name": "protocol_id",
+            "offset": 2,
+            "length": 2,
+            "value": 0
+          },
+          {
+            "name": "length",
+            "offset": 4,
+            "length": 2,
+            "value": 5
+          },
+          {
+            "name": "unit_id",
+            "offset": 6,
+            "length": 1,
+            "value": 255
+          },
+          {
+            "name": "function",
+            "offset": 7,
+            "length": 1,
+            "value": 4
+          },
+          {
+            "name": "byte_count",
+            "offset": 8,
+            "length": 1,
+            "value": 2
+          },
+          {
+            "name": "registers",
+            "offset": 9,
+            "length": 2,
+            "hex": "0001"
+          }
+        ],
+        "warnings": [],
+        "packets": [
+          {
+            "frame": 16,
+            "part": 0,
+            "t_ns": 1791961080061500000,
+            "interface": 0,
+            "offset": 1536,
+            "payload_offset": 54,
+            "payload_length": 11,
+            "display_filter": "frame.number == 16"
+          }
+        ]
+      },
+      "text": "10.0.0.10 asked 10.0.0.2:502 unit 255: read 1 input register @ 0. It answered in 5.1 ms: 1 words.",
+      "notes": [
+        {
+          "kind": "fact",
+          "code": "connection",
+          "meaning": "Connection 1 opened with a handshake; the server was decided by syn (confidence 1.00)."
+        }
+      ],
+      "conn": {
+        "id": 1,
+        "client": "10.0.0.10:40000",
+        "server": "10.0.0.2:502",
+        "open": "syn",
+        "close": "fin",
+        "role_source": "syn",
+        "role_confidence": 1,
+        "transactions": 19
+      },
+      "mbcap": "Will be exported to MBCAP."
+    },
+    "8": {
+      "row": {
+        "seq": 8,
+        "kind": "txn",
+        "t_ns": 1791961080066600000,
+        "conn": 1,
+        "client": "10.0.0.10",
+        "server": "10.0.0.2:502",
+        "unit": 1,
+        "tid": 15,
+        "fc": 3,
+        "class": "read",
+        "status": "malformed",
+        "flags": [
+          "foreign_protocol"
+        ],
+        "summary": "Read 1 holding register @ 0",
+        "result": "Malformed"
+      },
+      "request": {
+        "hex": "000f00070006010300000001",
+        "name": "Read Holding Registers",
+        "fields": [
+          {
+            "name": "transaction_id",
+            "offset": 0,
+            "length": 2,
+            "value": 15
+          },
+          {
+            "name": "protocol_id",
+            "offset": 2,
+            "length": 2,
+            "value": 7
+          },
+          {
+            "name": "length",
+            "offset": 4,
+            "length": 2,
+            "value": 6
+          },
+          {
+            "name": "unit_id",
+            "offset": 6,
+            "length": 1,
+            "value": 1
+          },
+          {
+            "name": "function",
+            "offset": 7,
+            "length": 1,
+            "value": 3
+          },
+          {
+            "name": "address",
+            "offset": 8,
+            "length": 2,
+            "value": 0
+          },
+          {
+            "name": "quantity",
+            "offset": 10,
+            "length": 2,
+            "value": 1
+          }
+        ],
+        "warnings": [],
+        "packets": [
+          {
+            "frame": 17,
+            "part": 0,
+            "t_ns": 1791961080066600000,
+            "interface": 0,
+            "offset": 1636,
+            "payload_offset": 54,
+            "payload_length": 12,
+            "display_filter": "frame.number == 17"
+          }
+        ]
+      },
+      "text": "10.0.0.10 asked 10.0.0.2:502 unit 1: read 1 holding register @ 0. Malformed.",
+      "notes": [
+        {
+          "kind": "flag",
+          "code": "foreign_protocol",
+          "meaning": "The MBAP protocol ID is not 0: this is not Modbus and was skipped by its length."
+        },
+        {
+          "kind": "fact",
+          "code": "connection",
+          "meaning": "Connection 1 opened with a handshake; the server was decided by syn (confidence 1.00)."
+        }
+      ],
+      "conn": {
+        "id": 1,
+        "client": "10.0.0.10:40000",
+        "server": "10.0.0.2:502",
+        "open": "syn",
+        "close": "fin",
+        "role_source": "syn",
+        "role_confidence": 1,
+        "transactions": 19
+      },
+      "mbcap": "Not exported: the ADU is malformed."
+    },
+    "9": {
+      "row": {
+        "seq": 9,
+        "kind": "txn",
+        "t_ns": 1791961080071700000,
+        "conn": 1,
+        "client": "10.0.0.10",
+        "server": "10.0.0.2:502",
+        "unit": 1,
+        "tid": 16,
+        "fc": 3,
+        "class": "read",
+        "status": "ok",
+        "latency_ns": 5100000,
+        "flags": [],
+        "summary": "Read 1 holding register @ 0",
+        "result": "1 words"
+      },
+      "request": {
+        "hex": "001000000006010300000001",
+        "name": "Read Holding Registers",
+        "fields": [
+          {
+            "name": "transaction_id",
+            "offset": 0,
+            "length": 2,
+            "value": 16
+          },
+          {
+            "name": "protocol_id",
+            "offset": 2,
+            "length": 2,
+            "value": 0
+          },
+          {
+            "name": "length",
+            "offset": 4,
+            "length": 2,
+            "value": 6
+          },
+          {
+            "name": "unit_id",
+            "offset": 6,
+            "length": 1,
+            "value": 1
+          },
+          {
+            "name": "function",
+            "offset": 7,
+            "length": 1,
+            "value": 3
+          },
+          {
+            "name": "address",
+            "offset": 8,
+            "length": 2,
+            "value": 0
+          },
+          {
+            "name": "quantity",
+            "offset": 10,
+            "length": 2,
+            "value": 1
+          }
+        ],
+        "warnings": [],
+        "packets": [
+          {
+            "frame": 18,
+            "part": 0,
+            "t_ns": 1791961080071700000,
+            "interface": 0,
+            "offset": 1736,
+            "payload_offset": 54,
+            "payload_length": 12,
+            "display_filter": "frame.number == 18"
+          }
+        ]
+      },
+      "response": {
+        "hex": "0010000000050103020010",
+        "name": "Read Holding Registers",
+        "fields": [
+          {
+            "name": "transaction_id",
+            "offset": 0,
+            "length": 2,
+            "value": 16
+          },
+          {
+            "name": "protocol_id",
+            "offset": 2,
+            "length": 2,
+            "value": 0
+          },
+          {
+            "name": "length",
+            "offset": 4,
+            "length": 2,
+            "value": 5
+          },
+          {
+            "name": "unit_id",
+            "offset": 6,
+            "length": 1,
+            "value": 1
+          },
+          {
+            "name": "function",
+            "offset": 7,
+            "length": 1,
+            "value": 3
+          },
+          {
+            "name": "byte_count",
+            "offset": 8,
+            "length": 1,
+            "value": 2
+          },
+          {
+            "name": "registers",
+            "offset": 9,
+            "length": 2,
+            "hex": "0010"
+          }
+        ],
+        "warnings": [],
+        "packets": [
+          {
+            "frame": 19,
+            "part": 0,
+            "t_ns": 1791961080076800000,
+            "interface": 0,
+            "offset": 1836,
+            "payload_offset": 54,
+            "payload_length": 11,
+            "display_filter": "frame.number == 19"
+          }
+        ]
+      },
+      "text": "10.0.0.10 asked 10.0.0.2:502 unit 1: read 1 holding register @ 0. It answered in 5.1 ms: 1 words.",
+      "notes": [
+        {
+          "kind": "fact",
+          "code": "connection",
+          "meaning": "Connection 1 opened with a handshake; the server was decided by syn (confidence 1.00)."
+        }
+      ],
+      "conn": {
+        "id": 1,
+        "client": "10.0.0.10:40000",
+        "server": "10.0.0.2:502",
+        "open": "syn",
+        "close": "fin",
+        "role_source": "syn",
+        "role_confidence": 1,
+        "transactions": 19
+      },
+      "mbcap": "Will be exported to MBCAP."
+    }
+  },
+  "devices": [
+    {
+      "server": "10.0.0.2:502",
+      "unit": 0,
+      "transactions": 1,
+      "by_function": {
+        "6": 1
+      },
+      "by_status": {
+        "unanswered": 1
+      },
+      "reads": 0,
+      "writes": 1,
+      "exceptions": 0,
+      "unanswered": 1,
+      "clients": [
+        "10.0.0.10"
+      ],
+      "first_ns": 1791961080051300000,
+      "last_ns": 1791961080051300000,
+      "rate": 0,
+      "bytes": 12
+    },
+    {
+      "server": "10.0.0.2:502",
+      "unit": 1,
+      "transactions": 17,
+      "by_function": {
+        "3": 17
+      },
+      "by_status": {
+        "ambiguous": 2,
+        "exception": 1,
+        "malformed": 1,
+        "ok": 11,
+        "orphan_response": 1,
+        "unanswered": 1
+      },
+      "reads": 17,
+      "writes": 0,
+      "exceptions": 1,
+      "unanswered": 1,
+      "clients": [
+        "10.0.0.10"
+      ],
+      "first_ns": 1791961080000300000,
+      "last_ns": 1791961080163500000,
+      "rate": 104.16666666666666,
+      "bytes": 357,
+      "latency": {
+        "count": 12,
+        "min_ns": 5100000,
+        "p50_ns": 5100000,
+        "p95_ns": 5100000,
+        "p99_ns": 5100000,
+        "max_ns": 5100000,
+        "histogram": [
+          {
+            "lo_ns": 4194304,
+            "hi_ns": 8388608,
+            "count": 12
+          }
+        ]
+      }
+    },
+    {
+      "server": "10.0.0.2:502",
+      "unit": 255,
+      "transactions": 1,
+      "by_function": {
+        "4": 1
+      },
+      "by_status": {
+        "ok": 1
+      },
+      "reads": 1,
+      "writes": 0,
+      "exceptions": 0,
+      "unanswered": 0,
+      "clients": [
+        "10.0.0.10"
+      ],
+      "first_ns": 1791961080056400000,
+      "last_ns": 1791961080056400000,
+      "rate": 0,
+      "bytes": 23,
+      "latency": {
+        "count": 1,
+        "min_ns": 5100000,
+        "p50_ns": 5100000,
+        "p95_ns": 5100000,
+        "p99_ns": 5100000,
+        "max_ns": 5100000,
+        "histogram": [
+          {
+            "lo_ns": 4194304,
+            "hi_ns": 8388608,
+            "count": 1
+          }
+        ]
+      }
+    }
+  ],
+  "connections": [
+    {
+      "id": 1,
+      "client": "10.0.0.10:40000",
+      "server": "10.0.0.2:502",
+      "open": "syn",
+      "close": "fin",
+      "role_source": "syn",
+      "role_confidence": 1,
+      "role_guessed": false,
+      "first_ns": 1791961080000000000,
+      "last_ns": 1791961080173800000,
+      "transactions": 19,
+      "bytes": 392,
+      "gaps": 0,
+      "resyncs": 0,
+      "flags": [
+        "invalid_pdu",
+        "broadcast",
+        "foreign_protocol"
+      ]
+    }
+  ],
+  "patterns": [
+    {
+      "client": "10.0.0.10",
+      "server": "10.0.0.2:502",
+      "unit": 1,
+      "function": 3,
+      "summary": "Read 1 holding register @ 0",
+      "space": "holding",
+      "start": 0,
+      "count": 1,
+      "requests": 13,
+      "first_ns": 1791961080000300000,
+      "last_ns": 1791961080163500000,
+      "interval": {
+        "count": 12,
+        "min_ns": 5100000,
+        "p50_ns": 10200000,
+        "p95_ns": 40800000,
+        "p99_ns": 40800000,
+        "max_ns": 40800000,
+        "histogram": [
+          {
+            "lo_ns": 4194304,
+            "hi_ns": 8388608,
+            "count": 1
+          },
+          {
+            "lo_ns": 8388608,
+            "hi_ns": 16777216,
+            "count": 9
+          },
+          {
+            "lo_ns": 16777216,
+            "hi_ns": 33554432,
+            "count": 1
+          },
+          {
+            "lo_ns": 33554432,
+            "hi_ns": 67108864,
+            "count": 1
+          }
+        ]
+      },
+      "jitter_ns": 0,
+      "responses": 11,
+      "changed": 10,
+      "volatility": 1,
+      "volatility_class": "noisy"
+    },
+    {
+      "client": "10.0.0.10",
+      "server": "10.0.0.2:502",
+      "unit": 1,
+      "function": 3,
+      "summary": "Read 1 holding register @ 10",
+      "space": "holding",
+      "start": 10,
+      "count": 1,
+      "requests": 1,
+      "first_ns": 1791961080005400000,
+      "last_ns": 1791961080005400000,
+      "jitter_ns": 0,
+      "responses": 0,
+      "changed": 0,
+      "volatility": 0,
+      "volatility_class": "static"
+    },
+    {
+      "client": "10.0.0.10",
+      "server": "10.0.0.2:502",
+      "unit": 1,
+      "function": 3,
+      "summary": "Response to Read 0  @ 0",
+      "start": 0,
+      "count": 0,
+      "requests": 1,
+      "first_ns": 1791961080020700000,
+      "last_ns": 1791961080020700000,
+      "jitter_ns": 0,
+      "responses": 0,
+      "changed": 0,
+      "volatility": 0,
+      "volatility_class": "static"
+    },
+    {
+      "client": "10.0.0.10",
+      "server": "10.0.0.2:502",
+      "unit": 1,
+      "function": 3,
+      "summary": "Read 1 holding register @ 20",
+      "space": "holding",
+      "start": 20,
+      "count": 1,
+      "requests": 1,
+      "first_ns": 1791961080025800000,
+      "last_ns": 1791961080025800000,
+      "jitter_ns": 0,
+      "responses": 0,
+      "changed": 0,
+      "volatility": 0,
+      "volatility_class": "static"
+    },
+    {
+      "client": "10.0.0.10",
+      "server": "10.0.0.2:502",
+      "unit": 1,
+      "function": 3,
+      "summary": "Read 2 holding registers @ 0",
+      "space": "holding",
+      "start": 0,
+      "count": 2,
+      "requests": 1,
+      "first_ns": 1791961080030900000,
+      "last_ns": 1791961080030900000,
+      "jitter_ns": 0,
+      "responses": 1,
+      "changed": 0,
+      "volatility": 0,
+      "volatility_class": "static"
+    },
+    {
+      "client": "10.0.0.10",
+      "server": "10.0.0.2:502",
+      "unit": 0,
+      "function": 6,
+      "summary": "Write holding register @ 1 = 1",
+      "space": "holding",
+      "start": 1,
+      "count": 1,
+      "requests": 1,
+      "first_ns": 1791961080051300000,
+      "last_ns": 1791961080051300000,
+      "jitter_ns": 0,
+      "responses": 0,
+      "changed": 0,
+      "volatility": 0,
+      "volatility_class": "static"
+    },
+    {
+      "client": "10.0.0.10",
+      "server": "10.0.0.2:502",
+      "unit": 255,
+      "function": 4,
+      "summary": "Read 1 input register @ 0",
+      "space": "input",
+      "start": 0,
+      "count": 1,
+      "requests": 1,
+      "first_ns": 1791961080056400000,
+      "last_ns": 1791961080056400000,
+      "jitter_ns": 0,
+      "responses": 1,
+      "changed": 0,
+      "volatility": 0,
+      "volatility_class": "static"
+    }
+  ],
+  "quality": {
+    "conditions": [
+      {
+        "code": "capture_drops",
+        "label": "Dropped by the capture host",
+        "count": 0,
+        "severity": "problem",
+        "meaning": "The capture tool reported packets it could not keep: reads may be missing."
+      },
+      {
+        "code": "gaps",
+        "label": "Gaps",
+        "count": 0,
+        "severity": "problem",
+        "meaning": "Bytes of a connection the capture missed; transactions next to them are uncertain.",
+        "filter": {
+          "flags": [
+            "gap_adjacent"
+          ]
+        }
+      },
+      {
+        "code": "resync_failed",
+        "label": "Lost framing",
+        "count": 0,
+        "severity": "problem",
+        "meaning": "Bytes that could not be framed as Modbus after a gap or junk."
+      },
+      {
+        "code": "resyncs",
+        "label": "Resyncs",
+        "count": 0,
+        "severity": "warning",
+        "meaning": "Framing was lost and recovered; the ADU after it may not be real.",
+        "filter": {
+          "flags": [
+            "resynced"
+          ]
+        }
+      },
+      {
+        "code": "retransmitted",
+        "label": "Retransmissions",
+        "count": 0,
+        "severity": "info",
+        "meaning": "Segments seen more than once; the first copy was used.",
+        "filter": {
+          "flags": [
+            "retransmitted"
+          ]
+        }
+      },
+      {
+        "code": "out_of_order",
+        "label": "Out of order",
+        "count": 0,
+        "severity": "info",
+        "meaning": "Segments that arrived before earlier bytes and were put back in order.",
+        "filter": {
+          "flags": [
+            "out_of_order"
+          ]
+        }
+      },
+      {
+        "code": "overlap_conflict",
+        "label": "Overlap conflicts",
+        "count": 0,
+        "severity": "warning",
+        "meaning": "Retransmitted bytes that differ from the first copy."
+      },
+      {
+        "code": "snaplen_truncated",
+        "label": "Cut by the snap length",
+        "count": 0,
+        "severity": "warning",
+        "meaning": "ADUs the capture cut short (capture with -s 0 to avoid it).",
+        "filter": {
+          "flags": [
+            "snaplen_truncated"
+          ]
+        }
+      },
+      {
+        "code": "foreign_protocol",
+        "label": "Not Modbus",
+        "count": 1,
+        "severity": "info",
+        "meaning": "Frames with a protocol ID other than 0, skipped by their length.",
+        "filter": {
+          "flags": [
+            "foreign_protocol"
+          ]
+        }
+      },
+      {
+        "code": "unsupported",
+        "label": "Unsupported encapsulations",
+        "count": 0,
+        "severity": "info",
+        "meaning": "Packets that are not TCP or not decodable (UDP, other link types, tunnels)."
+      },
+      {
+        "code": "orphan_response",
+        "label": "Orphan responses",
+        "count": 1,
+        "severity": "warning",
+        "meaning": "Responses without a request (a midstream start or a lost request).",
+        "filter": {
+          "statuses": [
+            "orphan_response"
+          ]
+        }
+      },
+      {
+        "code": "unanswered",
+        "label": "Unanswered requests",
+        "count": 2,
+        "severity": "warning",
+        "meaning": "Requests with no response observed before the connection or the trace ended.",
+        "filter": {
+          "statuses": [
+            "unanswered"
+          ]
+        }
+      },
+      {
+        "code": "ambiguous",
+        "label": "Ambiguous pairs",
+        "count": 2,
+        "severity": "warning",
+        "meaning": "Responses that could belong to more than one request.",
+        "filter": {
+          "statuses": [
+            "ambiguous"
+          ]
+        }
+      },
+      {
+        "code": "malformed",
+        "label": "Malformed",
+        "count": 1,
+        "severity": "warning",
+        "meaning": "ADUs too short or cut, reported alone.",
+        "filter": {
+          "statuses": [
+            "malformed"
+          ]
+        }
+      },
+      {
+        "code": "uncertain",
+        "label": "Uncertain",
+        "count": 0,
+        "severity": "warning",
+        "meaning": "Transactions touched by a gap or a resync, or whose roles are unknown.",
+        "filter": {
+          "statuses": [
+            "uncertain"
+          ]
+        }
+      },
+      {
+        "code": "invalid_pdu",
+        "label": "Invalid PDUs",
+        "count": 2,
+        "severity": "warning",
+        "meaning": "A PDU breaks a rule of the Modbus specification (see the warnings).",
+        "filter": {
+          "flags": [
+            "invalid_pdu"
+          ]
+        }
+      },
+      {
+        "code": "clock_order",
+        "label": "Clock-order anomalies",
+        "count": 0,
+        "severity": "warning",
+        "meaning": "The response is stamped before its request (merged captures or a clock step).",
+        "filter": {
+          "flags": [
+            "clock_order"
+          ]
+        }
+      },
+      {
+        "code": "role_guessed",
+        "label": "Guessed roles",
+        "count": 0,
+        "severity": "info",
+        "meaning": "Which side is the server was inferred from the traffic, not from the handshake.",
+        "filter": {
+          "flags": [
+            "role_guessed"
+          ]
+        }
+      },
+      {
+        "code": "slow",
+        "label": "Slow responses",
+        "count": 0,
+        "severity": "info",
+        "meaning": "The response took longer than the slow threshold.",
+        "filter": {
+          "flags": [
+            "slow"
+          ]
+        }
+      },
+      {
+        "code": "internal_errors",
+        "label": "Internal errors",
+        "count": 0,
+        "severity": "problem",
+        "meaning": "Packets the library could not process (a bug worth reporting)."
+      }
+    ],
+    "facts": [
+      {
+        "label": "Format",
+        "value": "pcapng"
+      },
+      {
+        "label": "Link types",
+        "value": "[ethernet]"
+      },
+      {
+        "label": "Interfaces",
+        "value": "1"
+      },
+      {
+        "label": "Packets",
+        "value": "40"
+      },
+      {
+        "label": "Packets cut by the snap length",
+        "value": "0"
+      },
+      {
+        "label": "Rows in the index",
+        "value": "21"
+      },
+      {
+        "label": "SHA-256",
+        "value": "4c9590f1d52ba2a89bbd6c6361fac310762ae39b93037cb4612e885cf38afb35"
+      }
+    ]
+  },
+  "mbcap_preview": {
+    "selection": "",
+    "transactions": 0,
+    "samples": 0,
+    "up_to": false,
+    "targets": null,
+    "excluded": null,
+    "notes": null
+  },
+  "mbcap_export": {
+    "job": "",
+    "kind": "",
+    "file": ""
+  }
+}

@@ -145,6 +145,10 @@ tshark -i eth0 -f "tcp port 502" -a duration:3600 -w site.pcapng
 
 Open the file, or select all the files of a ring buffer together: they are read as one trace, in the order of their first packets. Compressed files (`site.pcapng.gz`) open as they are. The Quality view then says what the capture missed: drops, cut packets, gaps, guessed roles.
 
+## Sample files
+
+`testdata/corpus` has synthetic traces and captures to try the Explorer with, no capture of your own needed: `realistic/plant-scada.pcapng` (a small plant, 15 minutes), its ring-buffer parts, its MBCAP exports, `realistic/rtu-gateway.pcap` and `realistic/function-tour.pcapng`, plus hard and broken files; its README describes each one.
+
 ## A short tour
 
 1. **Open** a trace: drop it on the window, File → Open (`Ctrl/Cmd+O`), Open Recent, or `modbus-trace-explorer site.pcapng.gz`. Several files are one trace in the order of their first packets; gzip is decompressed into the cache while the trace is open.
@@ -183,6 +187,8 @@ make bundle-macos        # macOS: bin/Modbus Trace Explorer.app with its icon, a
 make smoke               # start it on testdata/smoke.pcapng and wait for the timeline (A15)
 make golden              # rewrite the schemas, the engine fixture and the smoke trace
 make frontend-coverage   # the frontend tests with coverage (frontend/coverage/lcov.info)
+make smoke-corpus        # the built application on every file of testdata/corpus
+make fuzz                # fuzz the engine with mutated corpus files (FUZZTIME=5m)
 cd frontend && npm run dev   # the user interface over the mock engine, in a browser (?rows=10000000, ?empty)
 make spike               # the M0 index measurements (SPIKE_ROWS, default 10,000,000)
 ```

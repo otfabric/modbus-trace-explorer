@@ -752,17 +752,20 @@ func (Uint8s) JSONSchema() map[string]any {
 
 // CaptureFacts are what an MBCAP capture says about itself (R24).
 type CaptureFacts struct {
-	Encoding    string   `json:"encoding"` // mbcap, jsonl or csv
-	Producer    string   `json:"producer"`
-	TickNS      uint64   `json:"tick_ns"`
-	WallStartNS int64    `json:"wall_start_ns"`
-	ChangeOnly  bool     `json:"change_only"`
-	Exceptions  bool     `json:"exceptions"` // exception responses are recorded
-	Targets     int      `json:"targets"`
-	Streams     int      `json:"streams"`
-	Samples     uint64   `json:"samples"`
-	EndKnown    bool     `json:"end_known"`  // false: the capture was not closed (a crash, a copy taken while recording)
-	Truncated   bool     `json:"truncated"`  // the file ends inside a record; what came before is shown
-	Provenance  []string `json:"provenance"` // the tools that made and changed it, oldest first
-	Source      string   `json:"source,omitempty"`
+	Encoding    string `json:"encoding"` // mbcap, jsonl or csv
+	Producer    string `json:"producer"`
+	TickNS      uint64 `json:"tick_ns"`
+	WallStartNS int64  `json:"wall_start_ns"`
+	ChangeOnly  bool   `json:"change_only"`
+	Exceptions  bool   `json:"exceptions"` // exception responses are recorded
+	Targets     int    `json:"targets"`
+	Streams     int    `json:"streams"`
+	Samples     uint64 `json:"samples"`
+	EndKnown    bool   `json:"end_known"` // false: the capture was not closed (a crash, a copy taken while recording)
+	Truncated   bool   `json:"truncated"` // the file ends inside a record; what came before is shown
+	// Damage: the file is damaged after its first samples (a bad block,
+	// a broken line); what came before is shown, and this says what.
+	Damage     string   `json:"damage,omitempty"`
+	Provenance []string `json:"provenance"` // the tools that made and changed it, oldest first
+	Source     string   `json:"source,omitempty"`
 }

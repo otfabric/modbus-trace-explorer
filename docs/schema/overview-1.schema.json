@@ -6,6 +6,9 @@
         "change_only": {
           "type": "boolean"
         },
+        "damage": {
+          "type": "string"
+        },
         "encoding": {
           "type": "string"
         },

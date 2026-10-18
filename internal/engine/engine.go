@@ -78,6 +78,7 @@ type openTrace struct {
 	// A capture (R24): its facts, and its PDUs in the cache entry.
 	capture *service.CaptureFacts
 	pdus    *pduReader
+	gzCut   bool // a gzip input ended early: what decompressed is read
 	busy    bool // a scan or an analysis runs
 }
 

@@ -1,0 +1,522 @@
+[
+  {
+    "file": "broken/bad-line.mbcap.jsonl",
+    "category": "broken",
+    "about": "A JSON Lines capture with a broken line in the middle: the samples before it are shown, and Quality says where it broke.",
+    "kind": "capture",
+    "expect": "ok",
+    "min_transactions": 100,
+    "warning": "damaged",
+    "quality": {
+      "damaged": 1
+    }
+  },
+  {
+    "file": "broken/cut-mid-block.pcapng",
+    "category": "broken",
+    "about": "A pcapng cut in the middle of a block.",
+    "kind": "trace",
+    "expect": "ok",
+    "min_transactions": 3,
+    "warning": "middle of a packet"
+  },
+  {
+    "file": "broken/cut-mid-packet.pcap",
+    "category": "broken",
+    "about": "A pcap cut in the middle of a packet (the capture was copied while it was written).",
+    "kind": "trace",
+    "expect": "ok",
+    "min_transactions": 3,
+    "warning": "middle of a packet"
+  },
+  {
+    "file": "broken/cut.mbcap",
+    "category": "broken",
+    "about": "A binary capture cut in the middle of a data block.",
+    "kind": "capture",
+    "expect": "ok",
+    "min_transactions": 1,
+    "warning": "capture"
+  },
+  {
+    "file": "broken/cut.mbcap.csv",
+    "category": "broken",
+    "about": "A CSV capture cut in the middle of a row.",
+    "kind": "capture",
+    "expect": "ok",
+    "min_transactions": 100,
+    "warning": "capture"
+  },
+  {
+    "file": "broken/cut.mbcap.jsonl",
+    "category": "broken",
+    "about": "A JSON Lines capture cut in the middle of a line: the samples before it are shown.",
+    "kind": "capture",
+    "expect": "ok",
+    "min_transactions": 100,
+    "warning": "capture"
+  },
+  {
+    "file": "broken/empty.mbcap",
+    "category": "broken",
+    "about": "A capture of zero bytes.",
+    "kind": "capture",
+    "expect": "error",
+    "error": "capture"
+  },
+  {
+    "file": "broken/empty.pcap",
+    "category": "broken",
+    "about": "A file of zero bytes.",
+    "kind": "trace",
+    "expect": "error",
+    "error": "pcap"
+  },
+  {
+    "file": "broken/flipped-byte.mbcap",
+    "category": "broken",
+    "about": "A binary capture with one byte changed a third of the way in (that block's CRC no longer matches): the samples before it are shown, and Quality says it is damaged.",
+    "kind": "capture",
+    "expect": "ok",
+    "min_transactions": 1,
+    "warning": "damaged",
+    "quality": {
+      "damaged": 1
+    }
+  },
+  {
+    "file": "broken/garbage.mbcap.jsonl",
+    "category": "broken",
+    "about": "JSON Lines that are not a capture.",
+    "kind": "capture",
+    "expect": "error",
+    "error": "capture"
+  },
+  {
+    "file": "broken/garbage.pcapng",
+    "category": "broken",
+    "about": "Random bytes with a trace's name.",
+    "kind": "trace",
+    "expect": "error",
+    "error": "pcap"
+  },
+  {
+    "file": "broken/gzip-cut.pcapng.gz",
+    "category": "broken",
+    "about": "A gzip trace cut before its end: what decompresses is read.",
+    "kind": "trace",
+    "expect": "ok",
+    "min_transactions": 1,
+    "warning": "gzip"
+  },
+  {
+    "file": "broken/gzip-garbage.pcap.gz",
+    "category": "broken",
+    "about": "A gzip header followed by garbage.",
+    "kind": "trace",
+    "expect": "error"
+  },
+  {
+    "file": "broken/header-only.pcap",
+    "category": "broken",
+    "about": "A pcap header and no packet: a trace with nothing in it.",
+    "kind": "trace",
+    "expect": "empty"
+  },
+  {
+    "file": "broken/huge-record-length.pcap",
+    "category": "broken",
+    "about": "A packet record that claims 2 GiB: the reader stops there and keeps what came before.",
+    "kind": "trace",
+    "expect": "ok",
+    "min_transactions": 3,
+    "warning": "damaged"
+  },
+  {
+    "file": "broken/library-crc-corrupt.mbcap",
+    "category": "broken",
+    "about": "From go-modbus-capture's test vectors: a block whose CRC is wrong.",
+    "kind": "capture",
+    "expect": "error",
+    "error": "damaged",
+    "static": true
+  },
+  {
+    "file": "broken/library-no-index.mbcap",
+    "category": "broken",
+    "about": "From go-modbus-capture's test vectors: a capture without its index block.",
+    "kind": "capture",
+    "expect": "ok",
+    "static": true
+  },
+  {
+    "file": "broken/library-truncated.mbcap",
+    "category": "broken",
+    "about": "From go-modbus-capture's test vectors: cut before its end.",
+    "kind": "capture",
+    "expect": "ok",
+    "static": true
+  },
+  {
+    "file": "broken/library-unknown-block.mbcap",
+    "category": "broken",
+    "about": "From go-modbus-capture's test vectors: a block type the reader does not know (skipped).",
+    "kind": "capture",
+    "expect": "ok",
+    "static": true
+  },
+  {
+    "file": "broken/pcap-named.mbcap.csv",
+    "category": "broken",
+    "about": "A packet trace named like a CSV capture: the name says capture, the content does not.",
+    "kind": "capture",
+    "expect": "error",
+    "error": "capture"
+  },
+  {
+    "file": "broken/text-file.pcap",
+    "category": "broken",
+    "about": "A text file renamed .pcap.",
+    "kind": "trace",
+    "expect": "error",
+    "error": "pcap"
+  },
+  {
+    "file": "broken/unknown-link-type.pcap",
+    "category": "broken",
+    "about": "A pcap whose header names a link type no reader knows (65000): no packet can be decoded, so no Modbus flow is found and the link type is counted as unsupported.",
+    "kind": "trace",
+    "expect": "empty"
+  },
+  {
+    "file": "broken/wrong-columns.mbcap.csv",
+    "category": "broken",
+    "about": "A CSV whose columns are not those of a capture.",
+    "kind": "capture",
+    "expect": "error",
+    "error": "capture"
+  },
+  {
+    "file": "edge/clock-backwards.pcapng",
+    "category": "edge",
+    "about": "The capture host's clock steps back by two seconds in the middle (time disorder).",
+    "kind": "trace",
+    "expect": "ok",
+    "min_transactions": 20
+  },
+  {
+    "file": "edge/ip-fragments.pcap",
+    "category": "edge",
+    "about": "Responses that do not fit one packet arrive as IP fragments.",
+    "kind": "trace",
+    "expect": "ok",
+    "min_transactions": 10
+  },
+  {
+    "file": "edge/ipv6.pcapng",
+    "category": "edge",
+    "about": "Modbus/TCP over IPv6.",
+    "kind": "trace",
+    "expect": "ok",
+    "min_transactions": 10
+  },
+  {
+    "file": "edge/link-linux-cooked.pcap",
+    "category": "edge",
+    "about": "Linux cooked capture (tcpdump -i any).",
+    "kind": "trace",
+    "expect": "ok",
+    "min_transactions": 10
+  },
+  {
+    "file": "edge/link-loopback.pcap",
+    "category": "edge",
+    "about": "BSD loopback (captured on lo0, a simulator on the same machine).",
+    "kind": "trace",
+    "expect": "ok",
+    "min_transactions": 10
+  },
+  {
+    "file": "edge/link-raw-ip.pcap",
+    "category": "edge",
+    "about": "Raw IP, no link layer.",
+    "kind": "trace",
+    "expect": "ok",
+    "min_transactions": 10
+  },
+  {
+    "file": "edge/link-vlan-qinq.pcapng",
+    "category": "edge",
+    "about": "Ethernet with two VLAN tags (802.1ad and 802.1Q).",
+    "kind": "trace",
+    "expect": "ok",
+    "min_transactions": 10
+  },
+  {
+    "file": "edge/lossy-link.pcapng",
+    "category": "edge",
+    "about": "A bad link: lost segments (gaps and resyncs), retransmissions, a retransmission with different bytes, segments out of order, ADUs split byte by byte, keepalives.",
+    "kind": "trace",
+    "expect": "ok",
+    "min_transactions": 20,
+    "quality": {
+      "gaps": 1,
+      "out_of_order": 1,
+      "overlap_conflict": 1,
+      "retransmitted": 1
+    }
+  },
+  {
+    "file": "edge/many-connections.pcapng",
+    "category": "edge",
+    "about": "300 short connections, one poll each (a client that reconnects for every read), from 12 clients to 25 devices: long lists in the Conversations and Devices views.",
+    "kind": "trace",
+    "expect": "ok",
+    "min_transactions": 300
+  },
+  {
+    "file": "edge/midstream.pcapng",
+    "category": "edge",
+    "about": "The capture starts while the connections are open: no handshakes, the server side is inferred from the traffic (guessed roles).",
+    "kind": "trace",
+    "expect": "ok",
+    "min_transactions": 40
+  },
+  {
+    "file": "edge/no-end.mbcap.jsonl",
+    "category": "edge",
+    "about": "A capture never closed (the recorder was killed): no end record.",
+    "kind": "capture",
+    "expect": "ok",
+    "min_transactions": 3,
+    "quality": {
+      "end_unknown": 1
+    }
+  },
+  {
+    "file": "edge/no-samples.mbcap",
+    "category": "edge",
+    "about": "A capture that holds targets and streams but no sample (a read that got nothing).",
+    "kind": "capture",
+    "expect": "empty"
+  },
+  {
+    "file": "edge/noise-around-modbus.pcap",
+    "category": "edge",
+    "about": "Modbus/TCP between ARP, UDP and ICMP packets that are not TCP (counted as unsupported).",
+    "kind": "trace",
+    "expect": "ok",
+    "min_transactions": 10,
+    "quality": {
+      "unsupported": 1
+    }
+  },
+  {
+    "file": "edge/nonstandard-port.pcapng",
+    "category": "edge",
+    "about": "Modbus/TCP on port 5020 next to SSH on 22: the scan proposes 5020.",
+    "kind": "trace",
+    "expect": "ok",
+    "min_transactions": 30
+  },
+  {
+    "file": "edge/pcap-big-endian.pcap",
+    "category": "edge",
+    "about": "Classic pcap written big endian.",
+    "kind": "trace",
+    "expect": "ok",
+    "min_transactions": 10
+  },
+  {
+    "file": "edge/pcap-nanoseconds.pcap",
+    "category": "edge",
+    "about": "Classic pcap with nanosecond timestamps.",
+    "kind": "trace",
+    "expect": "ok",
+    "min_transactions": 10
+  },
+  {
+    "file": "edge/pcapng-big-endian.pcapng",
+    "category": "edge",
+    "about": "pcapng written big endian.",
+    "kind": "trace",
+    "expect": "ok",
+    "min_transactions": 10
+  },
+  {
+    "file": "edge/pcapng-ns-resolution.pcapng",
+    "category": "edge",
+    "about": "pcapng with nanosecond timestamp resolution (if_tsresol 9).",
+    "kind": "trace",
+    "expect": "ok",
+    "min_transactions": 10
+  },
+  {
+    "file": "edge/serial-and-tls-targets.mbcap",
+    "category": "edge",
+    "about": "A capture of a serial RTU device and a TLS device (modbusctl reading them), with labels in several scripts and a very long one.",
+    "kind": "capture",
+    "expect": "ok",
+    "min_transactions": 6
+  },
+  {
+    "file": "edge/serial-and-tls-targets.mbcap.jsonl",
+    "category": "edge",
+    "about": "The same, as JSON Lines.",
+    "kind": "capture",
+    "expect": "ok",
+    "min_transactions": 6
+  },
+  {
+    "file": "edge/simple-packets.pcapng",
+    "category": "edge",
+    "about": "pcapng Simple Packet Blocks: packets without timestamps.",
+    "kind": "trace",
+    "expect": "ok",
+    "min_transactions": 1
+  },
+  {
+    "file": "edge/snaplen-64.pcap",
+    "category": "edge",
+    "about": "Captured with a snap length of 64 bytes (tcpdump -s 64): long ADUs are cut.",
+    "kind": "trace",
+    "expect": "ok",
+    "min_transactions": 5,
+    "quality": {
+      "snaplen_truncated": 1
+    }
+  },
+  {
+    "file": "edge/tid-and-pairing.pcapng",
+    "category": "edge",
+    "about": "Pairing trouble: two requests with the same transaction ID outstanding, a response without a request, a request never answered, malformed PDUs (wrong byte counts, an exception code 0), a non-zero protocol ID, broadcast unit 0 and unit 255.",
+    "kind": "trace",
+    "expect": "ok",
+    "min_transactions": 10,
+    "quality": {
+      "unanswered": 1
+    }
+  },
+  {
+    "file": "edge/time-disorder.mbcap",
+    "category": "edge",
+    "about": "Samples out of time order, as a merge of two recorders can leave them.",
+    "kind": "capture",
+    "expect": "ok",
+    "min_transactions": 6
+  },
+  {
+    "file": "edge/tls-and-modbus.pcapng",
+    "category": "edge",
+    "about": "Modbus/TCP Security on port 802 (encrypted, not decodable) next to plain Modbus/TCP on 502.",
+    "kind": "trace",
+    "expect": "ok",
+    "min_transactions": 10
+  },
+  {
+    "file": "edge/two-interfaces-drops.pcapng",
+    "category": "edge",
+    "about": "Captured on two interfaces at once, some packets seen on both, and the capture host reporting dropped packets.",
+    "kind": "trace",
+    "expect": "ok",
+    "min_transactions": 10,
+    "quality": {
+      "capture_drops": 1
+    }
+  },
+  {
+    "file": "realistic/function-tour.pcapng",
+    "category": "realistic",
+    "about": "Every kind of function the decoder knows, answered and as exceptions: coils, discrete inputs, registers, writes, FC23, FC24 FIFO, FC20/21 file records, FC08 diagnostics, FC11/FC17, FC43/14 device identification over two pages, and a vendor function.",
+    "kind": "trace",
+    "expect": "ok",
+    "min_transactions": 20
+  },
+  {
+    "file": "realistic/plant-ring_00001.pcapng",
+    "category": "realistic",
+    "about": "Part 1 of 3 of the plant as a ring buffer of five-minute files (as dumpcap -b writes it): open the three together, in any order, as one trace.",
+    "kind": "trace",
+    "expect": "ok",
+    "min_transactions": 300
+  },
+  {
+    "file": "realistic/plant-ring_00002.pcapng",
+    "category": "realistic",
+    "about": "Part 2 of 3 of the plant as a ring buffer of five-minute files (as dumpcap -b writes it): open the three together, in any order, as one trace.",
+    "kind": "trace",
+    "expect": "ok",
+    "min_transactions": 300
+  },
+  {
+    "file": "realistic/plant-ring_00003.pcapng",
+    "category": "realistic",
+    "about": "Part 3 of 3 of the plant as a ring buffer of five-minute files (as dumpcap -b writes it): open the three together, in any order, as one trace.",
+    "kind": "trace",
+    "expect": "ok",
+    "min_transactions": 300
+  },
+  {
+    "file": "realistic/plant-scada-change-only.mbcap",
+    "category": "realistic",
+    "about": "The plant exported change-only: repeated identical responses left out.",
+    "kind": "capture",
+    "expect": "ok",
+    "min_transactions": 100,
+    "quality": {
+      "change_only": 1
+    }
+  },
+  {
+    "file": "realistic/plant-scada.mbcap",
+    "category": "realistic",
+    "about": "The plant's reads exported as an MBCAP capture (mbcap), as modbusctl server replay would serve them.",
+    "kind": "capture",
+    "expect": "ok",
+    "min_transactions": 1500
+  },
+  {
+    "file": "realistic/plant-scada.mbcap.csv",
+    "category": "realistic",
+    "about": "The plant's reads exported as an MBCAP capture (csv), as modbusctl server replay would serve them.",
+    "kind": "capture",
+    "expect": "ok",
+    "min_transactions": 1500
+  },
+  {
+    "file": "realistic/plant-scada.mbcap.jsonl",
+    "category": "realistic",
+    "about": "The plant's reads exported as an MBCAP capture (jsonl), as modbusctl server replay would serve them.",
+    "kind": "capture",
+    "expect": "ok",
+    "min_transactions": 1500
+  },
+  {
+    "file": "realistic/plant-scada.pcapng",
+    "category": "realistic",
+    "about": "15 minutes of a small plant: SCADA polls a PV inverter, an energy meter and a battery gateway (units 1–3); an HMI writes setpoints; device identification at the start; the meter rejects one block (illegal data address); battery unit 3 stops answering for a minute and its gateway then reports it unreachable; the meter resets its connection once; a few retransmissions.",
+    "kind": "trace",
+    "expect": "ok",
+    "min_transactions": 2000,
+    "quality": {
+      "retransmitted": 1,
+      "unanswered": 5
+    }
+  },
+  {
+    "file": "realistic/plant-scada.pcapng.gz",
+    "category": "realistic",
+    "about": "The plant trace compressed with gzip (decompressed into the cache while open).",
+    "kind": "trace",
+    "expect": "ok",
+    "min_transactions": 2000
+  },
+  {
+    "file": "realistic/rtu-gateway.pcap",
+    "category": "realistic",
+    "about": "Classic pcap: a Modbus/TCP-to-RTU gateway with eight units, polled round-robin for coils, discrete inputs and registers; units 6 and 8 are not connected (gateway exceptions 0x0A and 0x0B).",
+    "kind": "trace",
+    "expect": "ok",
+    "min_transactions": 400
+  }
+]

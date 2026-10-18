@@ -224,9 +224,14 @@ export function App({ service, platform }: AppProps) {
   useEffect(() => {
     if (error) reportSmoke(0, error);
   }, [error, reportSmoke]);
+  // The first page tells how many rows there are; none is a failed smoke test.
+  const [totalKnown, setTotalKnown] = useState(false);
   useEffect(() => {
-    if (phase.kind === 'ready' && total > 0) reportSmoke(total, '');
-  }, [phase.kind, total, reportSmoke]);
+    if (phase.kind !== 'ready') setTotalKnown(false);
+  }, [phase.kind]);
+  useEffect(() => {
+    if (phase.kind === 'ready' && totalKnown) reportSmoke(total, total > 0 ? '' : 'the timeline is empty');
+  }, [phase.kind, total, totalKnown, reportSmoke]);
 
   // The saved settings (R20) set the time display and the address labels.
   const applySettings = useCallback((s: Settings) => {
@@ -591,7 +596,10 @@ export function App({ service, platform }: AppProps) {
                   firstNs={firstNs}
                   selectedSeq={selected}
                   onSelect={(_rank, row) => setSelected(row.seq)}
-                  onTotal={setTotal}
+                  onTotal={(n) => {
+                    setTotal(n);
+                    setTotalKnown(true);
+                  }}
                   goTo={goTo}
                 />
               ) : view === 'devices' ? (

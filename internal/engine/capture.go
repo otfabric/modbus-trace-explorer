@@ -197,6 +197,7 @@ func (e *Engine) importCapture(ctx context.Context, t *openTrace, j *job) (strin
 		total = fi.Size()
 	}
 	warning := ""
+read:
 	for n := 0; ; n++ {
 		if n&0xFFF == 0 {
 			if ctx.Err() != nil {
@@ -206,15 +207,22 @@ func (e *Engine) importCapture(ctx context.Context, t *openTrace, j *job) (strin
 		}
 		rec, err := r.Next()
 		if errors.Is(err, io.EOF) {
-			break
+			break read
 		}
 		if err != nil {
-			if errors.Is(err, capture.ErrTruncated) {
+			// What was read before a cut or damage is shown, as for a
+			// trace; damage before the first sample leaves nothing to show.
+			switch {
+			case errors.Is(err, capture.ErrTruncated):
 				facts.Truncated = true
 				warning = "the capture ends inside a record; the samples before it are shown"
-				break
+			case facts.Samples > 0:
+				facts.Damage = err.Error()
+				warning = "the capture is damaged after " + strconv.FormatUint(facts.Samples, 10) + " samples; those are shown: " + err.Error()
+			default:
+				return fail(service.Wrap(service.CodeInvalidArgument, err, "the capture is damaged"))
 			}
-			return fail(service.Wrap(service.CodeInvalidArgument, err, "the capture is damaged"))
+			break read
 		}
 		switch x := rec.(type) {
 		case capture.Target:
@@ -493,6 +501,11 @@ func captureQuality(f *service.CaptureFacts, exceptions, unanswered uint64) serv
 		return 0
 	}
 	add("truncated", "Ends inside a record", "problem", "The file is cut; the samples before the cut are shown.", b(f.Truncated), nil)
+	damage := "The file is damaged after its first samples; the samples before the damage are shown."
+	if f.Damage != "" {
+		damage = "The file is damaged after its first samples (" + f.Damage + "); the samples before the damage are shown."
+	}
+	add("damaged", "Damaged", "problem", damage, b(f.Damage != ""), nil)
 	add("end_unknown", "No recorded end", "warning", "The capture was not closed (a crash, or a copy taken while it was recording): its last moment is not known.", b(!f.EndKnown), nil)
 	add("change_only", "Change-only", "info", "Repeated identical responses were not stored: a gap between samples does not mean nothing was asked.", b(f.ChangeOnly), nil)
 	add("exceptions", "Exception responses", "info", "Requests the device answered with an exception.", exceptions, &service.Filter{Statuses: []string{model.StatusException}})
