@@ -88,14 +88,18 @@ func TestCacheLifecycle(t *testing.T) {
 		t.Fatalf("%v", err)
 	}
 	_ = ix.Close()
-	// A left-over partial import is removed when the cache opens.
+	// A left-over partial import and live snapshot are removed when the
+	// cache opens.
 	_ = os.MkdirAll(filepath.Join(c.Root(), "ix-bbb.partial", "col"), DirMode)
+	_ = os.MkdirAll(filepath.Join(c.LiveDir("bbb", 3), "perm"), DirMode)
 	c2, err := NewCache(c.Root(), 0, time.Now)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := os.Stat(filepath.Join(c.Root(), "ix-bbb.partial")); !os.IsNotExist(err) {
-		t.Error("partial kept")
+	for _, name := range []string{"ix-bbb.partial", "ix-bbb.live-3"} {
+		if _, err := os.Stat(filepath.Join(c.Root(), name)); !os.IsNotExist(err) {
+			t.Errorf("%s kept", name)
+		}
 	}
 	info := c2.Info()
 	if info.Entries != 1 || info.Bytes == 0 || info.Root != c.Root() {

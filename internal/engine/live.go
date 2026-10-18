@@ -60,15 +60,13 @@ func (l *live) publish() {
 	l.k++
 	dir := l.e.cache.LiveDir(l.t.info.ID, l.k)
 	meta := store.Meta{Library: l.e.lib, Semantics: model.EventSemanticsVersion, Fingerprint: l.t.info.ID}
-	if err := l.w.Snapshot(dir, meta); err != nil {
-		l.e.log.Warn("live snapshot failed; the timeline appears at the end", "err", err)
-		_ = os.RemoveAll(dir)
-		l.off = true
-		return
+	var ix *store.Index
+	err := l.w.Snapshot(dir, meta)
+	if err == nil {
+		ix, err = store.OpenLive(l.w.Dir(), dir)
 	}
-	ix, err := store.OpenLive(l.w.Dir(), dir)
 	if err != nil {
-		l.e.log.Warn("live snapshot unreadable; the timeline appears at the end", "err", err)
+		l.e.log.Warn("live snapshot failed; the timeline appears at the end", "err", err)
 		_ = os.RemoveAll(dir)
 		l.off = true
 		return

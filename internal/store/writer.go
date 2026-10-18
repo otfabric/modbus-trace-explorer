@@ -250,17 +250,25 @@ func (w *Writer) Finish(meta Meta, docs map[string]any) error {
 	if err := w.permutations(w.dir, &meta, false); err != nil {
 		return err
 	}
+	if err := w.writeDocs(w.dir, docs); err != nil {
+		return err
+	}
+	meta.Complete = true
+	return writeJSON(filepath.Join(w.dir, "meta.json"), meta)
+}
+
+// writeDocs writes the dictionaries and the given JSON documents into dir.
+func (w *Writer) writeDocs(dir string, docs map[string]any) error {
 	all := map[string]any{"devices.json": w.devices, "clients.json": w.clients, "summaries.json": w.summaries, "extra.json": w.extra}
 	for k, v := range docs {
 		all[k] = v
 	}
 	for name, v := range all {
-		if err := writeJSON(filepath.Join(w.dir, name), v); err != nil {
+		if err := writeJSON(filepath.Join(dir, name), v); err != nil {
 			return err
 		}
 	}
-	meta.Complete = true
-	return writeJSON(filepath.Join(w.dir, "meta.json"), meta)
+	return nil
 }
 
 // Snapshot makes the rows appended so far readable while the writer goes
@@ -269,35 +277,25 @@ func (w *Writer) Finish(meta Meta, docs map[string]any) error {
 // permutations of those rows and a metadata file marked live. The column
 // and reference files stay in the writer's directory and only grow.
 func (w *Writer) Snapshot(dir string, meta Meta) error {
-	if w.err != nil {
-		return w.err
-	}
 	if w.files == nil {
 		return errors.New("store: a snapshot of a finished index")
 	}
-	for _, b := range w.bufs {
-		if err := b.Flush(); err != nil {
-			return err
-		}
-	}
-	if err := w.refs.Flush(); err != nil {
-		return err
-	}
-	if err := os.Mkdir(dir, DirMode); err != nil {
-		return err
-	}
-	if err := os.Mkdir(filepath.Join(dir, "perm"), DirMode); err != nil {
-		return err
-	}
 	meta.Format, meta.Rows, meta.Live, meta.RefsBytes = FormatVersion, w.n, true, w.refOff
-	if err := w.permutations(dir, &meta, true); err != nil {
-		return err
+	err := w.flushBuffers()
+	if err == nil {
+		err = os.Mkdir(dir, DirMode)
 	}
-	all := map[string]any{"devices.json": w.devices, "clients.json": w.clients, "summaries.json": w.summaries, "extra.json": w.extra}
-	for name, v := range all {
-		if err := writeJSON(filepath.Join(dir, name), v); err != nil {
-			return err
-		}
+	if err == nil {
+		err = os.Mkdir(filepath.Join(dir, "perm"), DirMode)
+	}
+	if err == nil {
+		err = w.permutations(dir, &meta, true)
+	}
+	if err == nil {
+		err = w.writeDocs(dir, nil)
+	}
+	if err != nil {
+		return err
 	}
 	meta.Complete = true
 	return writeJSON(filepath.Join(dir, "meta.json"), meta)
@@ -338,24 +336,31 @@ func (w *Writer) Abort() error {
 }
 
 func (w *Writer) flush() error {
-	if w.err != nil {
-		return w.err
+	if err := w.flushBuffers(); err != nil {
+		return err
 	}
-	for i, b := range w.bufs {
-		if err := b.Flush(); err != nil {
-			return err
-		}
-		if err := w.files[i].Close(); err != nil {
+	for _, f := range w.files {
+		if err := f.Close(); err != nil {
 			return err
 		}
 	}
 	w.bufs, w.files = nil, nil
-	if err := w.refs.Flush(); err != nil {
-		return err
-	}
 	err := w.refsF.Close()
 	w.refsF = nil
 	return err
+}
+
+// flushBuffers writes the buffered rows and references to their files.
+func (w *Writer) flushBuffers() error {
+	if w.err != nil {
+		return w.err
+	}
+	for _, b := range w.bufs {
+		if err := b.Flush(); err != nil {
+			return err
+		}
+	}
+	return w.refs.Flush()
 }
 
 func (w *Writer) close() {

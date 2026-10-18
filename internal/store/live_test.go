@@ -4,8 +4,10 @@ package store
 
 import (
 	"context"
+	"errors"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 	"time"
 
@@ -108,6 +110,27 @@ func TestSnapshot(t *testing.T) {
 	}
 }
 
+// A snapshot into a directory that exists is refused, and the writer
+// goes on.
+func TestSnapshotExists(t *testing.T) {
+	root := t.TempDir()
+	dir := filepath.Join(root, "ix.partial")
+	w, _ := Create(dir)
+	appendRows(t, w, 0, 10)
+	if err := w.Snapshot(root, Meta{}); err == nil {
+		t.Error("a snapshot over an existing directory")
+	}
+	appendRows(t, w, 10, 20)
+	if err := w.Finish(Meta{}, nil); err != nil {
+		t.Fatal(err)
+	}
+	ix, err := Open(dir)
+	if err != nil || ix.Rows() != 20 {
+		t.Fatalf("after a refused snapshot: %v", err)
+	}
+	_ = ix.Close()
+}
+
 // A snapshot that claims more rows than the files hold is refused.
 func TestSnapshotShortFiles(t *testing.T) {
 	root := t.TempDir()
@@ -125,4 +148,45 @@ func TestSnapshotShortFiles(t *testing.T) {
 		t.Error("a snapshot longer than its files")
 	}
 	_ = w.Abort()
+}
+
+// A writer's errors reach Snapshot and Finish: an earlier write error, a
+// buffer that cannot be written, permutations and documents that cannot
+// be saved.
+func TestWriterErrors(t *testing.T) {
+	root := t.TempDir()
+	w, _ := Create(filepath.Join(root, "a.partial"))
+	appendRows(t, w, 0, 10)
+	w.err = errors.New("disk full")
+	if err := w.Snapshot(filepath.Join(root, "a.live"), Meta{}); err == nil || err.Error() != "disk full" {
+		t.Errorf("snapshot after a write error: %v", err)
+	}
+	if err := w.Finish(Meta{}, nil); err == nil {
+		t.Error("finish after a write error")
+	}
+	w.err = nil
+	_ = w.Abort()
+
+	w, _ = Create(filepath.Join(root, "b.partial"))
+	appendRows(t, w, 0, 10)
+	_ = w.files[0].Close()
+	if err := w.Snapshot(filepath.Join(root, "b.live"), Meta{}); err == nil {
+		t.Error("a snapshot into a closed column file")
+	}
+	_ = w.Abort()
+
+	if runtime.GOOS == "windows" {
+		return // permissions below are POSIX
+	}
+	for _, ro := range []string{"perm", ""} {
+		dir := filepath.Join(root, "c"+ro+".partial")
+		w, _ = Create(dir)
+		appendRows(t, w, 0, 10)
+		_ = os.Chmod(filepath.Join(dir, ro), 0o500)
+		if err := w.Finish(Meta{}, nil); err == nil {
+			t.Errorf("finish with %q read-only", ro)
+		}
+		_ = os.Chmod(filepath.Join(dir, ro), DirMode)
+		_ = w.Abort()
+	}
 }

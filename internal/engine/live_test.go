@@ -109,6 +109,49 @@ func TestLiveImport(t *testing.T) {
 	}
 }
 
+// A snapshot that cannot be written stops the snapshots, not the
+// analysis: the timeline appears at the end, as without them.
+func TestLiveSnapshotFails(t *testing.T) {
+	paceLive(t)
+	e := newEngine(t)
+	ctx := context.Background()
+	info, _ := e.Open(ctx, []string{bigTrace(t, 20_000)})
+	events, _ := e.Subscribe(ctx)
+	ref, _ := e.Scan(ctx, info.ID)
+	waitJob(t, events, ref.ID)
+	res, _ := e.ScanResult(ctx, info.ID)
+	// The first snapshot's directory is taken by a file.
+	if err := os.WriteFile(e.cache.LiveDir(info.ID, 1), nil, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	ref, err := e.Analyze(ctx, info.ID, service.AnalyzeConfig{Flows: res.Selected, ServerPorts: res.ServerPorts})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for ev := range events {
+		j := ev.Job
+		if j == nil || j.ID != ref.ID {
+			continue
+		}
+		if j.Ready {
+			t.Fatalf("ready without a snapshot: %+v", j)
+		}
+		if j.State != service.JobRunning {
+			if j.State != service.JobDone {
+				t.Fatalf("analysis %+v", j)
+			}
+			break
+		}
+	}
+	p, err := e.Timeline(ctx, info.ID, service.TimelineQuery{Order: "time", Limit: 1})
+	if err != nil || p.Total < 20_000 {
+		t.Fatalf("after the analysis: %+v %v", p, err)
+	}
+	if _, err := os.Stat(e.cache.LiveDir(info.ID, 1)); !os.IsNotExist(err) {
+		t.Error("the failed snapshot's directory is left")
+	}
+}
+
 // Queries while snapshots replace each other, and while the analysis is
 // cancelled under them: no crash, no deadlock.
 func TestQueriesDuringLiveImport(t *testing.T) {
