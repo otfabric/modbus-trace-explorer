@@ -151,12 +151,17 @@ func (e *Engine) Shutdown() error {
 
 func (t *openTrace) close() error {
 	t.mu.Lock()
-	defer t.mu.Unlock()
+	ix := t.ix
+	t.ix = nil
+	t.mu.Unlock()
+	// Outside the lock: Close waits for the queries holding the index, and
+	// a query may need the lock before it lets go.
 	var err error
-	if t.ix != nil {
-		err = t.ix.Close()
-		t.ix = nil
+	if ix != nil {
+		err = ix.Close()
 	}
+	t.mu.Lock()
+	defer t.mu.Unlock()
 	if t.pdus != nil {
 		err = errors.Join(err, t.pdus.close())
 		t.pdus = nil
@@ -280,10 +285,7 @@ func (t *openTrace) attach(ix *store.Index) error {
 		return err
 	}
 	t.mu.Lock()
-	defer t.mu.Unlock()
-	if t.ix != nil {
-		_ = t.ix.Close()
-	}
+	old := t.ix
 	if t.pdus != nil {
 		_ = t.pdus.close()
 		t.pdus = nil
@@ -292,6 +294,12 @@ func (t *openTrace) attach(ix *store.Index) error {
 	t.conns = map[uint32]model.Connection{}
 	for _, c := range conns {
 		t.conns[c.ID] = c
+	}
+	t.mu.Unlock()
+	// The index replaced is closed once the queries still reading it are
+	// done (outside the lock, which they may need).
+	if old != nil {
+		_ = old.Close()
 	}
 	return nil
 }
@@ -328,18 +336,21 @@ func (e *Engine) trace(id string) (*openTrace, error) {
 	return t, nil
 }
 
-// index returns the open trace's index, or an error when it has none yet.
-func (e *Engine) index(id string) (*openTrace, *store.Index, error) {
-	t, err := e.trace(id)
+// index returns the open trace's index, held for the caller until it calls
+// release: a trace closed or analysed again meanwhile does not unmap it
+// under a query. It is an error when the trace has no index yet.
+func (e *Engine) index(id string) (t *openTrace, ix *store.Index, release func(), err error) {
+	t, err = e.trace(id)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 	t.mu.Lock()
-	defer t.mu.Unlock()
-	if t.ix == nil {
-		return nil, nil, service.Errorf(service.CodeNotFound, "the trace is not analysed yet")
+	ix = t.ix
+	t.mu.Unlock()
+	if ix == nil || !ix.Acquire() {
+		return nil, nil, nil, service.Errorf(service.CodeNotFound, "the trace is not analysed yet")
 	}
-	return t, t.ix, nil
+	return t, ix, ix.Release, nil
 }
 
 const maxRecent = 10

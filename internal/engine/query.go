@@ -23,10 +23,11 @@ const MaxPage = 2000
 
 // Overview returns the file strip's facts.
 func (e *Engine) Overview(_ context.Context, id string) (service.Overview, error) {
-	t, ix, err := e.index(id)
+	t, ix, release, err := e.index(id)
 	if err != nil {
 		return service.Overview{}, err
 	}
+	defer release()
 	t.mu.Lock()
 	sum, info := t.sum, t.info
 	t.mu.Unlock()
@@ -90,10 +91,11 @@ func (t *openTrace) present() bool {
 
 // Timeline returns a window of the filtered, ordered timeline.
 func (e *Engine) Timeline(ctx context.Context, id string, q service.TimelineQuery) (service.TimelinePage, error) {
-	_, ix, err := e.index(id)
+	_, ix, release, err := e.index(id)
 	if err != nil {
 		return service.TimelinePage{}, err
 	}
+	defer release()
 	f, err := compile(ix, q.Filter)
 	if err != nil {
 		return service.TimelinePage{}, err

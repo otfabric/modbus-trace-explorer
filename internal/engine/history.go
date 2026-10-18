@@ -26,19 +26,24 @@ const historyBatch = 2_000
 // it, in time order. Points arrive in "history" events; a capped history
 // ends with Next, which continues it.
 func (e *Engine) AddressHistory(_ context.Context, id string, q service.HistoryQuery) (service.JobRef, error) {
-	t, ix, err := e.index(id)
+	t, ix, release, err := e.index(id)
 	if err != nil {
+		return service.JobRef{}, err
+	}
+	// The job holds the index until it ends; a refusal here releases it.
+	refuse := func(err error) (service.JobRef, error) {
+		release()
 		return service.JobRef{}, err
 	}
 	space := store.Code(store.SpaceNames[:], q.Space)
 	if space == 0 {
-		return service.JobRef{}, service.Errorf(service.CodeInvalidArgument, "unknown data space %q", q.Space)
+		return refuse(service.Errorf(service.CodeInvalidArgument, "unknown data space %q", q.Space))
 	}
 	if !t.present() {
-		return service.JobRef{}, service.Errorf(service.CodeUnavailable, "the trace is not at its path: values are read from it")
+		return refuse(service.Errorf(service.CodeUnavailable, "the trace is not at its path: values are read from it"))
 	}
 	if t.preparing() {
-		return service.JobRef{}, service.Errorf(service.CodeUnavailable, "the trace is not decompressed yet")
+		return refuse(service.Errorf(service.CodeUnavailable, "the trace is not decompressed yet"))
 	}
 	limit := q.Limit
 	if limit <= 0 {
@@ -46,6 +51,7 @@ func (e *Engine) AddressHistory(_ context.Context, id string, q service.HistoryQ
 	}
 	capture := t.info.Kind == "capture"
 	return e.start("history", id, func(ctx context.Context, j *job) (string, error) {
+		defer release()
 		// A trace's bytes are re-read from its packets, a capture's from
 		// the PDUs its import kept (R24).
 		var adus func(r store.Row, i uint32) (req, resp []byte, err error)

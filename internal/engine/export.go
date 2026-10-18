@@ -130,10 +130,11 @@ var exclusionMeaning = map[mbcapexport.Reason]string{
 // stored Classify decision and then the exporter's own order: exceptions,
 // selection, time window.
 func (e *Engine) PreviewMBCAP(ctx context.Context, id string, x service.MBCAPExport) (service.MBCAPPreview, error) {
-	t, ix, err := e.index(id)
+	t, ix, release, err := e.index(id)
 	if err != nil {
 		return service.MBCAPPreview{}, err
 	}
+	defer release()
 	if t.info.Kind == "capture" {
 		return service.MBCAPPreview{}, service.Errorf(service.CodeInvalidArgument, "exports work on traces; this is already a capture")
 	}
@@ -353,10 +354,11 @@ func (e *Engine) ExportSubtrace(_ context.Context, id string, x service.Subtrace
 // export runs write as a job into path: through a temporary file in the
 // same directory, renamed over path only when it is complete.
 func (e *Engine) export(kind, id, path string, write func(ctx context.Context, f *trace.File, o trace.Options, w io.Writer) (service.ExportResult, error)) (service.JobRef, error) {
-	t, _, err := e.index(id)
+	t, _, release, err := e.index(id) // an analysed trace: the export re-reads the trace, not the index
 	if err != nil {
 		return service.JobRef{}, err
 	}
+	release()
 	if !t.present() {
 		return service.JobRef{}, service.Errorf(service.CodeUnavailable, "the trace is not at its path: exports read it again")
 	}

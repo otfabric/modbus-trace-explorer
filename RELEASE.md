@@ -19,6 +19,10 @@ In progress: opening `.mbcap` captures with the views (R24), the timeline during
 
 - **A test corpus** in `testdata/corpus`: realistic traces and captures (a plant, a ring buffer, a gateway, every function code; also for screenshots and demos), hard but valid input, and broken files, each with how the application must take it, checked by the engine tests, a fuzz test and the built application in CI.
 
+### Fixed
+
+- **A rare crash when a trace was closed, or a capture imported again, while the window was still reading it** (for example opening another file during a page fetch): the index was unmapped under the query. Found by running the test corpus through the built application in CI.
+
 ### Changed
 
 - **A capture damaged after its first samples, and a gzip trace that ends early, open with what could be read** and a warning, as a cut trace already did; before, both were refused.

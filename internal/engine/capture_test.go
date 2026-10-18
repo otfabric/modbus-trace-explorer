@@ -9,7 +9,9 @@ import (
 	"path/filepath"
 	"slices"
 	"strings"
+	"sync"
 	"testing"
+	"time"
 
 	"github.com/otfabric/go-modbus-capture/capture"
 
@@ -308,7 +310,8 @@ func TestCaptureImportAndCache(t *testing.T) {
 	}
 
 	// A damaged entry: the PDUs' index cut, then gone.
-	_, ix, _ := e.index(cid)
+	_, ix, release, _ := e.index(cid)
+	release()
 	idx := filepath.Join(ix.Dir(), pduIndex)
 	if err := os.Truncate(idx, 4); err != nil {
 		t.Fatal(err)
@@ -403,7 +406,8 @@ func TestCaptureCacheFailures(t *testing.T) {
 	runExport(t, e, ref, err)
 
 	cid, _ := importCapture(t, e, out)
-	_, ix, _ := e.index(cid)
+	_, ix, release, _ := e.index(cid)
+	release()
 	_ = e.Close(ctx, cid)
 	if err := os.WriteFile(filepath.Join(ix.Dir(), captureDoc), []byte("{broken"), 0o600); err != nil {
 		t.Fatal(err)
@@ -426,4 +430,66 @@ func TestCaptureCacheFailures(t *testing.T) {
 	if _, job := importCapture(t, ro, out); job.State != service.JobFailed || job.Error == nil || job.Error.Code != service.CodeUnavailable {
 		t.Errorf("an import into a read-only cache: %+v", job)
 	}
+}
+
+// Queries in flight while the trace is closed, reopened or imported again
+// must never read an unmapped index (a crash the corpus run found: the
+// smoke mode's shutdown closed the index under a timeline page). They may
+// get "not found"; they must not crash or deadlock.
+func TestQueriesDuringClose(t *testing.T) {
+	ctx := context.Background()
+	e, tid, path := exportTrace(t)
+	out := filepath.Join(t.TempDir(), "q.mbcap")
+	ref, err := e.ExportMBCAP(ctx, tid, service.MBCAPExport{Exceptions: true}, out)
+	runExport(t, e, ref, err)
+	cid, _ := importCapture(t, e, out)
+
+	stop := make(chan struct{})
+	done := make(chan struct{})
+	query := func(id string) {
+		for {
+			select {
+			case <-stop:
+				return
+			default:
+			}
+			if p, err := e.Timeline(ctx, id, service.TimelineQuery{Order: "time", Limit: 50}); err == nil {
+				for _, r := range p.Rows[:min(len(p.Rows), 5)] {
+					_, _ = e.Detail(ctx, id, r.Seq)
+				}
+			}
+			_, _ = e.Devices(ctx, id, service.Filter{})
+			_, _ = e.Overview(ctx, id)
+			_, _ = e.Quality(ctx, id)
+		}
+	}
+	var workers sync.WaitGroup
+	for range 4 {
+		for _, id := range []string{tid, cid} {
+			workers.Add(1)
+			go func() { defer workers.Done(); query(id) }()
+		}
+	}
+	go func() {
+		defer close(done)
+		events, _ := e.Subscribe(ctx)
+		for range 30 {
+			_ = e.Close(ctx, tid)
+			if _, err := e.Open(ctx, []string{path}); err != nil {
+				t.Error(err)
+				return
+			}
+			ref, err := e.ImportCapture(ctx, cid)
+			if err == nil {
+				waitJob(t, events, ref.ID)
+			}
+		}
+	}()
+	select {
+	case <-done:
+	case <-time.After(2 * time.Minute):
+		t.Fatal("closing and importing under queries did not finish: a deadlock")
+	}
+	close(stop)
+	workers.Wait()
 }

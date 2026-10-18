@@ -19,10 +19,11 @@ import (
 
 // Locate finds one row of the filtered timeline (R5, UX.md section 9).
 func (e *Engine) Locate(ctx context.Context, id string, q service.LocateQuery) (service.Location, error) {
-	t, ix, err := e.index(id)
+	t, ix, release, err := e.index(id)
 	if err != nil {
 		return service.Location{}, err
 	}
+	defer release()
 	n := 0
 	for _, set := range []bool{q.TimeNS != nil, q.Frame != nil, q.Seq != nil} {
 		if set {

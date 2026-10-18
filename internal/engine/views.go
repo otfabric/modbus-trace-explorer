@@ -21,21 +21,24 @@ import (
 // view) by scanning their columns: no per-view index exists, so a new
 // filter costs one pass over the selection.
 
-// selection returns the filtered rows in time order with the columns.
-func (e *Engine) selection(ctx context.Context, id string, f service.Filter) (*store.Index, *store.Selection, store.Columns, error) {
-	_, ix, err := e.index(id)
+// selection returns the filtered rows in time order with the columns, the
+// index held until the caller calls release.
+func (e *Engine) selection(ctx context.Context, id string, f service.Filter) (*store.Index, *store.Selection, store.Columns, func(), error) {
+	_, ix, release, err := e.index(id)
 	if err != nil {
-		return nil, nil, store.Columns{}, err
+		return nil, nil, store.Columns{}, nil, err
 	}
 	sf, err := compile(ix, f)
 	if err != nil {
-		return nil, nil, store.Columns{}, err
+		release()
+		return nil, nil, store.Columns{}, nil, err
 	}
 	sel, err := ix.Select(ctx, sf, store.ByTime)
 	if err != nil {
-		return nil, nil, store.Columns{}, err
+		release()
+		return nil, nil, store.Columns{}, nil, err
 	}
-	return ix, sel, ix.Columns(), nil
+	return ix, sel, ix.Columns(), release, nil
 }
 
 // distribution summarises durations: exact quantiles and a histogram of
@@ -64,10 +67,11 @@ func distribution(ns []int64) *service.Distribution {
 
 // Devices aggregates the filtered transactions per server and unit.
 func (e *Engine) Devices(ctx context.Context, id string, f service.Filter) ([]service.DeviceStats, error) {
-	ix, sel, c, err := e.selection(ctx, id, f)
+	ix, sel, c, release, err := e.selection(ctx, id, f)
 	if err != nil {
 		return nil, err
 	}
+	defer release()
 	type acc struct {
 		s       *service.DeviceStats
 		clients map[uint16]bool
@@ -142,10 +146,11 @@ func (e *Engine) Connections(ctx context.Context, id string, f service.Filter) (
 	if err != nil {
 		return nil, err
 	}
-	_, sel, c, err := e.selection(ctx, id, f)
+	_, sel, c, release, err := e.selection(ctx, id, f)
 	if err != nil {
 		return nil, err
 	}
+	defer release()
 	by := map[uint32]*service.ConnStats{}
 	flags := map[uint32]uint32{}
 	for k := range sel.Len() {
@@ -200,10 +205,11 @@ func (e *Engine) Connections(ctx context.Context, id string, f service.Filter) (
 // Patterns finds the recurring requests: the same client asking the same
 // device the same thing (the same summary of the request).
 func (e *Engine) Patterns(ctx context.Context, id string, f service.Filter) ([]service.Pattern, error) {
-	ix, sel, c, err := e.selection(ctx, id, f)
+	ix, sel, c, release, err := e.selection(ctx, id, f)
 	if err != nil {
 		return nil, err
 	}
+	defer release()
 	type key struct {
 		client, device uint16
 		summary        uint32
@@ -301,10 +307,11 @@ func abs(n int64) int64 {
 func (e *Engine) Coverage(ctx context.Context, id string, q service.CoverageQuery) (service.CoverageMap, error) {
 	f := q.Filter
 	f.Servers, f.Units = []string{q.Server}, []uint8{q.Unit}
-	ix, sel, c, err := e.selection(ctx, id, f)
+	ix, sel, c, release, err := e.selection(ctx, id, f)
 	if err != nil {
 		return service.CoverageMap{}, err
 	}
+	defer release()
 	space := store.Code(store.SpaceNames[:], q.Space)
 	out := service.CoverageMap{Server: q.Server, Unit: q.Unit, Space: q.Space, Spaces: []string{}, Read: []service.Interval{},
 		Written: []service.Interval{}}
@@ -369,10 +376,11 @@ func mergeInterval(list []service.Interval, iv service.Interval) []service.Inter
 
 // Quality lists every counter of the library with its meaning (R12).
 func (e *Engine) Quality(_ context.Context, id string) (service.Quality, error) {
-	t, ix, err := e.index(id)
+	t, ix, release, err := e.index(id)
 	if err != nil {
 		return service.Quality{}, err
 	}
+	defer release()
 	t.mu.Lock()
 	s, facts := t.sum, t.capture
 	t.mu.Unlock()

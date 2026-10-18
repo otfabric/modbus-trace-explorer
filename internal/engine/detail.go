@@ -36,10 +36,11 @@ func (t *openTrace) file() (*trace.File, error) {
 
 // Detail returns row seq with its ADUs decoded from the trace's bytes.
 func (e *Engine) Detail(_ context.Context, id string, seq uint64) (service.Detail, error) {
-	t, ix, err := e.index(id)
+	t, ix, release, err := e.index(id)
 	if err != nil {
 		return service.Detail{}, err
 	}
+	defer release()
 	if seq == 0 || seq > ix.Rows() {
 		return service.Detail{}, service.Errorf(service.CodeNotFound, "no row %d", seq)
 	}
