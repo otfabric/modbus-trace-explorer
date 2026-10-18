@@ -81,6 +81,7 @@ export class WailsService implements Service {
   scan = (id: string) => call<JobRef>('Scan', id);
   scanResult = (id: string) => call<ScanResult>('ScanResult', id);
   prepare = (id: string) => call<JobRef>('Prepare', id);
+  importCapture = (id: string) => call<JobRef>('ImportCapture', id);
   analyze = (id: string, cfg: AnalyzeConfig) => call<JobRef>('Analyze', id, cfg);
   cancelJob = (jobId: string) => call<void>('CancelJob', jobId);
   overview = (id: string) => call<Overview>('Overview', id);

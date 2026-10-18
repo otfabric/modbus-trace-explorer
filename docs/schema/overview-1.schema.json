@@ -1,8 +1,82 @@
 {
   "$defs": {
+    "service.CaptureFacts": {
+      "additionalProperties": false,
+      "properties": {
+        "change_only": {
+          "type": "boolean"
+        },
+        "encoding": {
+          "type": "string"
+        },
+        "end_known": {
+          "type": "boolean"
+        },
+        "exceptions": {
+          "type": "boolean"
+        },
+        "producer": {
+          "type": "string"
+        },
+        "provenance": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "samples": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "source": {
+          "type": "string"
+        },
+        "streams": {
+          "type": "integer"
+        },
+        "targets": {
+          "type": "integer"
+        },
+        "tick_ns": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "truncated": {
+          "type": "boolean"
+        },
+        "wall_start_ns": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "change_only",
+        "encoding",
+        "end_known",
+        "exceptions",
+        "producer",
+        "provenance",
+        "samples",
+        "streams",
+        "targets",
+        "tick_ns",
+        "truncated",
+        "wall_start_ns"
+      ],
+      "type": "object"
+    },
     "service.Overview": {
       "additionalProperties": false,
       "properties": {
+        "capture": {
+          "$ref": "#/$defs/service.CaptureFacts"
+        },
         "connections": {
           "minimum": 0,
           "type": "integer"
@@ -37,14 +111,7 @@
           "type": "integer"
         },
         "summary": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/trace.FileSummary"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "$ref": "#/$defs/trace.FileSummary"
         },
         "trace_missing": {
           "type": "boolean"
@@ -65,7 +132,6 @@
         "quality_count",
         "rows",
         "size",
-        "summary",
         "trace_missing",
         "transactions"
       ],

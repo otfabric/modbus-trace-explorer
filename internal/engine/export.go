@@ -130,9 +130,12 @@ var exclusionMeaning = map[mbcapexport.Reason]string{
 // stored Classify decision and then the exporter's own order: exceptions,
 // selection, time window.
 func (e *Engine) PreviewMBCAP(ctx context.Context, id string, x service.MBCAPExport) (service.MBCAPPreview, error) {
-	_, ix, err := e.index(id)
+	t, ix, err := e.index(id)
 	if err != nil {
 		return service.MBCAPPreview{}, err
+	}
+	if t.info.Kind == "capture" {
+		return service.MBCAPPreview{}, service.Errorf(service.CodeInvalidArgument, "exports work on traces; this is already a capture")
 	}
 	sel, err := selectionOf(x.Filter)
 	if err != nil {
@@ -356,6 +359,9 @@ func (e *Engine) export(kind, id, path string, write func(ctx context.Context, f
 	}
 	if !t.present() {
 		return service.JobRef{}, service.Errorf(service.CodeUnavailable, "the trace is not at its path: exports read it again")
+	}
+	if t.info.Kind == "capture" {
+		return service.JobRef{}, service.Errorf(service.CodeInvalidArgument, "exports work on traces; this is already a capture")
 	}
 	if t.preparing() {
 		return service.JobRef{}, service.Errorf(service.CodeUnavailable, "the trace is not decompressed yet")

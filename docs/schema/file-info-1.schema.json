@@ -67,6 +67,9 @@
         "id": {
           "type": "string"
         },
+        "kind": {
+          "type": "string"
+        },
         "name": {
           "type": "string"
         },
@@ -94,6 +97,7 @@
         "analyzed",
         "gzip",
         "id",
+        "kind",
         "name",
         "paths",
         "size"

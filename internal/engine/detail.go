@@ -68,6 +68,9 @@ func (e *Engine) Detail(_ context.Context, id string, seq uint64) (service.Detai
 				map[string]string{"syn": "with a handshake", "midstream": "before the capture started"}[conn.Open],
 				strings.ReplaceAll(conn.RoleSource, "_", " "), conn.RoleConfidence)})
 	}
+	if t.info.Kind == "capture" {
+		return captureDetail(t, ix, i, d)
+	}
 	d.MBCAP = reasonText(reasonOf(r.MBCAP))
 	req, resp, err := ix.Refs(r)
 	if err != nil {
@@ -96,6 +99,13 @@ func (e *Engine) Detail(_ context.Context, id string, seq uint64) (service.Detai
 		d.Notes = append(d.Notes, service.Note{Kind: "fact", Code: "trace_missing",
 			Meaning: "The trace is not at its path any more: the bytes and the decoded fields are not available."})
 	}
+	decodeInto(&d, reqADU, respADU)
+	d.Text = paragraph(d.Row, ix)
+	return d, nil
+}
+
+// decodeInto fills the request and response details from their ADUs.
+func decodeInto(d *service.Detail, reqADU, respADU []byte) {
 	var reqV mbtcp.View
 	if d.Request != nil && len(reqADU) > mbtcp.HeaderLen {
 		reqV = mbtcp.Decode(mbtcp.AsRequest, reqADU[mbtcp.HeaderLen:])
@@ -117,6 +127,23 @@ func (e *Engine) Detail(_ context.Context, id string, seq uint64) (service.Detai
 			d.Notes = append(d.Notes, service.Note{Kind: "warning", Code: w, Meaning: meaningOfWarning(w)})
 		}
 	}
+}
+
+// captureDetail is the detail of a capture's sample (R24): its PDUs from
+// the cache entry, behind a rebuilt MBAP header, and no packets.
+func captureDetail(t *openTrace, ix *store.Index, i uint32, d service.Detail) (service.Detail, error) {
+	req, resp, err := t.captureADUs(ix, i)
+	if err != nil {
+		return d, service.Wrap(service.CodeInternal, err, "the analysis cache is damaged")
+	}
+	d.Conn = nil
+	d.Request = &service.ADUDetail{Packets: []service.PacketRef{}}
+	if len(resp) > 0 {
+		d.Response = &service.ADUDetail{Packets: []service.PacketRef{}}
+	}
+	d.Notes = append(d.Notes, service.Note{Kind: "fact", Code: "capture_sample",
+		Meaning: "A sample of an MBCAP capture: the capture keeps the PDUs and the time of the response; the MBAP header shown is rebuilt (transaction ID 0), and there are no packets."})
+	decodeInto(&d, req, resp)
 	d.Text = paragraph(d.Row, ix)
 	return d, nil
 }

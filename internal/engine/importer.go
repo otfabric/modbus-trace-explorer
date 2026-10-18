@@ -28,6 +28,9 @@ func (e *Engine) Scan(_ context.Context, id string) (service.JobRef, error) {
 	if err != nil {
 		return service.JobRef{}, err
 	}
+	if t.info.Kind == "capture" {
+		return service.JobRef{}, service.Errorf(service.CodeInvalidArgument, "this is an MBCAP capture: import it, it has no flows to scan")
+	}
 	if !t.claim() {
 		return service.JobRef{}, service.Errorf(service.CodeInvalidArgument, "a scan or an analysis of this trace is running")
 	}
@@ -201,6 +204,9 @@ func (e *Engine) Analyze(_ context.Context, id string, cfg service.AnalyzeConfig
 	t, err := e.trace(id)
 	if err != nil {
 		return service.JobRef{}, err
+	}
+	if t.info.Kind == "capture" {
+		return service.JobRef{}, service.Errorf(service.CodeInvalidArgument, "this is an MBCAP capture: import it instead")
 	}
 	opts, err := traceOptions(cfg)
 	if err != nil {

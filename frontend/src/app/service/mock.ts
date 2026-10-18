@@ -265,6 +265,7 @@ export class MockService implements Service {
       name: paths.length > 1 ? `${name} + ${paths.length - 1} more` : name,
       size: this.rows * 190,
       gzip: name.endsWith('.gz'),
+      kind: this.isCapture() ? 'capture' : 'trace',
       analyzed: this.analyzed,
       prepare: this.analyzed && name.endsWith('.gz') ? true : undefined,
       choices: this.analyzed ? { flows: [1, 2], server_ports: [502, 1502], servers: [] } : undefined,
@@ -355,6 +356,18 @@ export class MockService implements Service {
     };
   }
 
+  /** The mock opens a name ending in .mbcap (or .mbcap.jsonl, .mbcap.csv) as a capture. */
+  private isCapture(): boolean {
+    return /\.mbcap(\.jsonl|\.csv)?$/.test(this.paths[0] ?? '');
+  }
+
+  async importCapture(): Promise<JobRef> {
+    if (!this.isCapture()) throw new ServiceError('invalid_argument', 'this is a trace: scan and analyse it');
+    return this.run('capture', ['import', 'index'], () => {
+      this.analyzed = true;
+    });
+  }
+
   async prepare(): Promise<JobRef> {
     return this.run('prepare', ['decompress'], () => {});
   }
@@ -384,7 +397,12 @@ export class MockService implements Service {
       quality: 'warnings',
       quality_count: 3,
       trace_missing: false,
-      summary: (await this.scanResult()).summary,
+      summary: this.isCapture() ? undefined : (await this.scanResult()).summary,
+      capture: this.isCapture()
+        ? { encoding: 'mbcap', producer: 'modbus-trace-explorer 0.1.0', tick_ns: 1000, wall_start_ns: START_NS, change_only: false, exceptions: true,
+            targets: DEVICES.length, streams: CLIENTS.length, samples: this.rows, end_known: true, truncated: false,
+            provenance: ['modbus-trace-explorer 0.1.0 export mbcap'] }
+        : undefined,
     };
   }
 

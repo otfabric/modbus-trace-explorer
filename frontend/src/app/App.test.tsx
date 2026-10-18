@@ -359,4 +359,19 @@ describe('App', () => {
     expect(await screen.findByText('Timeline export cancelled.')).toBeInTheDocument();
     expect(screen.queryByRole('status', { name: 'Timeline export running' })).toBeNull();
   });
+
+  it('opens an MBCAP capture: imported without a Flows step, its samples in the timeline, no exports', async () => {
+    const user = userEvent.setup();
+    render(<App service={new MockService({ rows: 2000, step: 1 })} platform={platform(['/x/site.mbcap'])} />);
+    await user.click(screen.getByRole('button', { name: /Open/ }));
+    const grid = await screen.findByRole('grid', { name: 'Timeline' }, { timeout: 3000 });
+    await waitFor(() => expect(grid).toHaveAttribute('aria-rowcount', '2001'));
+    expect(screen.queryByRole('button', { name: /^Analyze/ })).toBeNull();
+    expect(screen.getByText('MBCAP capture')).toBeInTheDocument();
+    expect(screen.getByText(/2,000 samples/)).toBeInTheDocument();
+    expect(screen.getByText(/streams/)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^Export$/ })).toBeDisabled();
+    await user.keyboard('{Control>}e{/Control}');
+    expect(screen.queryByRole('dialog', { name: 'Export' })).toBeNull();
+  });
 });

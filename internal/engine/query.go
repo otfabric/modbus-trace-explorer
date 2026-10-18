@@ -48,6 +48,27 @@ func (e *Engine) Overview(_ context.Context, id string) (service.Overview, error
 		}
 	}
 	ov.Quality, ov.QualityCount = quality(sum)
+	t.mu.Lock()
+	facts := t.capture
+	t.mu.Unlock()
+	if facts != nil {
+		// A capture (R24): its samples are the transactions, its streams
+		// the connections.
+		ov.Capture, ov.Transactions, ov.Connections = facts, facts.Samples, uint64(facts.Streams)
+		exc, unanswered := captureCounts(ix)
+		ov.Quality, ov.QualityCount = "ok", 0
+		for _, c := range captureQuality(facts, exc, unanswered).Conditions {
+			if c.Count == 0 || c.Severity == "info" {
+				continue
+			}
+			ov.QualityCount++
+			if c.Severity == "problem" {
+				ov.Quality = "problems"
+			} else if ov.Quality == "ok" {
+				ov.Quality = "warnings"
+			}
+		}
+	}
 	return ov, nil
 }
 
