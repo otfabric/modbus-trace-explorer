@@ -142,6 +142,7 @@ jobs:
     needs: prepare
     permissions:
       contents: read
+      id-token: write # the build's Codecov upload (OIDC)
     uses: ./.github/workflows/build.yml
     with:
       version: ${{ needs.prepare.outputs.version }}

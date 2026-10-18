@@ -78,6 +78,73 @@ tar xzf "${FILE}" && sudo install -m 0755 "${FILE%.tar.gz}/modbus-trace-explorer
 modbus-trace-explorer site.pcapng
 ```
 
+## Capturing a trace
+
+The Explorer reads traces; it does not capture them. Any tool that writes pcap or pcapng will do. What makes a trace useful:
+
+- **Where.** Capture where both directions of the Modbus traffic pass: on the client (SCADA host, gateway, PLC programming PC), on a switch port that mirrors the device's port (SPAN), or with a network tap. A capture on an ordinary switch port sees only that port's own traffic.
+- **Whole packets.** Do not cut packets short (`-s 0`, the default in current tools). A cut ADU cannot be decoded and is reported as "cut by the snap length".
+- **From before the connections open.** Start capturing, then start (or restart) the poller. The connection's handshake shows which side is the server; without it the Explorer infers it from the traffic and says so ("guessed roles").
+- **Keep the TCP packets.** Filter by port when capturing, not by protocol afterwards: saving only the packets Wireshark decodes as `modbus` drops the handshakes, retransmissions and acknowledgements the reassembly needs.
+- **Modbus/TCP Security** (TLS, usually port 802) is encrypted and cannot be decoded; the Flows step names it.
+
+The examples capture port 502. For devices on other ports, extend the filter (`tcp port 502 or tcp port 1502`) and enter the port in the Flows step. Capturing needs privileges: `sudo` (or membership of the `wireshark` group on Linux), the ChmodBPF helper that Wireshark installs on macOS, Npcap on Windows. Interface names differ per system: `tcpdump -D`, `dumpcap -D` or `tshark -D` list them.
+
+### tcpdump (Linux, macOS)
+
+```sh
+# Until Ctrl+C; full packets, no name lookups.
+sudo tcpdump -i eth0 -s 0 -n -w site.pcap 'tcp port 502'
+
+# A long capture in files of 100 MB, keeping the last 50 (5 GB at most).
+sudo tcpdump -i eth0 -s 0 -n -C 100 -W 50 -w site.pcap 'tcp port 502'
+
+# One file per hour, named by its start time.
+sudo tcpdump -i eth0 -s 0 -n -G 3600 -w 'site-%Y%m%d-%H%M.pcap' 'tcp port 502'
+
+# On a remote gateway, written on your machine.
+ssh admin@gateway "sudo tcpdump -i eth0 -s 0 -n -U -w - 'tcp port 502'" > site.pcap
+```
+
+When tcpdump stops it prints how many packets the kernel dropped; more than zero means reads may be missing from the trace.
+
+### dumpcap (comes with Wireshark; Linux, macOS, Windows)
+
+dumpcap is Wireshark's capture engine: no decoding, so it keeps up on long captures, and its pcapng records the drops (the Explorer shows them in the Quality view).
+
+```sh
+dumpcap -D                                            # list the interfaces
+dumpcap -i eth0 -f "tcp port 502" -w site.pcapng
+
+# A day in files of 100 MB (100000 kB), the last 50 kept; stops after 24 hours.
+dumpcap -i eth0 -f "tcp port 502" -b filesize:100000 -b files:50 -a duration:86400 -w site.pcapng
+```
+
+On Windows the interface is a number from `dumpcap -D` or its full name:
+
+```powershell
+& "C:\Program Files\Wireshark\dumpcap.exe" -D
+& "C:\Program Files\Wireshark\dumpcap.exe" -i 3 -f "tcp port 502" -w "$env:USERPROFILE\Desktop\site.pcapng"
+```
+
+### tshark (comes with Wireshark)
+
+```sh
+# One hour, then stop. -f is a capture filter; do not use a display filter (-Y) when writing a file.
+tshark -i eth0 -f "tcp port 502" -a duration:3600 -w site.pcapng
+```
+
+### Wireshark
+
+1. Capture → Options: pick the interface and type `tcp port 502` as the capture filter (the field on the Input tab, not the display filter bar).
+2. For a long capture, Output tab: a file name, pcapng, and "Create a new file automatically" every 100 MB with a ring buffer.
+3. Start, let the poller run, stop.
+4. File → Save As, pcapng, with all packets ("Export Specified Packets" with a `modbus` display filter would leave out the TCP packets the Explorer needs).
+
+### Opening what you captured
+
+Open the file, or select all the files of a ring buffer together: they are read as one trace, in the order of their first packets. Compressed files (`site.pcapng.gz`) open as they are. The Quality view then says what the capture missed: drops, cut packets, gaps, guessed roles.
+
 ## A short tour
 
 1. **Open** a trace: drop it on the window, File → Open (`Ctrl/Cmd+O`), Open Recent, or `modbus-trace-explorer site.pcapng.gz`. Several files are one trace in the order of their first packets; gzip is decompressed into the cache while the trace is open.
