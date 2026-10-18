@@ -1,0 +1,12 @@
+{"t":"header","version":"0.1","tick_ns":1000,"wall_start":"2026-10-14T06:58:00Z","producer":"modbus-trace-explorer corpus","flags":{"exceptions":true},"tags":{"provenance":"corpus generator","source":"synthetic"}}
+{"t":"target","id":1,"label":"Wärmepumpe Keller — ヒートポンプ — مضخة حرارية","transport":"rtu","serial":{"device":"/dev/ttyUSB0","baud":19200,"parity":"even","data_bits":8,"stop_bits":1},"unit":7}
+{"t":"target","id":2,"label":"A very long target label that does not fit anywhere A very long target label that does not fit anywhere A very long target label that does not fit anywhere A very long target label that does not fit anywhere A very long target label that does not fit anywhere A very long target label that does not fit anywhere ","transport":"tls","host":"plc.example.internal","port":802,"unit":1}
+{"t":"stream","id":1,"target":1,"role":"poll","label":"poll 1 s"}
+{"t":"stream","id":2,"target":2,"role":"snapshot","label":"snapshot"}
+{"t":"s","s":1,"at":0,"req":"03000a0002","resp":"030400140100"}
+{"t":"s","s":2,"at":1000000,"req":"03000a0002","resp":"030400150100"}
+{"t":"s","s":1,"at":2000000,"req":"03000a0002","resp":"030400160100"}
+{"t":"s","s":2,"at":3000000,"req":"03000a0002","resp":"030400170100"}
+{"t":"s","s":1,"at":4000000,"req":"03000a0002","resp":"030400180100"}
+{"t":"s","s":2,"at":5000000,"req":"03000a0002","resp":"030400190100"}
+{"t":"end","at":6000000}

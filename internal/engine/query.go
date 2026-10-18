@@ -23,10 +23,11 @@ const MaxPage = 2000
 
 // Overview returns the file strip's facts.
 func (e *Engine) Overview(_ context.Context, id string) (service.Overview, error) {
-	t, ix, err := e.index(id)
+	t, ix, release, err := e.index(id)
 	if err != nil {
 		return service.Overview{}, err
 	}
+	defer release()
 	t.mu.Lock()
 	sum, info := t.sum, t.info
 	t.mu.Unlock()
@@ -48,6 +49,26 @@ func (e *Engine) Overview(_ context.Context, id string) (service.Overview, error
 		}
 	}
 	ov.Quality, ov.QualityCount = quality(sum)
+	t.mu.Lock()
+	facts := t.capture
+	t.mu.Unlock()
+	if facts != nil {
+		// A capture (R24): its samples are the transactions, its streams
+		// the connections.
+		ov.Capture, ov.Transactions, ov.Connections = facts, facts.Samples, uint64(facts.Streams)
+		ov.Quality, ov.QualityCount = "ok", 0
+		for _, c := range captureQuality(facts, captureExceptions(ix)).Conditions {
+			if c.Count == 0 || c.Severity == "info" {
+				continue
+			}
+			ov.QualityCount++
+			if c.Severity == "problem" {
+				ov.Quality = "problems"
+			} else if ov.Quality == "ok" {
+				ov.Quality = "warnings"
+			}
+		}
+	}
 	return ov, nil
 }
 
@@ -70,10 +91,11 @@ func (t *openTrace) present() bool {
 
 // Timeline returns a window of the filtered, ordered timeline.
 func (e *Engine) Timeline(ctx context.Context, id string, q service.TimelineQuery) (service.TimelinePage, error) {
-	_, ix, err := e.index(id)
+	_, ix, release, err := e.index(id)
 	if err != nil {
 		return service.TimelinePage{}, err
 	}
+	defer release()
 	f, err := compile(ix, q.Filter)
 	if err != nil {
 		return service.TimelinePage{}, err

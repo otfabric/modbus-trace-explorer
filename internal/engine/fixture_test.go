@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"strings"
 	"testing"
 
 	"github.com/otfabric/go-modbus-trace/trace/tracetest"
@@ -121,5 +122,73 @@ func TestSmokeTrace(t *testing.T) {
 	}
 	if p, _ := e.Timeline(context.Background(), id, service.TimelineQuery{Order: "time", Limit: 5}); p.Total == 0 {
 		t.Error("empty timeline")
+	}
+}
+
+// corpusFixtures are corpus files whose engine answers the frontend's UI
+// test replays (frontend/src/test/fixtures/engine-<name>.json): every
+// decoder, pairing trouble, an unusual capture.
+var corpusFixtures = map[string]string{
+	"tour":    "realistic/function-tour.pcapng",
+	"pairing": "edge/tid-and-pairing.pcapng",
+	"odd":     "edge/serial-and-tls-targets.mbcap",
+}
+
+// TestCorpusFixtures: the fixtures are the engine's current answers for
+// those corpus files; MTE_UPDATE=1 (make golden) rewrites them.
+func TestCorpusFixtures(t *testing.T) {
+	for name, file := range corpusFixtures {
+		t.Run(name, func(t *testing.T) {
+			e := newEngine(t)
+			ctx := context.Background()
+			src, err := os.ReadFile(filepath.Join(corpusDir, file))
+			if err != nil {
+				t.Fatal(err)
+			}
+			path := filepath.Join(t.TempDir(), filepath.Base(file))
+			if err := os.WriteFile(path, src, 0o600); err != nil {
+				t.Fatal(err)
+			}
+			var fx engineFixture
+			var id string
+			if strings.Contains(file, ".mbcap") {
+				id, _ = importCapture(t, e, path)
+			} else {
+				id, fx.ScanResult = importTrace(t, e, nil, path)
+			}
+			tr, _ := e.trace(id)
+			fx.FileInfo = tr.info
+			fx.Overview, _ = e.Overview(ctx, id)
+			fx.Timeline, _ = e.Timeline(ctx, id, service.TimelineQuery{Order: "time", Limit: 200})
+			fx.Details = map[string]service.Detail{}
+			for _, r := range fx.Timeline.Rows {
+				d, err := e.Detail(ctx, id, r.Seq)
+				if err != nil {
+					t.Fatal(err)
+				}
+				fx.Details[jsonKey(r.Seq)] = d
+			}
+			fx.Devices, _ = e.Devices(ctx, id, service.Filter{})
+			fx.Conns, _ = e.Connections(ctx, id, service.Filter{})
+			fx.Patterns, _ = e.Patterns(ctx, id, service.Filter{})
+			fx.Quality, _ = e.Quality(ctx, id)
+			b, err := json.MarshalIndent(fx, "", "  ")
+			if err != nil {
+				t.Fatal(err)
+			}
+			b = bytes.ReplaceAll(b, []byte(filepath.Dir(path)+string(filepath.Separator)), []byte("/traces/"))
+			b = bytes.ReplaceAll(b, []byte(id), []byte(name))
+			b = regexp.MustCompile(`"(analyze|scan|capture)-\d+"`).ReplaceAll(b, []byte(`"$1"`))
+			b = append(b, '\n')
+			out := filepath.Join(filepath.Dir(fixturePath), "engine-"+name+".json")
+			if os.Getenv("MTE_UPDATE") != "" {
+				if err := os.WriteFile(out, b, 0o644); err != nil {
+					t.Fatal(err)
+				}
+			}
+			if want, err := os.ReadFile(out); err != nil || !bytes.Equal(want, b) {
+				t.Errorf("%s is not up to date: run make golden (%v)", out, err)
+			}
+		})
 	}
 }

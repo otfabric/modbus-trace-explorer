@@ -28,6 +28,9 @@ func (e *Engine) Scan(_ context.Context, id string) (service.JobRef, error) {
 	if err != nil {
 		return service.JobRef{}, err
 	}
+	if t.info.Kind == "capture" {
+		return service.JobRef{}, service.Errorf(service.CodeInvalidArgument, "this is an MBCAP capture: import it, it has no flows to scan")
+	}
 	if !t.claim() {
 		return service.JobRef{}, service.Errorf(service.CodeInvalidArgument, "a scan or an analysis of this trace is running")
 	}
@@ -53,6 +56,12 @@ func (e *Engine) Scan(_ context.Context, id string) (service.JobRef, error) {
 		if err != nil {
 			// A damaged file: what was read up to the damage is usable.
 			return "the trace is damaged; it was read up to the damage: " + err.Error(), nil
+		}
+		t.mu.Lock()
+		cut := t.gzCut
+		t.mu.Unlock()
+		if cut {
+			return "the gzip file ends early or is damaged; the trace was read as far as it decompressed", nil
 		}
 		if sum.Reader.TruncatedTail {
 			return "the capture ends in the middle of a packet; the rest of the file was read", nil
@@ -94,6 +103,13 @@ func (e *Engine) decompress(ctx context.Context, t *openTrace, j *job) error {
 		out, err := e.cache.Decompress(ctx, p, fmt.Sprintf("%s-%d", t.info.ID, i), func(read, total int64) {
 			j.progress("decompress", read, total, 0)
 		})
+		if errors.Is(err, store.ErrGzipCut) {
+			// What decompressed is read; the scan says the file is cut.
+			t.mu.Lock()
+			t.gzCut = true
+			t.mu.Unlock()
+			err = nil
+		}
 		if err != nil {
 			if errors.Is(err, context.Canceled) {
 				return err
@@ -201,6 +217,9 @@ func (e *Engine) Analyze(_ context.Context, id string, cfg service.AnalyzeConfig
 	t, err := e.trace(id)
 	if err != nil {
 		return service.JobRef{}, err
+	}
+	if t.info.Kind == "capture" {
+		return service.JobRef{}, service.Errorf(service.CodeInvalidArgument, "this is an MBCAP capture: import it instead")
 	}
 	opts, err := traceOptions(cfg)
 	if err != nil {

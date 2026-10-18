@@ -1,0 +1,6 @@
+{"t":"header","version":"0.1","tick_ns":1000,"wall_start":"2026-10-14T06:58:00Z","producer":"modbus-trace-explorer corpus","flags":{"exceptions":true},"tags":{"provenance":"corpus generator","source":"synthetic"}}
+{"t":"target","id":1,"transport":"tcp","host":"10.20.1.11","port":502,"unit":1}
+{"t":"stream","id":1,"target":1,"role":"poll","label":"client 10.20.0.10"}
+{"t":"s","s":1,"at":0,"req":"0300000001","resp":"03020000"}
+{"t":"s","s":1,"at":1000000,"req":"0300000001","resp":"03020001"}
+{"t":"s","s":1,"at":2000000,"req":"0300000001","resp":"03020002"}

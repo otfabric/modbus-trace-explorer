@@ -13,7 +13,7 @@ A desktop tool to understand Modbus/TCP traffic recorded by someone else. Open a
 
 It does not capture live (use tcpdump or Wireshark), never talks to devices and never writes to Modbus. All trace understanding is in the library [go-modbus-trace](https://github.com/otfabric/go-modbus-trace), whose CLI `mbtracectl` is the headless way to do the same on a gateway or in CI.
 
-**Status: version 0.1 (milestones M0 to M4).** Opening `.mbcap` files for inspection (R24) is planned for v0.2.
+**Status: version 0.1 released; v0.2 in progress** (see [RELEASE.md](RELEASE.md)).
 
 ## Install
 
@@ -145,6 +145,10 @@ tshark -i eth0 -f "tcp port 502" -a duration:3600 -w site.pcapng
 
 Open the file, or select all the files of a ring buffer together: they are read as one trace, in the order of their first packets. Compressed files (`site.pcapng.gz`) open as they are. The Quality view then says what the capture missed: drops, cut packets, gaps, guessed roles.
 
+## Sample files
+
+`testdata/corpus` has synthetic traces and captures to try the Explorer with, no capture of your own needed: `realistic/plant-scada.pcapng` (a small plant, 15 minutes), its ring-buffer parts, its MBCAP exports, `realistic/rtu-gateway.pcap` and `realistic/function-tour.pcapng`, plus hard and broken files; its README describes each one.
+
 ## A short tour
 
 1. **Open** a trace: drop it on the window, File → Open (`Ctrl/Cmd+O`), Open Recent, or `modbus-trace-explorer site.pcapng.gz`. Several files are one trace in the order of their first packets; gzip is decompressed into the cache while the trace is open.
@@ -166,6 +170,8 @@ Open the file, or select all the files of a ring buffer together: they are read 
    modbusctl server replay --input site.mbcap --listen 127.0.0.1 --port 1502 --before-first absent --missing exception
    ```
 
+An **MBCAP capture** (`.mbcap`, `.mbcap.jsonl`, `.mbcap.csv`, for example one exported here) opens the same way, by itself and read-only: its samples fill the timeline and the views, so you can see what a replay will serve.
+
 Settings (`Ctrl/Cmd+,`) hold the time display, extra server ports for the Flows step, 1-based address labels and the analysis cache (location, size limit, "Clear cache"). Help → About has "Copy diagnostics" for a bug report: versions and the trace's facts, never paths or addresses.
 
 ## Development
@@ -176,9 +182,13 @@ Start with [AGENTS.md](AGENTS.md), then [docs/REQUIREMENTS.md](docs/REQUIREMENTS
 make frontend-install    # once: npm ci
 make check               # Go and frontend checks
 make build-gui           # ./bin/modbus-trace-explorer (cgo; the platform's webview)
+make bundle-macos        # macOS: bin/Modbus Trace Explorer.app with its icon, ad-hoc signed;
+                         #   then: open "bin/Modbus Trace Explorer.app"
 make smoke               # start it on testdata/smoke.pcapng and wait for the timeline (A15)
 make golden              # rewrite the schemas, the engine fixture and the smoke trace
 make frontend-coverage   # the frontend tests with coverage (frontend/coverage/lcov.info)
+make smoke-corpus        # the built application on every file of testdata/corpus
+make fuzz                # fuzz the engine with mutated corpus files (FUZZTIME=5m)
 cd frontend && npm run dev   # the user interface over the mock engine, in a browser (?rows=10000000, ?empty)
 make spike               # the M0 index measurements (SPIKE_ROWS, default 10,000,000)
 ```

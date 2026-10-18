@@ -13,11 +13,19 @@ In progress: opening `.mbcap` captures with the views (R24), the timeline during
 
 ### Added
 
+- **Open MBCAP captures** (R24): `.mbcap`, `.mbcap.jsonl` and `.mbcap.csv` open read-only, by themselves, without a Flows step. The samples are the timeline (the target as the device, the stream as the connection), each decoded in the detail pane; Devices, Conversations (streams), Patterns, Addresses with the value history of an address, and Quality with the capture's own facts (producer, tick, start, provenance, change-only, a missing end or a cut file) work as for a trace. Captures have no exports and no frame numbers. On macOS, `.mbcap` files open with the application.
 - **The status bar shows running exports and address histories** with their progress and a Cancel button, the cache's size, and the time zone offset of local time. An export can continue in the background ("Continue in the background" in the Export dialog); the status bar says when it finishes.
 - **The detail pane can be resized**: drag its left edge, or focus the edge and use the arrow keys (Shift for larger steps, Home and End for the limits); double-click restores the default. The width is remembered.
 
+- **A test corpus** in `testdata/corpus`: realistic traces and captures (a plant, a ring buffer, a gateway, every function code; also for screenshots and demos), hard but valid input, and broken files, each with how the application must take it, checked by the engine tests, a fuzz test and the built application in CI.
+
+### Fixed
+
+- **A rare crash when a trace was closed, or a capture imported again, while the window was still reading it** (for example opening another file during a page fetch): the index was unmapped under the query. Found by running the test corpus through the built application in CI.
+
 ### Changed
 
+- **A capture damaged after its first samples, and a gzip trace that ends early, open with what could be read** and a warning, as a cut trace already did; before, both were refused.
 - CI uploads the frontend's test coverage to Codecov as well (flag `frontend`), next to the Go coverage (flag `unittests`).
 
 ---

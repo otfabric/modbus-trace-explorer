@@ -1,0 +1,1191 @@
+{
+  "file_info": {
+    "id": "odd",
+    "paths": [
+      "/traces/serial-and-tls-targets.mbcap"
+    ],
+    "name": "serial-and-tls-targets.mbcap",
+    "size": 730,
+    "gzip": false,
+    "kind": "capture",
+    "analyzed": true
+  },
+  "scan_result": {
+    "summary": null,
+    "flows": null,
+    "server_ports": null,
+    "selected": null,
+    "one_click": false
+  },
+  "overview": {
+    "file": "serial-and-tls-targets.mbcap",
+    "size": 730,
+    "first_ns": 1791961080000000000,
+    "last_ns": 1791961085000000000,
+    "packets": 0,
+    "connections": 2,
+    "devices": 2,
+    "transactions": 6,
+    "rows": 6,
+    "quality": "ok",
+    "quality_count": 0,
+    "trace_missing": false,
+    "capture": {
+      "encoding": "mbcap",
+      "producer": "modbus-trace-explorer corpus",
+      "tick_ns": 1000,
+      "wall_start_ns": 1791961080000000000,
+      "change_only": false,
+      "exceptions": true,
+      "targets": 2,
+      "streams": 2,
+      "samples": 6,
+      "end_known": true,
+      "truncated": false,
+      "provenance": [
+        "corpus generator"
+      ],
+      "source": "synthetic"
+    }
+  },
+  "timeline": {
+    "offset": 0,
+    "rows": [
+      {
+        "seq": 1,
+        "kind": "txn",
+        "t_ns": 1791961080000000000,
+        "conn": 1,
+        "client": "poll 1 s",
+        "server": "/dev/ttyUSB0",
+        "unit": 7,
+        "tid": 0,
+        "fc": 3,
+        "class": "read",
+        "status": "ok",
+        "flags": [],
+        "summary": "Read 2 holding registers @ 10",
+        "result": "2 words"
+      },
+      {
+        "seq": 2,
+        "kind": "txn",
+        "t_ns": 1791961081000000000,
+        "conn": 2,
+        "client": "snapshot",
+        "server": "plc.example.internal:802",
+        "unit": 1,
+        "tid": 0,
+        "fc": 3,
+        "class": "read",
+        "status": "ok",
+        "flags": [],
+        "summary": "Read 2 holding registers @ 10",
+        "result": "2 words"
+      },
+      {
+        "seq": 3,
+        "kind": "txn",
+        "t_ns": 1791961082000000000,
+        "conn": 1,
+        "client": "poll 1 s",
+        "server": "/dev/ttyUSB0",
+        "unit": 7,
+        "tid": 0,
+        "fc": 3,
+        "class": "read",
+        "status": "ok",
+        "flags": [],
+        "summary": "Read 2 holding registers @ 10",
+        "result": "2 words"
+      },
+      {
+        "seq": 4,
+        "kind": "txn",
+        "t_ns": 1791961083000000000,
+        "conn": 2,
+        "client": "snapshot",
+        "server": "plc.example.internal:802",
+        "unit": 1,
+        "tid": 0,
+        "fc": 3,
+        "class": "read",
+        "status": "ok",
+        "flags": [],
+        "summary": "Read 2 holding registers @ 10",
+        "result": "2 words"
+      },
+      {
+        "seq": 5,
+        "kind": "txn",
+        "t_ns": 1791961084000000000,
+        "conn": 1,
+        "client": "poll 1 s",
+        "server": "/dev/ttyUSB0",
+        "unit": 7,
+        "tid": 0,
+        "fc": 3,
+        "class": "read",
+        "status": "ok",
+        "flags": [],
+        "summary": "Read 2 holding registers @ 10",
+        "result": "2 words"
+      },
+      {
+        "seq": 6,
+        "kind": "txn",
+        "t_ns": 1791961085000000000,
+        "conn": 2,
+        "client": "snapshot",
+        "server": "plc.example.internal:802",
+        "unit": 1,
+        "tid": 0,
+        "fc": 3,
+        "class": "read",
+        "status": "ok",
+        "flags": [],
+        "summary": "Read 2 holding registers @ 10",
+        "result": "2 words"
+      }
+    ],
+    "total": 6
+  },
+  "details": {
+    "1": {
+      "row": {
+        "seq": 1,
+        "kind": "txn",
+        "t_ns": 1791961080000000000,
+        "conn": 1,
+        "client": "poll 1 s",
+        "server": "/dev/ttyUSB0",
+        "unit": 7,
+        "tid": 0,
+        "fc": 3,
+        "class": "read",
+        "status": "ok",
+        "flags": [],
+        "summary": "Read 2 holding registers @ 10",
+        "result": "2 words"
+      },
+      "request": {
+        "hex": "0000000000060703000a0002",
+        "name": "Read Holding Registers",
+        "fields": [
+          {
+            "name": "transaction_id",
+            "offset": 0,
+            "length": 2,
+            "value": 0
+          },
+          {
+            "name": "protocol_id",
+            "offset": 2,
+            "length": 2,
+            "value": 0
+          },
+          {
+            "name": "length",
+            "offset": 4,
+            "length": 2,
+            "value": 6
+          },
+          {
+            "name": "unit_id",
+            "offset": 6,
+            "length": 1,
+            "value": 7
+          },
+          {
+            "name": "function",
+            "offset": 7,
+            "length": 1,
+            "value": 3
+          },
+          {
+            "name": "address",
+            "offset": 8,
+            "length": 2,
+            "value": 10
+          },
+          {
+            "name": "quantity",
+            "offset": 10,
+            "length": 2,
+            "value": 2
+          }
+        ],
+        "warnings": [],
+        "packets": []
+      },
+      "response": {
+        "hex": "00000000000707030400140100",
+        "name": "Read Holding Registers",
+        "fields": [
+          {
+            "name": "transaction_id",
+            "offset": 0,
+            "length": 2,
+            "value": 0
+          },
+          {
+            "name": "protocol_id",
+            "offset": 2,
+            "length": 2,
+            "value": 0
+          },
+          {
+            "name": "length",
+            "offset": 4,
+            "length": 2,
+            "value": 7
+          },
+          {
+            "name": "unit_id",
+            "offset": 6,
+            "length": 1,
+            "value": 7
+          },
+          {
+            "name": "function",
+            "offset": 7,
+            "length": 1,
+            "value": 3
+          },
+          {
+            "name": "byte_count",
+            "offset": 8,
+            "length": 1,
+            "value": 4
+          },
+          {
+            "name": "registers",
+            "offset": 9,
+            "length": 4,
+            "hex": "00140100"
+          }
+        ],
+        "warnings": [],
+        "packets": []
+      },
+      "text": "poll 1 s asked /dev/ttyUSB0 unit 7: read 2 holding registers @ 10. It answered: 2 words.",
+      "notes": [
+        {
+          "kind": "fact",
+          "code": "connection",
+          "meaning": "Connection 1 opened ; the server was decided by capture (confidence 1.00)."
+        },
+        {
+          "kind": "fact",
+          "code": "capture_sample",
+          "meaning": "A sample of an MBCAP capture: the capture keeps the PDUs and the time of the response; the MBAP header shown is rebuilt (transaction ID 0), and there are no packets."
+        }
+      ]
+    },
+    "2": {
+      "row": {
+        "seq": 2,
+        "kind": "txn",
+        "t_ns": 1791961081000000000,
+        "conn": 2,
+        "client": "snapshot",
+        "server": "plc.example.internal:802",
+        "unit": 1,
+        "tid": 0,
+        "fc": 3,
+        "class": "read",
+        "status": "ok",
+        "flags": [],
+        "summary": "Read 2 holding registers @ 10",
+        "result": "2 words"
+      },
+      "request": {
+        "hex": "0000000000060103000a0002",
+        "name": "Read Holding Registers",
+        "fields": [
+          {
+            "name": "transaction_id",
+            "offset": 0,
+            "length": 2,
+            "value": 0
+          },
+          {
+            "name": "protocol_id",
+            "offset": 2,
+            "length": 2,
+            "value": 0
+          },
+          {
+            "name": "length",
+            "offset": 4,
+            "length": 2,
+            "value": 6
+          },
+          {
+            "name": "unit_id",
+            "offset": 6,
+            "length": 1,
+            "value": 1
+          },
+          {
+            "name": "function",
+            "offset": 7,
+            "length": 1,
+            "value": 3
+          },
+          {
+            "name": "address",
+            "offset": 8,
+            "length": 2,
+            "value": 10
+          },
+          {
+            "name": "quantity",
+            "offset": 10,
+            "length": 2,
+            "value": 2
+          }
+        ],
+        "warnings": [],
+        "packets": []
+      },
+      "response": {
+        "hex": "00000000000701030400150100",
+        "name": "Read Holding Registers",
+        "fields": [
+          {
+            "name": "transaction_id",
+            "offset": 0,
+            "length": 2,
+            "value": 0
+          },
+          {
+            "name": "protocol_id",
+            "offset": 2,
+            "length": 2,
+            "value": 0
+          },
+          {
+            "name": "length",
+            "offset": 4,
+            "length": 2,
+            "value": 7
+          },
+          {
+            "name": "unit_id",
+            "offset": 6,
+            "length": 1,
+            "value": 1
+          },
+          {
+            "name": "function",
+            "offset": 7,
+            "length": 1,
+            "value": 3
+          },
+          {
+            "name": "byte_count",
+            "offset": 8,
+            "length": 1,
+            "value": 4
+          },
+          {
+            "name": "registers",
+            "offset": 9,
+            "length": 4,
+            "hex": "00150100"
+          }
+        ],
+        "warnings": [],
+        "packets": []
+      },
+      "text": "snapshot asked plc.example.internal:802 unit 1: read 2 holding registers @ 10. It answered: 2 words.",
+      "notes": [
+        {
+          "kind": "fact",
+          "code": "connection",
+          "meaning": "Connection 2 opened ; the server was decided by capture (confidence 1.00)."
+        },
+        {
+          "kind": "fact",
+          "code": "capture_sample",
+          "meaning": "A sample of an MBCAP capture: the capture keeps the PDUs and the time of the response; the MBAP header shown is rebuilt (transaction ID 0), and there are no packets."
+        }
+      ]
+    },
+    "3": {
+      "row": {
+        "seq": 3,
+        "kind": "txn",
+        "t_ns": 1791961082000000000,
+        "conn": 1,
+        "client": "poll 1 s",
+        "server": "/dev/ttyUSB0",
+        "unit": 7,
+        "tid": 0,
+        "fc": 3,
+        "class": "read",
+        "status": "ok",
+        "flags": [],
+        "summary": "Read 2 holding registers @ 10",
+        "result": "2 words"
+      },
+      "request": {
+        "hex": "0000000000060703000a0002",
+        "name": "Read Holding Registers",
+        "fields": [
+          {
+            "name": "transaction_id",
+            "offset": 0,
+            "length": 2,
+            "value": 0
+          },
+          {
+            "name": "protocol_id",
+            "offset": 2,
+            "length": 2,
+            "value": 0
+          },
+          {
+            "name": "length",
+            "offset": 4,
+            "length": 2,
+            "value": 6
+          },
+          {
+            "name": "unit_id",
+            "offset": 6,
+            "length": 1,
+            "value": 7
+          },
+          {
+            "name": "function",
+            "offset": 7,
+            "length": 1,
+            "value": 3
+          },
+          {
+            "name": "address",
+            "offset": 8,
+            "length": 2,
+            "value": 10
+          },
+          {
+            "name": "quantity",
+            "offset": 10,
+            "length": 2,
+            "value": 2
+          }
+        ],
+        "warnings": [],
+        "packets": []
+      },
+      "response": {
+        "hex": "00000000000707030400160100",
+        "name": "Read Holding Registers",
+        "fields": [
+          {
+            "name": "transaction_id",
+            "offset": 0,
+            "length": 2,
+            "value": 0
+          },
+          {
+            "name": "protocol_id",
+            "offset": 2,
+            "length": 2,
+            "value": 0
+          },
+          {
+            "name": "length",
+            "offset": 4,
+            "length": 2,
+            "value": 7
+          },
+          {
+            "name": "unit_id",
+            "offset": 6,
+            "length": 1,
+            "value": 7
+          },
+          {
+            "name": "function",
+            "offset": 7,
+            "length": 1,
+            "value": 3
+          },
+          {
+            "name": "byte_count",
+            "offset": 8,
+            "length": 1,
+            "value": 4
+          },
+          {
+            "name": "registers",
+            "offset": 9,
+            "length": 4,
+            "hex": "00160100"
+          }
+        ],
+        "warnings": [],
+        "packets": []
+      },
+      "text": "poll 1 s asked /dev/ttyUSB0 unit 7: read 2 holding registers @ 10. It answered: 2 words.",
+      "notes": [
+        {
+          "kind": "fact",
+          "code": "connection",
+          "meaning": "Connection 1 opened ; the server was decided by capture (confidence 1.00)."
+        },
+        {
+          "kind": "fact",
+          "code": "capture_sample",
+          "meaning": "A sample of an MBCAP capture: the capture keeps the PDUs and the time of the response; the MBAP header shown is rebuilt (transaction ID 0), and there are no packets."
+        }
+      ]
+    },
+    "4": {
+      "row": {
+        "seq": 4,
+        "kind": "txn",
+        "t_ns": 1791961083000000000,
+        "conn": 2,
+        "client": "snapshot",
+        "server": "plc.example.internal:802",
+        "unit": 1,
+        "tid": 0,
+        "fc": 3,
+        "class": "read",
+        "status": "ok",
+        "flags": [],
+        "summary": "Read 2 holding registers @ 10",
+        "result": "2 words"
+      },
+      "request": {
+        "hex": "0000000000060103000a0002",
+        "name": "Read Holding Registers",
+        "fields": [
+          {
+            "name": "transaction_id",
+            "offset": 0,
+            "length": 2,
+            "value": 0
+          },
+          {
+            "name": "protocol_id",
+            "offset": 2,
+            "length": 2,
+            "value": 0
+          },
+          {
+            "name": "length",
+            "offset": 4,
+            "length": 2,
+            "value": 6
+          },
+          {
+            "name": "unit_id",
+            "offset": 6,
+            "length": 1,
+            "value": 1
+          },
+          {
+            "name": "function",
+            "offset": 7,
+            "length": 1,
+            "value": 3
+          },
+          {
+            "name": "address",
+            "offset": 8,
+            "length": 2,
+            "value": 10
+          },
+          {
+            "name": "quantity",
+            "offset": 10,
+            "length": 2,
+            "value": 2
+          }
+        ],
+        "warnings": [],
+        "packets": []
+      },
+      "response": {
+        "hex": "00000000000701030400170100",
+        "name": "Read Holding Registers",
+        "fields": [
+          {
+            "name": "transaction_id",
+            "offset": 0,
+            "length": 2,
+            "value": 0
+          },
+          {
+            "name": "protocol_id",
+            "offset": 2,
+            "length": 2,
+            "value": 0
+          },
+          {
+            "name": "length",
+            "offset": 4,
+            "length": 2,
+            "value": 7
+          },
+          {
+            "name": "unit_id",
+            "offset": 6,
+            "length": 1,
+            "value": 1
+          },
+          {
+            "name": "function",
+            "offset": 7,
+            "length": 1,
+            "value": 3
+          },
+          {
+            "name": "byte_count",
+            "offset": 8,
+            "length": 1,
+            "value": 4
+          },
+          {
+            "name": "registers",
+            "offset": 9,
+            "length": 4,
+            "hex": "00170100"
+          }
+        ],
+        "warnings": [],
+        "packets": []
+      },
+      "text": "snapshot asked plc.example.internal:802 unit 1: read 2 holding registers @ 10. It answered: 2 words.",
+      "notes": [
+        {
+          "kind": "fact",
+          "code": "connection",
+          "meaning": "Connection 2 opened ; the server was decided by capture (confidence 1.00)."
+        },
+        {
+          "kind": "fact",
+          "code": "capture_sample",
+          "meaning": "A sample of an MBCAP capture: the capture keeps the PDUs and the time of the response; the MBAP header shown is rebuilt (transaction ID 0), and there are no packets."
+        }
+      ]
+    },
+    "5": {
+      "row": {
+        "seq": 5,
+        "kind": "txn",
+        "t_ns": 1791961084000000000,
+        "conn": 1,
+        "client": "poll 1 s",
+        "server": "/dev/ttyUSB0",
+        "unit": 7,
+        "tid": 0,
+        "fc": 3,
+        "class": "read",
+        "status": "ok",
+        "flags": [],
+        "summary": "Read 2 holding registers @ 10",
+        "result": "2 words"
+      },
+      "request": {
+        "hex": "0000000000060703000a0002",
+        "name": "Read Holding Registers",
+        "fields": [
+          {
+            "name": "transaction_id",
+            "offset": 0,
+            "length": 2,
+            "value": 0
+          },
+          {
+            "name": "protocol_id",
+            "offset": 2,
+            "length": 2,
+            "value": 0
+          },
+          {
+            "name": "length",
+            "offset": 4,
+            "length": 2,
+            "value": 6
+          },
+          {
+            "name": "unit_id",
+            "offset": 6,
+            "length": 1,
+            "value": 7
+          },
+          {
+            "name": "function",
+            "offset": 7,
+            "length": 1,
+            "value": 3
+          },
+          {
+            "name": "address",
+            "offset": 8,
+            "length": 2,
+            "value": 10
+          },
+          {
+            "name": "quantity",
+            "offset": 10,
+            "length": 2,
+            "value": 2
+          }
+        ],
+        "warnings": [],
+        "packets": []
+      },
+      "response": {
+        "hex": "00000000000707030400180100",
+        "name": "Read Holding Registers",
+        "fields": [
+          {
+            "name": "transaction_id",
+            "offset": 0,
+            "length": 2,
+            "value": 0
+          },
+          {
+            "name": "protocol_id",
+            "offset": 2,
+            "length": 2,
+            "value": 0
+          },
+          {
+            "name": "length",
+            "offset": 4,
+            "length": 2,
+            "value": 7
+          },
+          {
+            "name": "unit_id",
+            "offset": 6,
+            "length": 1,
+            "value": 7
+          },
+          {
+            "name": "function",
+            "offset": 7,
+            "length": 1,
+            "value": 3
+          },
+          {
+            "name": "byte_count",
+            "offset": 8,
+            "length": 1,
+            "value": 4
+          },
+          {
+            "name": "registers",
+            "offset": 9,
+            "length": 4,
+            "hex": "00180100"
+          }
+        ],
+        "warnings": [],
+        "packets": []
+      },
+      "text": "poll 1 s asked /dev/ttyUSB0 unit 7: read 2 holding registers @ 10. It answered: 2 words.",
+      "notes": [
+        {
+          "kind": "fact",
+          "code": "connection",
+          "meaning": "Connection 1 opened ; the server was decided by capture (confidence 1.00)."
+        },
+        {
+          "kind": "fact",
+          "code": "capture_sample",
+          "meaning": "A sample of an MBCAP capture: the capture keeps the PDUs and the time of the response; the MBAP header shown is rebuilt (transaction ID 0), and there are no packets."
+        }
+      ]
+    },
+    "6": {
+      "row": {
+        "seq": 6,
+        "kind": "txn",
+        "t_ns": 1791961085000000000,
+        "conn": 2,
+        "client": "snapshot",
+        "server": "plc.example.internal:802",
+        "unit": 1,
+        "tid": 0,
+        "fc": 3,
+        "class": "read",
+        "status": "ok",
+        "flags": [],
+        "summary": "Read 2 holding registers @ 10",
+        "result": "2 words"
+      },
+      "request": {
+        "hex": "0000000000060103000a0002",
+        "name": "Read Holding Registers",
+        "fields": [
+          {
+            "name": "transaction_id",
+            "offset": 0,
+            "length": 2,
+            "value": 0
+          },
+          {
+            "name": "protocol_id",
+            "offset": 2,
+            "length": 2,
+            "value": 0
+          },
+          {
+            "name": "length",
+            "offset": 4,
+            "length": 2,
+            "value": 6
+          },
+          {
+            "name": "unit_id",
+            "offset": 6,
+            "length": 1,
+            "value": 1
+          },
+          {
+            "name": "function",
+            "offset": 7,
+            "length": 1,
+            "value": 3
+          },
+          {
+            "name": "address",
+            "offset": 8,
+            "length": 2,
+            "value": 10
+          },
+          {
+            "name": "quantity",
+            "offset": 10,
+            "length": 2,
+            "value": 2
+          }
+        ],
+        "warnings": [],
+        "packets": []
+      },
+      "response": {
+        "hex": "00000000000701030400190100",
+        "name": "Read Holding Registers",
+        "fields": [
+          {
+            "name": "transaction_id",
+            "offset": 0,
+            "length": 2,
+            "value": 0
+          },
+          {
+            "name": "protocol_id",
+            "offset": 2,
+            "length": 2,
+            "value": 0
+          },
+          {
+            "name": "length",
+            "offset": 4,
+            "length": 2,
+            "value": 7
+          },
+          {
+            "name": "unit_id",
+            "offset": 6,
+            "length": 1,
+            "value": 1
+          },
+          {
+            "name": "function",
+            "offset": 7,
+            "length": 1,
+            "value": 3
+          },
+          {
+            "name": "byte_count",
+            "offset": 8,
+            "length": 1,
+            "value": 4
+          },
+          {
+            "name": "registers",
+            "offset": 9,
+            "length": 4,
+            "hex": "00190100"
+          }
+        ],
+        "warnings": [],
+        "packets": []
+      },
+      "text": "snapshot asked plc.example.internal:802 unit 1: read 2 holding registers @ 10. It answered: 2 words.",
+      "notes": [
+        {
+          "kind": "fact",
+          "code": "connection",
+          "meaning": "Connection 2 opened ; the server was decided by capture (confidence 1.00)."
+        },
+        {
+          "kind": "fact",
+          "code": "capture_sample",
+          "meaning": "A sample of an MBCAP capture: the capture keeps the PDUs and the time of the response; the MBAP header shown is rebuilt (transaction ID 0), and there are no packets."
+        }
+      ]
+    }
+  },
+  "devices": [
+    {
+      "server": "/dev/ttyUSB0",
+      "unit": 7,
+      "transactions": 3,
+      "by_function": {
+        "3": 3
+      },
+      "by_status": {
+        "ok": 3
+      },
+      "reads": 3,
+      "writes": 0,
+      "exceptions": 0,
+      "unanswered": 0,
+      "clients": [
+        "poll 1 s"
+      ],
+      "first_ns": 1791961080000000000,
+      "last_ns": 1791961084000000000,
+      "rate": 0.75,
+      "bytes": 33
+    },
+    {
+      "server": "plc.example.internal:802",
+      "unit": 1,
+      "transactions": 3,
+      "by_function": {
+        "3": 3
+      },
+      "by_status": {
+        "ok": 3
+      },
+      "reads": 3,
+      "writes": 0,
+      "exceptions": 0,
+      "unanswered": 0,
+      "clients": [
+        "snapshot"
+      ],
+      "first_ns": 1791961081000000000,
+      "last_ns": 1791961085000000000,
+      "rate": 0.75,
+      "bytes": 33
+    }
+  ],
+  "connections": [
+    {
+      "id": 1,
+      "client": "invalid AddrPort",
+      "server": "invalid AddrPort",
+      "open": "capture",
+      "close": "capture",
+      "role_source": "capture",
+      "role_confidence": 1,
+      "role_guessed": false,
+      "first_ns": 1791961080000000000,
+      "last_ns": 1791961084000000000,
+      "transactions": 3,
+      "bytes": 33,
+      "gaps": 0,
+      "resyncs": 0,
+      "flags": []
+    },
+    {
+      "id": 2,
+      "client": "invalid AddrPort",
+      "server": "invalid AddrPort",
+      "open": "capture",
+      "close": "capture",
+      "role_source": "capture",
+      "role_confidence": 1,
+      "role_guessed": false,
+      "first_ns": 1791961081000000000,
+      "last_ns": 1791961085000000000,
+      "transactions": 3,
+      "bytes": 33,
+      "gaps": 0,
+      "resyncs": 0,
+      "flags": []
+    }
+  ],
+  "patterns": [
+    {
+      "client": "poll 1 s",
+      "server": "/dev/ttyUSB0",
+      "unit": 7,
+      "function": 3,
+      "summary": "Read 2 holding registers @ 10",
+      "space": "holding",
+      "start": 10,
+      "count": 2,
+      "requests": 3,
+      "first_ns": 1791961080000000000,
+      "last_ns": 1791961084000000000,
+      "interval": {
+        "count": 2,
+        "min_ns": 2000000000,
+        "p50_ns": 2000000000,
+        "p95_ns": 2000000000,
+        "p99_ns": 2000000000,
+        "max_ns": 2000000000,
+        "histogram": [
+          {
+            "lo_ns": 1073741824,
+            "hi_ns": 2147483648,
+            "count": 2
+          }
+        ]
+      },
+      "jitter_ns": 0,
+      "responses": 3,
+      "changed": 2,
+      "volatility": 1,
+      "volatility_class": "noisy"
+    },
+    {
+      "client": "snapshot",
+      "server": "plc.example.internal:802",
+      "unit": 1,
+      "function": 3,
+      "summary": "Read 2 holding registers @ 10",
+      "space": "holding",
+      "start": 10,
+      "count": 2,
+      "requests": 3,
+      "first_ns": 1791961081000000000,
+      "last_ns": 1791961085000000000,
+      "interval": {
+        "count": 2,
+        "min_ns": 2000000000,
+        "p50_ns": 2000000000,
+        "p95_ns": 2000000000,
+        "p99_ns": 2000000000,
+        "max_ns": 2000000000,
+        "histogram": [
+          {
+            "lo_ns": 1073741824,
+            "hi_ns": 2147483648,
+            "count": 2
+          }
+        ]
+      },
+      "jitter_ns": 0,
+      "responses": 3,
+      "changed": 2,
+      "volatility": 1,
+      "volatility_class": "noisy"
+    }
+  ],
+  "quality": {
+    "conditions": [
+      {
+        "code": "truncated",
+        "label": "Ends inside a record",
+        "count": 0,
+        "severity": "problem",
+        "meaning": "The file is cut; the samples before the cut are shown."
+      },
+      {
+        "code": "damaged",
+        "label": "Damaged",
+        "count": 0,
+        "severity": "problem",
+        "meaning": "The file is damaged after its first samples; the samples before the damage are shown."
+      },
+      {
+        "code": "end_unknown",
+        "label": "No recorded end",
+        "count": 0,
+        "severity": "warning",
+        "meaning": "The capture was not closed (a crash, or a copy taken while it was recording): its last moment is not known."
+      },
+      {
+        "code": "change_only",
+        "label": "Change-only",
+        "count": 0,
+        "severity": "info",
+        "meaning": "Repeated identical responses were not stored: a gap between samples does not mean nothing was asked."
+      },
+      {
+        "code": "exceptions",
+        "label": "Exception responses",
+        "count": 0,
+        "severity": "info",
+        "meaning": "Requests the device answered with an exception.",
+        "filter": {
+          "statuses": [
+            "exception"
+          ]
+        }
+      }
+    ],
+    "facts": [
+      {
+        "label": "Encoding",
+        "value": "mbcap"
+      },
+      {
+        "label": "Producer",
+        "value": "modbus-trace-explorer corpus"
+      },
+      {
+        "label": "Tick",
+        "value": "1µs"
+      },
+      {
+        "label": "Start",
+        "value": "2026-10-14T06:58:00Z"
+      },
+      {
+        "label": "Targets",
+        "value": "2"
+      },
+      {
+        "label": "Streams",
+        "value": "2"
+      },
+      {
+        "label": "Samples",
+        "value": "6"
+      },
+      {
+        "label": "Exceptions recorded",
+        "value": "true"
+      },
+      {
+        "label": "Source",
+        "value": "synthetic"
+      },
+      {
+        "label": "Provenance 1",
+        "value": "corpus generator"
+      }
+    ]
+  },
+  "mbcap_preview": {
+    "selection": "",
+    "transactions": 0,
+    "samples": 0,
+    "up_to": false,
+    "targets": null,
+    "excluded": null,
+    "notes": null
+  },
+  "mbcap_export": {
+    "job": "",
+    "kind": "",
+    "file": ""
+  }
+}

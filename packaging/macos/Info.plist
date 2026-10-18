@@ -43,6 +43,7 @@
 				<string>pcap</string>
 				<string>pcapng</string>
 				<string>cap</string>
+				<string>mbcap</string>
 			</array>
 		</dict>
 	</array>

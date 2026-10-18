@@ -37,6 +37,9 @@ type Service interface {
 	Scan(ctx context.Context, fileID string) (JobRef, error)
 	// ScanResult returns what the finished scan found.
 	ScanResult(ctx context.Context, fileID string) (ScanResult, error)
+	// ImportCapture starts reading an MBCAP capture (R24) into the analysis
+	// cache: its samples become the timeline's rows.
+	ImportCapture(ctx context.Context, fileID string) (JobRef, error)
 	// Prepare starts decompressing an analysed gzip trace again (FileInfo.Prepare).
 	Prepare(ctx context.Context, fileID string) (JobRef, error)
 	// Analyze starts the second pass into the analysis cache.
@@ -123,12 +126,16 @@ type About struct {
 
 // FileInfo is an open trace.
 type FileInfo struct {
-	ID       string   `json:"id"`
-	Paths    []string `json:"paths"`
-	Name     string   `json:"name"` // the first file's base name, "+ N more" for several
-	Size     int64    `json:"size"`
-	Gzip     bool     `json:"gzip"`
-	Analyzed bool     `json:"analyzed"` // the cache holds a complete analysis: no import needed
+	ID    string   `json:"id"`
+	Paths []string `json:"paths"`
+	Name  string   `json:"name"` // the first file's base name, "+ N more" for several
+	Size  int64    `json:"size"`
+	Gzip  bool     `json:"gzip"`
+	// Kind is "trace" (pcap, pcapng) or "capture" (an MBCAP capture in
+	// binary, JSON Lines or CSV, R24): a capture is imported with
+	// ImportCapture, has no Flows step and no exports.
+	Kind     string `json:"kind"`
+	Analyzed bool   `json:"analyzed"` // the cache holds a complete analysis: no import needed
 	// Choices remembered from the last analysis of this trace.
 	Choices *AnalyzeConfig `json:"choices,omitempty"`
 	// Prepare: an analysed gzip trace whose decompressed copy was removed
@@ -222,8 +229,11 @@ type Overview struct {
 	// TraceMissing: the trace is not at its path any more; the overview
 	// and the timeline work, detail and export do not.
 	TraceMissing bool `json:"trace_missing"`
-	// Summary is the library's file summary (capture facts behind R4).
-	Summary *trace.FileSummary `json:"summary"`
+	// Summary is the library's file summary (capture facts behind R4);
+	// absent for an MBCAP capture.
+	Summary *trace.FileSummary `json:"summary,omitempty"`
+	// Capture: the facts of an MBCAP capture (R24); nil for a trace.
+	Capture *CaptureFacts `json:"capture,omitempty"`
 }
 
 // Filter is the active filter (R7). Every field narrows; an empty field
@@ -738,4 +748,24 @@ func (u *Uint8s) UnmarshalJSON(b []byte) error {
 // JSONSchema is the schema of Uint8s (internal/schemagen).
 func (Uint8s) JSONSchema() map[string]any {
 	return map[string]any{"type": "array", "items": map[string]any{"type": "integer", "minimum": 0, "maximum": 255}}
+}
+
+// CaptureFacts are what an MBCAP capture says about itself (R24).
+type CaptureFacts struct {
+	Encoding    string `json:"encoding"` // mbcap, jsonl or csv
+	Producer    string `json:"producer"`
+	TickNS      uint64 `json:"tick_ns"`
+	WallStartNS int64  `json:"wall_start_ns"`
+	ChangeOnly  bool   `json:"change_only"`
+	Exceptions  bool   `json:"exceptions"` // exception responses are recorded
+	Targets     int    `json:"targets"`
+	Streams     int    `json:"streams"`
+	Samples     uint64 `json:"samples"`
+	EndKnown    bool   `json:"end_known"` // false: the capture was not closed (a crash, a copy taken while recording)
+	Truncated   bool   `json:"truncated"` // the file ends inside a record; what came before is shown
+	// Damage: the file is damaged after its first samples (a bad block,
+	// a broken line); what came before is shown, and this says what.
+	Damage     string   `json:"damage,omitempty"`
+	Provenance []string `json:"provenance"` // the tools that made and changed it, oldest first
+	Source     string   `json:"source,omitempty"`
 }

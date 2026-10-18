@@ -307,6 +307,11 @@ func (c *Cache) Clear() error {
 	return err
 }
 
+// ErrGzipCut is returned with the decompressed copy's path when the gzip
+// file ends early or is damaged after its start: the copy holds what
+// decompressed, and the trace can be read up to there.
+var ErrGzipCut = errors.New("the gzip file ends early or is damaged; what decompressed is kept")
+
 // ErrNoSpace is returned when decompressing a trace would not leave
 // enough free space.
 var ErrNoSpace = errors.New("not enough free space to decompress the trace")
@@ -390,6 +395,7 @@ func (c *Cache) Decompress(ctx context.Context, path, fp string, progress func(r
 	}
 	buf := make([]byte, 1<<20)
 	var written, sinceCheck int64
+	var cut error // the gzip stream's error after some data: the copy is kept
 	for {
 		if ctx.Err() != nil {
 			return fail(ctx.Err())
@@ -415,7 +421,11 @@ func (c *Cache) Decompress(ctx context.Context, path, fp string, progress func(r
 			break
 		}
 		if rerr != nil {
-			return fail(rerr)
+			if written == 0 {
+				return fail(rerr)
+			}
+			cut = rerr
+			break
 		}
 	}
 	if err := out.Close(); err != nil {
@@ -425,6 +435,9 @@ func (c *Cache) Decompress(ctx context.Context, path, fp string, progress func(r
 		return fail(err)
 	}
 	c.touch(filepath.Base(dst))
+	if cut != nil {
+		return dst, errors.Join(fmt.Errorf("%w: %v", ErrGzipCut, cut), c.Evict())
+	}
 	return dst, c.Evict()
 }
 

@@ -94,7 +94,27 @@ type Index struct {
 
 	mu    sync.Mutex
 	cache []cached // most recently used first
+
+	// life keeps the mapping alive while queries read it: each holds a
+	// read lock (Acquire, Release); Close takes the write lock, so it waits
+	// for the queries in flight and none starts on an unmapped index.
+	life   sync.RWMutex
+	closed bool
 }
+
+// Acquire keeps the index mapped until Release; it reports false when the
+// index is closed (the caller must not use it then).
+func (ix *Index) Acquire() bool {
+	ix.life.RLock()
+	if ix.closed {
+		ix.life.RUnlock()
+		return false
+	}
+	return true
+}
+
+// Release ends what Acquire started.
+func (ix *Index) Release() { ix.life.RUnlock() }
 
 // Open opens a complete index directory of this format version.
 func Open(dir string) (*Index, error) {
@@ -145,8 +165,15 @@ func Open(dir string) (*Index, error) {
 	return ix, nil
 }
 
-// Close unmaps the files. The Index must not be used afterwards.
+// Close unmaps the files once no query holds the index (Acquire); later
+// Acquires fail. Closing twice is harmless.
 func (ix *Index) Close() error {
+	ix.life.Lock()
+	defer ix.life.Unlock()
+	if ix.closed {
+		return nil
+	}
+	ix.closed = true
 	if ix.cols != nil {
 		ix.cols.close()
 		ix.cols = nil

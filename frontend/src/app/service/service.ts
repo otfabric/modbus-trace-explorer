@@ -65,6 +65,8 @@ export interface Service {
   /** Starts the first pass; progress and completion arrive through subscribe. */
   scan(fileId: string): Promise<JobRef>;
   scanResult(fileId: string): Promise<ScanResult>;
+  /** Imports an MBCAP capture (R24): its samples become the timeline; progress arrives through subscribe. */
+  importCapture(fileId: string): Promise<JobRef>;
   /** Decompresses an analysed gzip trace again (FileInfo.prepare); progress arrives through subscribe. */
   prepare(fileId: string): Promise<JobRef>;
   analyze(fileId: string, cfg: AnalyzeConfig): Promise<JobRef>;

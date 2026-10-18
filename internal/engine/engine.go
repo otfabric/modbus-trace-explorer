@@ -75,7 +75,11 @@ type openTrace struct {
 	ix    *store.Index
 	conns map[uint32]model.Connection
 	sum   *trace.FileSummary
-	busy  bool // a scan or an analysis runs
+	// A capture (R24): its facts, and its PDUs in the cache entry.
+	capture *service.CaptureFacts
+	pdus    *pduReader
+	gzCut   bool // a gzip input ended early: what decompressed is read
+	busy    bool // a scan or an analysis runs
 }
 
 // DefaultCacheDir returns the per-user cache location.
@@ -147,11 +151,20 @@ func (e *Engine) Shutdown() error {
 
 func (t *openTrace) close() error {
 	t.mu.Lock()
-	defer t.mu.Unlock()
+	ix := t.ix
+	t.ix = nil
+	t.mu.Unlock()
+	// Outside the lock: Close waits for the queries holding the index, and
+	// a query may need the lock before it lets go.
 	var err error
-	if t.ix != nil {
-		err = t.ix.Close()
-		t.ix = nil
+	if ix != nil {
+		err = ix.Close()
+	}
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	if t.pdus != nil {
+		err = errors.Join(err, t.pdus.close())
+		t.pdus = nil
 	}
 	for i, d := range t.data {
 		if i < len(t.info.Paths) && d != t.info.Paths[i] && t.removeCopy != nil {
@@ -199,8 +212,20 @@ func (e *Engine) Open(ctx context.Context, paths []string) (service.FileInfo, er
 			gz = true
 		}
 	}
-	// Several files are one trace in the order of their first packets (R1).
-	paths = byFirstPacket(ctx, paths)
+	// An MBCAP capture (R24) is opened on its own; several trace files are
+	// one trace in the order of their first packets (R1).
+	kind := "trace"
+	for _, p := range paths {
+		if captureEncoding(p) != "" {
+			kind = "capture"
+		}
+	}
+	if kind == "capture" && len(paths) > 1 {
+		return service.FileInfo{}, service.Errorf(service.CodeInvalidArgument, "an MBCAP capture is opened on its own, not with other files")
+	}
+	if kind == "trace" {
+		paths = byFirstPacket(ctx, paths)
+	}
 	fp, err := store.Fingerprint(paths, e.lib, model.EventSemanticsVersion)
 	if err != nil {
 		return service.FileInfo{}, service.Wrap(service.CodeUnavailable, err, "cannot read the trace")
@@ -209,7 +234,7 @@ func (e *Engine) Open(ctx context.Context, paths []string) (service.FileInfo, er
 	if len(paths) > 1 {
 		name += " + " + strconv.Itoa(len(paths)-1) + " more"
 	}
-	info := service.FileInfo{ID: fp, Paths: slices.Clone(paths), Name: name, Size: size, Gzip: gz}
+	info := service.FileInfo{ID: fp, Paths: slices.Clone(paths), Name: name, Size: size, Gzip: gz, Kind: kind}
 	t := &openTrace{info: info, data: slices.Clone(paths), release: e.cache.Hold(fp), removeCopy: e.cache.RemoveCopy}
 	if ix, err := e.cache.Lookup(fp); err == nil {
 		if err := t.attach(ix); err == nil {
@@ -241,23 +266,40 @@ func (e *Engine) Open(ctx context.Context, paths []string) (service.FileInfo, er
 
 // attach makes ix the trace's index, with the documents written beside it.
 func (t *openTrace) attach(ix *store.Index) error {
-	var sum trace.FileSummary
-	if err := readJSON(filepath.Join(ix.Dir(), "summary.json"), &sum); err != nil {
-		return err
+	// A trace has its file summary; a capture (R24) its facts instead.
+	var sum *trace.FileSummary
+	var facts *service.CaptureFacts
+	if _, err := os.Stat(filepath.Join(ix.Dir(), captureDoc)); err == nil {
+		facts = &service.CaptureFacts{}
+		if err := readJSON(filepath.Join(ix.Dir(), captureDoc), facts); err != nil {
+			return err
+		}
+	} else {
+		sum = &trace.FileSummary{}
+		if err := readJSON(filepath.Join(ix.Dir(), "summary.json"), sum); err != nil {
+			return err
+		}
 	}
 	var conns []model.Connection
 	if err := readJSON(filepath.Join(ix.Dir(), "conns.json"), &conns); err != nil {
 		return err
 	}
 	t.mu.Lock()
-	defer t.mu.Unlock()
-	if t.ix != nil {
-		_ = t.ix.Close()
+	old := t.ix
+	if t.pdus != nil {
+		_ = t.pdus.close()
+		t.pdus = nil
 	}
-	t.ix, t.sum = ix, &sum
+	t.ix, t.sum, t.capture = ix, sum, facts
 	t.conns = map[uint32]model.Connection{}
 	for _, c := range conns {
 		t.conns[c.ID] = c
+	}
+	t.mu.Unlock()
+	// The index replaced is closed once the queries still reading it are
+	// done (outside the lock, which they may need).
+	if old != nil {
+		_ = old.Close()
 	}
 	return nil
 }
@@ -294,18 +336,21 @@ func (e *Engine) trace(id string) (*openTrace, error) {
 	return t, nil
 }
 
-// index returns the open trace's index, or an error when it has none yet.
-func (e *Engine) index(id string) (*openTrace, *store.Index, error) {
-	t, err := e.trace(id)
+// index returns the open trace's index, held for the caller until it calls
+// release: a trace closed or analysed again meanwhile does not unmap it
+// under a query. It is an error when the trace has no index yet.
+func (e *Engine) index(id string) (t *openTrace, ix *store.Index, release func(), err error) {
+	t, err = e.trace(id)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 	t.mu.Lock()
-	defer t.mu.Unlock()
-	if t.ix == nil {
-		return nil, nil, service.Errorf(service.CodeNotFound, "the trace is not analysed yet")
+	ix = t.ix
+	t.mu.Unlock()
+	if ix == nil || !ix.Acquire() {
+		return nil, nil, nil, service.Errorf(service.CodeNotFound, "the trace is not analysed yet")
 	}
-	return t, t.ix, nil
+	return t, ix, ix.Release, nil
 }
 
 const maxRecent = 10

@@ -31,7 +31,7 @@ const (
 
 // TraceExtensions are the file types the application opens, also the
 // operating system's file associations.
-var TraceExtensions = []string{".pcap", ".pcapng", ".cap", ".gz"}
+var TraceExtensions = []string{".pcap", ".pcapng", ".cap", ".gz", ".mbcap"}
 
 // App is the Wails service of the application. Its exported methods are
 // the frontend's whole view of the backend.
@@ -136,6 +136,11 @@ func (a *App) Scan(ctx context.Context, id string) (service.JobRef, error) {
 // ScanResult returns the Flows step's content.
 func (a *App) ScanResult(ctx context.Context, id string) (service.ScanResult, error) {
 	return a.svc.ScanResult(ctx, id)
+}
+
+// ImportCapture starts the import of an MBCAP capture.
+func (a *App) ImportCapture(ctx context.Context, id string) (service.JobRef, error) {
+	return a.svc.ImportCapture(ctx, id)
 }
 
 // Prepare decompresses an analysed gzip trace again.
@@ -312,7 +317,7 @@ func (a *App) ChooseTraces() ([]string, error) {
 		return nil, service.Errorf(service.CodeInternal, "no application")
 	}
 	paths, err := app.Dialog.OpenFile().SetTitle("Open trace").CanChooseFiles(true).
-		AddFilter("Packet traces", "*.pcap;*.pcapng;*.cap;*.gz").AddFilter("All files", "*.*").
+		AddFilter("Packet traces and MBCAP captures", "*.pcap;*.pcapng;*.cap;*.gz;*.mbcap;*.jsonl;*.csv").AddFilter("All files", "*.*").
 		PromptForMultipleSelection()
 	if err != nil {
 		return nil, service.Wrap(service.CodeInternal, err, "open dialog")

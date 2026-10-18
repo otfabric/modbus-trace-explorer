@@ -199,6 +199,18 @@ jobs:
             darwin)  out/modbus-trace-explorer -smoke testdata/smoke.pcapng ;;
             windows) pwsh -NoProfile -Command '$p = Start-Process -FilePath out/modbus-trace-explorer.exe -ArgumentList "-smoke","testdata/smoke.pcapng" -Wait -PassThru; exit $p.ExitCode' ;;
           esac
+      # Every file of testdata/corpus (realistic, hard and broken) through the
+      # built application: each must end as its manifest says, none may crash
+      # or hang.
+      - name: Corpus in the application (Linux)
+        if: matrix.os == 'linux'
+        timeout-minutes: 15
+        env:
+          WEBKIT_DISABLE_DMABUF_RENDERER: "1"
+          LIBGL_ALWAYS_SOFTWARE: "1"
+        # Twice: a crash that happens now and then gets two chances to show,
+        # with its whole output.
+        run: xvfb-run -a dbus-run-session -- python3 scripts/smoke_corpus.py out/modbus-trace-explorer --repeat 2
       - name: Package (macOS application bundle, ad-hoc signed)
         if: matrix.os == 'darwin'
         run: |

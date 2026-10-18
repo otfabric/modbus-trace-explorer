@@ -19,10 +19,11 @@ import (
 
 // Locate finds one row of the filtered timeline (R5, UX.md section 9).
 func (e *Engine) Locate(ctx context.Context, id string, q service.LocateQuery) (service.Location, error) {
-	_, ix, err := e.index(id)
+	t, ix, release, err := e.index(id)
 	if err != nil {
 		return service.Location{}, err
 	}
+	defer release()
 	n := 0
 	for _, set := range []bool{q.TimeNS != nil, q.Frame != nil, q.Seq != nil} {
 		if set {
@@ -68,6 +69,8 @@ func (e *Engine) Locate(ctx context.Context, id string, q service.LocateQuery) (
 			return loc, nil
 		}
 		return at(k, c.T[sel.At(k, false)] == *q.TimeNS), nil
+	case q.Frame != nil && t.info.Kind == "capture":
+		return service.Location{Note: "A capture has samples, not packets: there are no frame numbers."}, nil
 	case q.Frame != nil:
 		// Frame numbers grow with the file; the first row with a frame at
 		// or after the one asked is the nearest when none carries it.
@@ -144,7 +147,7 @@ func (e *Engine) Diagnostics(ctx context.Context, id string) (string, error) {
 	t.mu.Lock()
 	info, sum, ix := t.info, t.sum, t.ix
 	t.mu.Unlock()
-	fmt.Fprintf(&b, "trace: %d files, %d MiB, gzip %v, analysed %v\n", len(info.Paths), info.Size>>20, info.Gzip, info.Analyzed)
+	fmt.Fprintf(&b, "%s: %d files, %d MiB, gzip %v, analysed %v\n", info.Kind, len(info.Paths), info.Size>>20, info.Gzip, info.Analyzed)
 	if sum != nil {
 		links := map[string]bool{}
 		for _, f := range sum.Interfaces {

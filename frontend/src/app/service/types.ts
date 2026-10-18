@@ -20,6 +20,8 @@ export interface FileInfo {
   name: string;
   size: number;
   gzip: boolean;
+  /** A packet trace, or an MBCAP capture (R24): imported with importCapture, no Flows step, no exports. */
+  kind: 'trace' | 'capture';
   /** The cache holds a complete analysis: no import needed. */
   analyzed: boolean;
   choices?: AnalyzeConfig;
@@ -33,7 +35,7 @@ export interface RecentFile {
   exists: boolean;
 }
 
-export type JobKind = 'scan' | 'analyze' | 'prepare' | 'history' | 'mbcap' | 'timeline' | 'subtrace';
+export type JobKind = 'scan' | 'analyze' | 'prepare' | 'capture' | 'history' | 'mbcap' | 'timeline' | 'subtrace';
 
 export interface JobRef {
   id: string;
@@ -141,6 +143,25 @@ export interface Overview {
   /** The trace is not at its path any more: detail is not available. */
   trace_missing: boolean;
   summary?: FileSummary;
+  /** The facts of an MBCAP capture (R24); absent for a trace. */
+  capture?: CaptureFacts;
+}
+
+/** What an MBCAP capture says about itself (service.CaptureFacts). */
+export interface CaptureFacts {
+  encoding: 'mbcap' | 'jsonl' | 'csv';
+  producer: string;
+  tick_ns: number;
+  wall_start_ns: number;
+  change_only: boolean;
+  exceptions: boolean;
+  targets: number;
+  streams: number;
+  samples: number;
+  end_known: boolean;
+  truncated: boolean;
+  provenance: string[];
+  source?: string;
 }
 
 /** The active filter (R7). Every field narrows; an absent or empty field does not. */

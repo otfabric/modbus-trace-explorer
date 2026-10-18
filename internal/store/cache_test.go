@@ -262,3 +262,33 @@ func TestRemoveCopy(t *testing.T) {
 		}
 	}
 }
+
+// A gzip file that ends early keeps what decompressed, with ErrGzipCut; one
+// that is garbage from its start is refused.
+func TestDecompressCut(t *testing.T) {
+	c := newCache(t, 0)
+	data := bytes.Repeat([]byte("0123456789abcdef"), 64<<10)
+	whole, err := os.ReadFile(gz(t, data))
+	if err != nil {
+		t.Fatal(err)
+	}
+	cut := filepath.Join(t.TempDir(), "cut.pcapng.gz")
+	if err := os.WriteFile(cut, whole[:len(whole)/2], 0o600); err != nil {
+		t.Fatal(err)
+	}
+	out, err := c.Decompress(context.Background(), cut, "cut", nil)
+	if !errors.Is(err, ErrGzipCut) {
+		t.Fatalf("a cut gzip: %v", err)
+	}
+	got, _ := os.ReadFile(out)
+	if len(got) == 0 || !bytes.HasPrefix(data, got) {
+		t.Errorf("kept %d bytes, not a prefix of the data", len(got))
+	}
+	head := filepath.Join(t.TempDir(), "head.pcapng.gz")
+	if err := os.WriteFile(head, whole[:12], 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := c.Decompress(context.Background(), head, "head", nil); err == nil || errors.Is(err, ErrGzipCut) {
+		t.Errorf("a gzip with no data: %v", err)
+	}
+}
