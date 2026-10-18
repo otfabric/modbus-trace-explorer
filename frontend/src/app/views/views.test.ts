@@ -80,3 +80,10 @@ describe('byteString and the filter controls', () => {
     expect(mockTime('12:30')).toBeTypeOf('number');
   });
 });
+
+describe('the status bar', () => {
+  it('names the time zone offset', async () => {
+    const { zoneLabel } = await import('../components/StatusJobs');
+    expect(zoneLabel(Date.UTC(2026, 9, 14, 12) * 1e6)).toMatch(/^UTC[+-]\d\d:\d\d$/);
+  });
+});

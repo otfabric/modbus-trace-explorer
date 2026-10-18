@@ -1,5 +1,5 @@
 .PHONY: help all smoke check test coverage coverage-check coverage-clean fmt fmt-check vet lint lint-ci vuln mod-check \
-	frontend frontend-install frontend-check frontend-urls golden scale build build-gui bundle-macos appicon winres spike dev clean
+	frontend frontend-install frontend-check frontend-coverage frontend-urls golden scale build build-gui bundle-macos appicon winres spike dev clean
 
 help: ## This help
 	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z0-9_-]+:.*?## / {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}' $(MAKEFILE_LIST)
@@ -89,6 +89,9 @@ frontend: ## Build the frontend into dist/wails
 frontend-check: ## Typecheck, lint the tokens and test the frontend
 	@echo "Checking frontend"
 	@cd frontend && npm run typecheck && npm test
+
+frontend-coverage: ## Typecheck and test the frontend with coverage (frontend/coverage/lcov.info)
+	@cd frontend && npm run typecheck && npm run coverage
 
 build: build-gui ## Build everything into ./bin
 

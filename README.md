@@ -178,6 +178,7 @@ make check               # Go and frontend checks
 make build-gui           # ./bin/modbus-trace-explorer (cgo; the platform's webview)
 make smoke               # start it on testdata/smoke.pcapng and wait for the timeline (A15)
 make golden              # rewrite the schemas, the engine fixture and the smoke trace
+make frontend-coverage   # the frontend tests with coverage (frontend/coverage/lcov.info)
 cd frontend && npm run dev   # the user interface over the mock engine, in a browser (?rows=10000000, ?empty)
 make spike               # the M0 index measurements (SPIKE_ROWS, default 10,000,000)
 ```

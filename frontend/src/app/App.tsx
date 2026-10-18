@@ -7,9 +7,11 @@ import { FilterBar } from './components/FilterBar';
 import { FlowsStep } from './components/FlowsStep';
 import { GoToDialog, type GoTo } from './components/GoToDialog';
 import { Popover } from './components/Popover';
+import { Resizer, useDetailWidth } from './components/Resizer';
 import { Header } from './components/Header';
 import { ImportProgress } from './components/ImportProgress';
 import { SettingsDialog } from './components/SettingsDialog';
+import { StatusJobs, zoneLabel } from './components/StatusJobs';
 import {
   AddressIcon,
   DeviceIcon,
@@ -162,6 +164,7 @@ export function App({ service, platform }: AppProps) {
   const [detail, setDetail] = useState<Detail | null>(null);
   const [detailError, setDetailError] = useState<string | null>(null);
   const [showDetail, setShowDetail] = useState(true);
+  const [detailWidth, setDetailWidth] = useDetailWidth();
   const [total, setTotal] = useState(0);
   const [dialog, setDialog] = useState<'export' | 'settings' | 'about' | 'goto-time' | 'goto-frame' | null>(null);
   const [goTo, setGoTo] = useState<{ rank: number; nonce: number } | null>(null);
@@ -582,7 +585,16 @@ export function App({ service, platform }: AppProps) {
               )}
             </main>
             {showDetail && (view === 'timeline' || view === 'conversations') && (
-              <aside ref={detailBox} tabIndex={-1} aria-label="Detail" className="flex w-96 shrink-0 flex-col border-l border-line outline-none focus-visible:ring-2 focus-visible:ring-accent">
+              <Resizer width={detailWidth} onWidth={setDetailWidth} />
+            )}
+            {showDetail && (view === 'timeline' || view === 'conversations') && (
+              <aside
+                ref={detailBox}
+                tabIndex={-1}
+                aria-label="Detail"
+                style={{ width: detailWidth }}
+                className="flex shrink-0 flex-col border-l border-line outline-none focus-visible:ring-2 focus-visible:ring-accent"
+              >
                 <DetailPane
                   detail={detail}
                   error={detailError}
@@ -643,6 +655,7 @@ export function App({ service, platform }: AppProps) {
           <span>{formatCount(total)} rows</span>
           <button type="button" className="hover:text-accent" onClick={() => setTimeMode((m) => TIME_MODES[(TIME_MODES.indexOf(m) + 1) % 3] ?? 'local')}>
             time: {timeMode}
+            {timeMode === 'local' && ` (${zoneLabel(overview?.first_ns ?? Date.now() * 1e6)})`}
           </button>
           <button
             type="button"
@@ -669,6 +682,7 @@ export function App({ service, platform }: AppProps) {
               <ErrorIcon size={12} /> {error}
             </span>
           )}
+          <StatusJobs service={service} onEnded={setNotice} />
         </footer>
       )}
     </div>

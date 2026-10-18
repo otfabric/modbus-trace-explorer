@@ -1,6 +1,18 @@
 # Codecov configuration for modbus-trace-explorer.
-# CI uploads the profile of the packages `make coverage-check` measures (the
-# engine, the store and the service; the Wails shell needs a window).
+# CI uploads two reports: the Go profile of the packages `make coverage-check`
+# measures (flag unittests; the Wails shell needs a window) and the frontend's
+# Vitest lcov report (flag frontend), whose paths are relative to frontend/.
+fixes:
+  - "src/app/::frontend/src/app/"
+
+flags:
+  unittests:
+    carryforward: true
+  frontend:
+    carryforward: true
+    paths:
+      - frontend/src/
+
 coverage:
   status:
     project:

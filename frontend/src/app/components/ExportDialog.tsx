@@ -198,7 +198,7 @@ export function ExportDialog({ service, platform, fileId, name, filter, firstNs,
 
   const job = running?.job;
   return (
-    <Dialog title={title} wide onClose={() => !running && onClose()}>
+    <Dialog title={title} wide onClose={onClose}>
       <div role="tablist" aria-label="Export kind" className="mt-3 flex gap-1 border-b border-line">
         {(
           [
@@ -308,6 +308,9 @@ export function ExportDialog({ service, platform, fileId, name, filter, firstNs,
             <span className="mr-auto font-mono text-[12px] text-muted" aria-live="polite">
               {job && job.total > 0 ? `${Math.round((100 * job.read) / job.total)}% of the trace read` : 'Starting…'}
             </span>
+            <Button onClick={onClose} title="The export goes on; the status bar shows it">
+              Continue in the background
+            </Button>
             <Button onClick={() => void service.cancelJob(running.ref.id)}>Cancel</Button>
           </>
         ) : (
