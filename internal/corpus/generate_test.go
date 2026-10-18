@@ -133,6 +133,9 @@ func generate(t *testing.T) []file {
 		add(Entry{File: fmt.Sprintf("realistic/plant-ring_%05d.pcapng", k+1), Category: "realistic", Kind: "trace", Expect: "ok", MinTransactions: 300,
 			About: fmt.Sprintf("Part %d of 3 of the plant as a ring buffer of five-minute files (as dumpcap -b writes it): open the three together, in any order, as one trace.", k+1)}, part)
 	}
+	add(Entry{File: "realistic/site-diagnosis.pcapng", Category: "realistic", Kind: "trace", Expect: "ok", MinTransactions: 4000,
+		About:   "The demo and screenshot trace: 10 minutes of a site with the usual problems. SCADA polls a PV inverter, a battery and four energy meters behind a Modbus/TCP-to-RTU gateway; an EMS polls the inverter's block again every 250 ms (duplicate polling); the gateway's meters answer in 90 to 400 ms and meter 4 is offline (exception 0x0B after the gateway's 1 s timeout), so the SCADA's 1 s cycle stretches to about 1.5 s; meter 2 misses a poll now and then; SCADA reads the battery at 40001 (a 4x-offset mistake, illegal data address); an HMI writes the battery's setpoint every two minutes, once out of range (illegal data value); the EMS resets its connection once; one retransmission.",
+		Quality: map[string]uint64{"unanswered": 5, "retransmitted": 1}}, tr(tracetest.Options{Format: tracetest.PcapNG, Start: start.Add(2 * time.Hour), Step: 40 * time.Microsecond}, siteScript(10*time.Minute)))
 	add(Entry{File: "realistic/rtu-gateway.pcap", Category: "realistic", Kind: "trace", Expect: "ok", MinTransactions: 400,
 		About:   "Classic pcap: a Modbus/TCP-to-RTU gateway with eight units, polled round-robin for coils, discrete inputs and registers; units 6 and 8 are not connected (gateway exceptions 0x0A and 0x0B).",
 		Quality: map[string]uint64{}}, tr(tracetest.Options{Format: tracetest.Pcap, Start: start}, gatewayScript))
@@ -617,6 +620,207 @@ func plant(b *tracetest.Builder, d time.Duration, rotate func(at time.Duration) 
 	inv.c.Close()
 	meter.c.Close()
 	batt.c.Close()
+}
+
+// sched writes the packets of several clients that talk at the same time:
+// each request and response is queued at its own time, and run writes
+// them in time order.
+type sched struct {
+	b   *tracetest.Builder
+	t0  time.Time
+	evs []schedEv
+}
+
+type schedEv struct {
+	at time.Duration
+	n  int
+	do func()
+}
+
+func (s *sched) at(at time.Duration, do func()) { s.evs = append(s.evs, schedEv{at, len(s.evs), do}) }
+
+func (s *sched) run() {
+	sort.Slice(s.evs, func(i, j int) bool {
+		if s.evs[i].at != s.evs[j].at {
+			return s.evs[i].at < s.evs[j].at
+		}
+		return s.evs[i].n < s.evs[j].n
+	})
+	for _, e := range s.evs {
+		if gap := e.at - s.b.Now().Sub(s.t0); gap > 0 {
+			s.b.Advance(gap)
+		}
+		e.do()
+	}
+}
+
+// link is a client's connection to a server in a sched.
+type link struct {
+	s      *sched
+	c      *tracetest.Conn
+	client string
+	server string
+	tid    uint16
+}
+
+func (s *sched) link(at time.Duration, client, server string) *link {
+	l := &link{s: s, client: client, server: server}
+	s.at(at, func() { l.c = s.b.Conn(tracetest.ConnOptions{Client: ep(client), Server: ep(server)}) })
+	return l
+}
+
+// txn queues a request at at and its response lat later (resp nil: none).
+func (l *link) txn(at, lat time.Duration, unit uint8, req, resp []byte, o tracetest.WriteOpts) {
+	l.tid++
+	tid := l.tid
+	l.s.at(at, func() { l.c.Request(tid, unit, req) })
+	if resp != nil {
+		l.s.at(at+lat, func() { l.c.Write(tracetest.ToClient, o, tracetest.Frame{TID: tid, Unit: unit, PDU: resp}) })
+	}
+}
+
+// siteScript: site-diagnosis.pcapng for d (see its manifest entry).
+func siteScript(d time.Duration) func(b *tracetest.Builder) {
+	return func(b *tracetest.Builder) {
+		r := rand.New(rand.NewPCG(20, 26))
+		s := &sched{b: b, t0: b.Now()}
+		ms := func(n int) time.Duration { return time.Duration(n) * time.Millisecond }
+		jit := func(lo, hi int) time.Duration { return ms(lo) + time.Duration(r.IntN((hi-lo)*1000))*time.Microsecond }
+		const (
+			scada = "10.40.0.10"
+			ems   = "10.40.0.31"
+			hmi   = "10.40.0.20"
+			inv   = "10.40.1.11:502"
+			batt  = "10.40.1.30:502"
+			gw    = "10.40.1.50:502"
+		)
+		none := tracetest.WriteOpts{}
+		power := func(t time.Duration) uint16 {
+			x := t.Seconds() / d.Seconds()
+			cloud := 1.0
+			if x > 0.42 && x < 0.55 {
+				cloud = 0.55
+			}
+			return uint16((1800 + 1500*x) * cloud)
+		}
+		invBlock := func(t time.Duration) []byte {
+			p := power(t)
+			return regs(3, 4, p, 3980+uint16(r.IntN(30)), p*100/398, 5000+uint16(r.IntN(4)), 412+uint16(t/time.Minute), 0, uint16(t.Seconds()*0.6),
+				100, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1)
+		}
+
+		// SCADA to the inverter: identification, its status block every
+		// second, the energy counters every ten.
+		li := s.link(0, scada+":49200", inv)
+		li.txn(ms(5), jit(6, 12), 1, []byte{0x2B, 0x0E, 0x01, 0x00}, deviceID("OT Fabric Labs", "PV-5000", "2.4.1"), none)
+		retransmitted := false
+		for t := ms(40); t < d; t += ms(1000) + jit(-3, 3) {
+			o := none
+			if !retransmitted && t > 4*time.Minute {
+				o, retransmitted = tracetest.WriteOpts{Retransmit: []int{0}}, true
+			}
+			lat := jit(6, 14)
+			li.txn(t, lat, 1, readReq(3, 0, 20), invBlock(t), o)
+			if int(t/time.Second)%10 == 0 {
+				e := uint32(1_204_118 + t.Seconds()*0.7)
+				li.txn(t+lat+ms(2), jit(6, 12), 1, readReq(4, 0, 4), regs(4, uint16(e>>16), uint16(e), 0, 1), none)
+			}
+		}
+
+		// The EMS reads the same block every 250 ms, and resets its
+		// connection once at 6:00.
+		le := s.link(ms(120), ems+":51022", inv)
+		for t := ms(150); t < d; t += ms(250) + jit(-2, 2) {
+			if t >= 6*time.Minute && le.client == ems+":51022" {
+				c := le
+				s.at(t, func() { c.c.Reset(tracetest.ToServer) })
+				le = s.link(t+ms(3000), ems+":51023", inv)
+				t += ms(3100)
+			}
+			le.txn(t, jit(6, 14), 1, readReq(3, 0, 20), invBlock(t), none)
+		}
+
+		// SCADA to the gateway: meters 1 to 4 in turn, each answering over
+		// RS-485; meter 4 is offline (0x0B after the gateway's 1 s
+		// timeout); meter 2 misses a poll now and then.
+		lg := s.link(ms(10), scada+":49201", gw)
+		lg.txn(ms(30), jit(90, 120), 1, []byte{0x2B, 0x0E, 0x01, 0x00}, deviceID("OT Fabric Labs", "MB-GW4 RTU gateway", "1.8.2"), none)
+		cycle := 0
+		for t := ms(400); t < d; {
+			from := t
+			for u := uint8(1); u <= 4; u++ {
+				switch {
+				case u == 4:
+					lg.txn(t, ms(1000)+jit(0, 4), u, readReq(3, 0, 12), tracetest.Exception(3, 0x0B), none)
+					t += ms(1006)
+				case u == 2 && cycle%37 == 11:
+					lg.txn(t, 0, u, readReq(3, 0, 12), nil, none)
+					t += ms(1000) // the SCADA's timeout
+				default:
+					n, lat := uint16(12), jit(90, 160)
+					if u == 3 {
+						n, lat = 60, jit(250, 400)
+					}
+					v := make([]uint16, n)
+					for k := range v {
+						v[k] = uint16(2290 + r.IntN(25) + 10*int(u))
+					}
+					lg.txn(t, lat, u, readReq(3, 0, n), regs(3, v...), none)
+					t += lat + jit(2, 5)
+				}
+			}
+			cycle++
+			t = max(t, from+ms(1000))
+		}
+
+		// SCADA to the battery every 5 s: its block, and two registers at
+		// 40001 that do not exist (the map is 0-based; 40001 is a 4x
+		// address).
+		lb := s.link(ms(20), scada+":49202", batt)
+		lb.txn(ms(60), jit(15, 25), 1, []byte{0x2B, 0x0E, 0x01, 0x00}, deviceID("OT Fabric Labs", "BR-48 battery", "3.0.7"), none)
+		setpoint, soc := uint16(2500), 640.0
+		writes := map[time.Duration]uint16{}
+		for k, m := range []int{1, 3, 5, 7, 9} {
+			writes[time.Duration(m)*time.Minute] = []uint16{3000, 3500, 6500, 2000, 2500}[k]
+		}
+		for t := ms(700); t < d; t += ms(5000) + jit(-4, 4) {
+			for at, v := range writes {
+				if at <= t && v <= 5000 {
+					setpoint = v
+					delete(writes, at)
+				}
+			}
+			soc = math.Min(950, soc+float64(setpoint)/2500-0.4)
+			v := make([]uint16, 24)
+			v[0], v[1], v[2], v[3], v[4], v[5], v[20] = uint16(soc), 98, 5120+uint16(r.IntN(20)), setpoint/5, 251+uint16(r.IntN(6)), 2, setpoint
+			lat := jit(15, 30)
+			lb.txn(t, lat, 1, readReq(3, 0, 24), regs(3, v...), none)
+			lb.txn(t+lat+ms(3), jit(15, 30), 1, readReq(3, 40001, 2), tracetest.Exception(3, 2), none)
+		}
+
+		// The HMI writes the battery's setpoint every two minutes and reads
+		// it back; 6500 is out of range.
+		port := 52000
+		for k, m := range []int{1, 3, 5, 7, 9} {
+			at := time.Duration(m)*time.Minute + ms(2500)
+			v := []uint16{3000, 3500, 6500, 2000, 2500}[k]
+			port++
+			lh := s.link(at, fmt.Sprintf("%s:%d", hmi, port), batt)
+			w := []byte{6, 0, 20, byte(v >> 8), byte(v)}
+			resp, back := w, v
+			if v > 5000 {
+				resp, back = tracetest.Exception(6, 3), 3500
+			}
+			lh.txn(at+ms(5), jit(15, 25), 1, w, resp, none)
+			lh.txn(at+ms(60), jit(15, 25), 1, readReq(3, 20, 1), regs(3, back), none)
+			c := lh
+			s.at(at+ms(150), func() { c.c.Close() })
+		}
+		s.run()
+		for _, l := range []*link{li, le, lg, lb} {
+			l.c.Close()
+		}
+	}
 }
 
 // ring splits the plant into n files of d/n each.

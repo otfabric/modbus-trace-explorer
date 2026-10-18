@@ -1,8 +1,21 @@
 # modbus-trace-explorer Releases
 
-## v0.2.0
+## v0.3.0
 
 **Date:** not released yet
+**Previous release:** v0.2.0
+
+## Changes
+
+### Added
+
+- **A README about what the Explorer is for**, with a two-minute demo video and screenshots: finding what goes wrong between a Modbus client and its devices, and exporting real traffic to replay as a simulated device.
+- **A demo trace** in the test corpus, `realistic/site-diagnosis.pcapng`: a site with the usual problems (slow meters behind an RTU gateway, an offline unit, duplicate polling, a 4x-offset register, a refused write, a connection reset).
+- `make demo-server` and `docs/media/record-demo.mjs`, which make the screenshots and the video from the application itself.
+
+## v0.2.0
+
+**Date:** 2026-10-18
 **Previous release:** v0.1.0
 
 ## Summary
