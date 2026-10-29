@@ -1,5 +1,32 @@
 # modbus-trace-explorer Releases
 
+## v0.3.1
+
+**Date:** 2026-10-29
+**Previous release:** v0.3.0
+
+## Summary
+
+Dependency update for serial Modbus devices: go-serial v0.1.8 fixes two POSIX serial I/O bugs. No command or flag changes.
+
+### Dependencies
+
+- go-modbus-trace v0.1.0 → v0.1.1 (go-modbus v1.7.2, go-serial v0.1.8).
+
+### Fixes (from go-serial v0.1.8)
+
+- `Write` no longer loses data when the serial port's output buffer is
+  full. It used to return a short count with a nil error (or `n == -1`
+  with `EAGAIN`); it now blocks until every byte is written.
+- `Read` works when the port's file descriptor is 1024 or higher. It used
+  to return a spurious `io.EOF` at once.
+
+### Other
+
+- Security contact is security@otfabric.io.
+
+---
+
 ## v0.3.0
 
 **Date:** 2026-10-18
