@@ -1,5 +1,16 @@
 # modbus-trace-explorer Releases
 
+## v0.4.0
+
+**Date:** 2026-10-30
+**Previous release:** v0.3.1
+
+### Dependencies
+
+- `go-modbus-trace` v0.1.1 → v0.2.0.
+
+---
+
 ## v0.3.1
 
 **Date:** 2026-10-29
