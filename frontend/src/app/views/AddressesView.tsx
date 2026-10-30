@@ -159,7 +159,7 @@ function CoveragePie({ what, slices, base, onPick }: { what: string; slices: Pie
 }
 
 /** The read and written ranges of one space: a strip (reads solid, writes hatched copper) or pies of the requests per block. */
-function CoverageStrip({ map, base, shape, onPick }: { map: CoverageMap; base: number; shape: CoverageShape; onPick: (addr: number) => void }) {
+export function CoverageStrip({ map, base, shape, onPick }: { map: CoverageMap; base: number; shape: CoverageShape; onPick: (addr: number) => void }) {
   const all = [...map.read, ...map.written];
   if (all.length === 0) return <p className="text-[13px] text-muted">Nothing of this space was read or written.</p>;
   const M = 56;

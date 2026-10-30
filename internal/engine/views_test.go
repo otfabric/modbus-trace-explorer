@@ -348,6 +348,24 @@ func TestHistorySkipsInvalidResponses(t *testing.T) {
 	}
 }
 
+func TestReadSizes(t *testing.T) {
+	read := []byte{3, 0, 0, 0, 4}
+	for name, c := range map[string]struct {
+		req, resp []byte
+		want      string
+	}{
+		"registers":      {read, []byte{3, 178, 0x83, 2}, " It asked for 4 registers (8 bytes); the byte count says 178 and 2 data bytes follow."},
+		"short request":  {[]byte{3, 0}, []byte{3, 2, 0, 0}, ""},
+		"short response": {read, []byte{3}, ""},
+		"other function": {read, []byte{4, 2, 0, 0}, ""},
+		"not registers":  {[]byte{1, 0, 0, 0, 4}, []byte{1, 1, 0}, ""},
+	} {
+		if got := readSizes(c.req, c.resp); got != c.want {
+			t.Errorf("%s: %q", name, got)
+		}
+	}
+}
+
 // A copy of a request before its response marks the transaction; a copy after
 // the response is only counted, so the condition offers no filter that selects
 // nothing.
