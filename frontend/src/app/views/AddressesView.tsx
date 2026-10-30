@@ -17,6 +17,7 @@ interface Props {
 }
 
 type Radix = 'dec' | 'hex' | 'bin';
+type CoverageShape = 'bars' | 'pie';
 
 export function formatValue(v: number, radix: Radix, bits: boolean): string {
   if (bits || radix === 'dec') return String(v);
@@ -68,8 +69,97 @@ function labels(spans: { start: number; end: number }[], x: (a: number) => numbe
   return kept;
 }
 
-/** The read and written ranges of one space as a strip: reads solid, writes hatched copper. */
-function CoverageStrip({ map, base, onPick }: { map: CoverageMap; base: number; onPick: (addr: number) => void }) {
+type Span = { start: number; end: number };
+
+const requests = (intervals: AddressInterval[], sp: Span) => intervals.filter((iv) => iv.start >= sp.start && iv.start <= sp.end).reduce((n, iv) => n + iv.count, 0);
+
+/**
+ * The address blocks that get a slice of their own, in address order: those
+ * with the largest share of the reads or of the writes. Both pies use the same
+ * blocks, so that a color means one block in both.
+ */
+export function pieBlocks(read: AddressInterval[], written: AddressInterval[], spans: Span[], max = 8): Span[] {
+  const total = (list: AddressInterval[]) => Math.max(1, list.reduce((n, iv) => n + iv.count, 0));
+  const share = (sp: Span) => Math.max(requests(read, sp) / total(read), requests(written, sp) / total(written));
+  const top = [...spans].sort((a, b) => share(b) - share(a)).slice(0, max);
+  return spans.filter((sp) => top.includes(sp));
+}
+
+export interface PieSlice {
+  /** The block and its color, or null for all the other blocks together. */
+  block: Span | null;
+  slot: number;
+  count: number;
+}
+
+/** The requests per block, without empty blocks; what no block holds is a last "other" slice. */
+export function pieSlices(intervals: AddressInterval[], blocks: Span[]): PieSlice[] {
+  const slices = blocks.map((block, slot) => ({ block, slot, count: requests(intervals, block) })).filter((s) => s.count > 0);
+  const rest = intervals.reduce((n, iv) => n + iv.count, 0) - slices.reduce((n, s) => n + s.count, 0);
+  return rest > 0 ? [...slices, { block: null, slot: blocks.length, count: rest }] : slices;
+}
+
+/** One wedge of a circle around (c, c), from share a to share b. */
+function wedge(c: number, r: number, a: number, b: number): string {
+  const at = (t: number) => `${(c + r * Math.sin(t * 2 * Math.PI)).toFixed(2)},${(c - r * Math.cos(t * 2 * Math.PI)).toFixed(2)}`;
+  return `M${c},${c}L${at(a)}A${r},${r} 0 ${b - a > 0.5 ? 1 : 0} 1 ${at(b)}Z`;
+}
+
+const SLICE_FILLS = ['fill-chart-1', 'fill-chart-2', 'fill-chart-3', 'fill-chart-4', 'fill-chart-5', 'fill-chart-6', 'fill-chart-7', 'fill-chart-8'];
+
+/** One kind of access as a pie with its legend; identity is never color alone. */
+function CoveragePie({ what, slices, base, onPick }: { what: string; slices: PieSlice[]; base: number; onPick: (addr: number) => void }) {
+  const total = slices.reduce((n, s) => n + s.count, 0);
+  const C = 72;
+  const R = 70;
+  const name = (s: PieSlice) => (s.block ? range(s.block.start + base, s.block.end + base) : 'other blocks');
+  const fill = (s: PieSlice) => (s.block ? SLICE_FILLS[s.slot] : 'fill-muted');
+  const pct = (s: PieSlice) => `${((s.count / total) * 100).toFixed(1)}%`;
+  const pick = (s: PieSlice) => {
+    const block = s.block;
+    return block ? () => onPick(block.start) : undefined;
+  };
+  let at = 0;
+  return (
+    <div className="flex flex-wrap items-start gap-4">
+      <svg role="img" aria-label={`Address coverage, ${what}`} viewBox={`0 0 ${2 * C} ${2 * C}`} className="w-36 shrink-0">
+        {slices.map((s) => {
+          const a = at;
+          at += s.count / total;
+          const shape = { className: `${fill(s)} stroke-bg ${s.block ? 'cursor-pointer' : ''}`, strokeWidth: 2, onClick: pick(s) };
+          const tip = <title>{`${what} ${name(s)}: ${formatCount(s.count)} times, ${pct(s)}`}</title>;
+          return slices.length === 1 ? (
+            <circle key={s.slot} cx={C} cy={C} r={R} {...shape}>
+              {tip}
+            </circle>
+          ) : (
+            <path key={s.slot} d={wedge(C, R, a, at)} {...shape}>
+              {tip}
+            </path>
+          );
+        })}
+      </svg>
+      <div className="flex flex-col gap-1">
+        <span className="ot-label">{what}</span>
+        <ul className="flex flex-col gap-0.5 font-mono text-[12px]">
+          {slices.map((s) => (
+            <li key={s.slot} className={`flex items-center gap-2 ${s.block ? 'cursor-pointer hover:text-accent' : ''}`} onClick={pick(s)}>
+              <svg width="10" height="10" aria-hidden="true" className="shrink-0">
+                <rect width="10" height="10" rx="2" className={fill(s)} />
+              </svg>
+              <span className="w-32">{name(s)}</span>
+              <span className="w-14 text-right">{pct(s)}</span>
+              <span className="w-16 text-right text-muted">{formatCount(s.count)}</span>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </div>
+  );
+}
+
+/** The read and written ranges of one space: a strip (reads solid, writes hatched copper) or pies of the requests per block. */
+function CoverageStrip({ map, base, shape, onPick }: { map: CoverageMap; base: number; shape: CoverageShape; onPick: (addr: number) => void }) {
   const all = [...map.read, ...map.written];
   if (all.length === 0) return <p className="text-[13px] text-muted">Nothing of this space was read or written.</p>;
   const M = 56;
@@ -89,6 +179,7 @@ function CoverageStrip({ map, base, onPick }: { map: CoverageMap; base: number; 
       <title>{`${what} ${range(iv.start + base, iv.end + base)}: ${formatCount(iv.count)} times`}</title>
     </rect>
   );
+  const blocks = pieBlocks(map.read, map.written, axis.spans);
   const table = (
     <table className={TABLE}>
       <thead>
@@ -115,6 +206,12 @@ function CoverageStrip({ map, base, onPick }: { map: CoverageMap; base: number; 
     <ChartOrTable
       label={`Coverage${base ? ' (1-based)' : ''}: ${axis.spans.map((sp) => range(sp.start + base, sp.end + base)).join(', ')}`}
       chart={
+        shape === 'pie' ? (
+          <div className="flex flex-wrap gap-x-10 gap-y-4">
+            {map.read.length > 0 && <CoveragePie what="read" slices={pieSlices(map.read, blocks)} base={base} onPick={onPick} />}
+            {map.written.length > 0 && <CoveragePie what="written" slices={pieSlices(map.written, blocks)} base={base} onPick={onPick} />}
+          </div>
+        ) : (
         <svg role="img" aria-label="Address coverage" viewBox={`0 0 ${W} 64`} className="w-full">
           <defs>
             <pattern id="written" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
@@ -136,6 +233,7 @@ function CoverageStrip({ map, base, onPick }: { map: CoverageMap; base: number; 
               </text>
             ))}
         </svg>
+        )
       }
       table={table}
     />
@@ -182,11 +280,31 @@ function StepChart({ points, radix, bits }: { points: HistoryPoint[]; radix: Rad
   );
 }
 
+/** A small group of buttons of which one is pressed. */
+function Choice<T extends string>({ label, options, value, onChange }: { label: string; options: T[]; value: T; onChange: (v: T) => void }) {
+  return (
+    <span className="flex items-center gap-1 text-[12px]" role="group" aria-label={label}>
+      {options.map((o) => (
+        <button
+          key={o}
+          type="button"
+          aria-pressed={value === o}
+          onClick={() => onChange(o)}
+          className={`rounded border px-2 py-0.5 font-mono ${value === o ? 'border-accent text-accent' : 'border-line text-muted hover:text-accent'}`}
+        >
+          {o}
+        </button>
+      ))}
+    </span>
+  );
+}
+
 /** R11: what was read and written of a device, and the observed values of one address. */
 export function AddressesView({ service, fileId, filter, timeMode, firstNs, oneBased: oneBasedSetting = false }: Props) {
   const devices = useLoad(() => service.devices(fileId, filter), [service, fileId, JSON.stringify(filter)]);
   const [device, setDevice] = useState<string>('');
   const [space, setSpace] = useState<string>('holding');
+  const [shape, setShape] = useState<CoverageShape>('bars');
   const list = devices.data ?? [];
   const dev = list.find((d) => `${d.server}/${d.unit}` === device) ?? list[0];
   const coverage = useLoad(
@@ -291,8 +409,11 @@ export function AddressesView({ service, fileId, filter, timeMode, firstNs, oneB
           </select>
         </Field>
         <Toggle label="1-based labels" checked={oneBased} onChange={setOneBased} />
+        <span className="ml-auto pb-1.5">
+          <Choice label="Coverage chart" options={['bars', 'pie']} value={shape} onChange={setShape} />
+        </span>
       </div>
-      {coverage.data ? <CoverageStrip map={coverage.data} base={base} onPick={(a) => setAddress(String(a))} /> : <Status loading={coverage.loading} error={coverage.error} />}
+      {coverage.data ? <CoverageStrip map={coverage.data} base={base} shape={shape} onPick={(a) => setAddress(String(a))} /> : <Status loading={coverage.loading} error={coverage.error} />}
       <form
         className="flex flex-wrap items-end gap-3"
         onSubmit={(e) => {
@@ -314,18 +435,8 @@ export function AddressesView({ service, fileId, filter, timeMode, firstNs, oneB
           </Button>
         )}
         {!bits && (
-          <span className="ml-auto flex items-center gap-1 text-[12px]" role="group" aria-label="Number format">
-            {(['dec', 'hex', 'bin'] as Radix[]).map((r) => (
-              <button
-                key={r}
-                type="button"
-                aria-pressed={radix === r}
-                onClick={() => setRadix(r)}
-                className={`rounded border px-2 py-0.5 font-mono ${radix === r ? 'border-accent text-accent' : 'border-line text-muted hover:text-accent'}`}
-              >
-                {r}
-              </button>
-            ))}
+          <span className="ml-auto">
+            <Choice label="Number format" options={['dec', 'hex', 'bin']} value={radix} onChange={setRadix} />
           </span>
         )}
       </form>

@@ -3846,12 +3846,7 @@
         "label": "Gaps",
         "count": 0,
         "severity": "problem",
-        "meaning": "Bytes of a connection the capture missed; transactions next to them are uncertain.",
-        "filter": {
-          "flags": [
-            "gap_adjacent"
-          ]
-        }
+        "meaning": "Bytes of a connection the capture missed; transactions next to them are uncertain."
       },
       {
         "code": "resync_failed",
@@ -3865,36 +3860,21 @@
         "label": "Resyncs",
         "count": 0,
         "severity": "warning",
-        "meaning": "Framing was lost and recovered; the ADU after it may not be real.",
-        "filter": {
-          "flags": [
-            "resynced"
-          ]
-        }
+        "meaning": "Framing was lost and recovered; the ADU after it may not be real."
       },
       {
         "code": "retransmitted",
         "label": "Retransmissions",
         "count": 0,
         "severity": "info",
-        "meaning": "Segments seen more than once; the first copy was used.",
-        "filter": {
-          "flags": [
-            "retransmitted"
-          ]
-        }
+        "meaning": "Segments seen more than once; the first copy was used. Only a copy that also carried new bytes marks a transaction."
       },
       {
         "code": "out_of_order",
         "label": "Out of order",
         "count": 0,
         "severity": "info",
-        "meaning": "Segments that arrived before earlier bytes and were put back in order.",
-        "filter": {
-          "flags": [
-            "out_of_order"
-          ]
-        }
+        "meaning": "Segments that arrived before earlier bytes and were put back in order."
       },
       {
         "code": "overlap_conflict",
@@ -3908,12 +3888,7 @@
         "label": "Cut by the snap length",
         "count": 0,
         "severity": "warning",
-        "meaning": "ADUs the capture cut short (capture with -s 0 to avoid it).",
-        "filter": {
-          "flags": [
-            "snaplen_truncated"
-          ]
-        }
+        "meaning": "ADUs the capture cut short (capture with -s 0 to avoid it)."
       },
       {
         "code": "foreign_protocol",
@@ -4011,36 +3986,21 @@
         "label": "Clock-order anomalies",
         "count": 0,
         "severity": "warning",
-        "meaning": "The response is stamped before its request (merged captures or a clock step).",
-        "filter": {
-          "flags": [
-            "clock_order"
-          ]
-        }
+        "meaning": "The response is stamped before its request (merged captures or a clock step)."
       },
       {
         "code": "role_guessed",
         "label": "Guessed roles",
         "count": 0,
         "severity": "info",
-        "meaning": "Which side is the server was inferred from the traffic, not from the handshake.",
-        "filter": {
-          "flags": [
-            "role_guessed"
-          ]
-        }
+        "meaning": "Which side is the server was inferred from the traffic, not from the handshake."
       },
       {
         "code": "slow",
         "label": "Slow responses",
         "count": 0,
         "severity": "info",
-        "meaning": "The response took longer than the slow threshold.",
-        "filter": {
-          "flags": [
-            "slow"
-          ]
-        }
+        "meaning": "The response took longer than the slow threshold."
       },
       {
         "code": "internal_errors",

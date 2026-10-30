@@ -652,7 +652,7 @@ export class MockService implements Service {
       conditions: [
         c('capture_drops', 'Dropped by the capture host', 0, 'problem', 'The capture tool reported packets it could not keep: reads may be missing.'),
         c('gaps', 'Gaps', Math.floor(this.rows / 77_777), 'problem', 'Bytes of a connection the capture missed; transactions next to them are uncertain.', { flags: ['gap_adjacent'] }),
-        c('retransmitted', 'Retransmissions', Math.floor(this.rows / 200), 'info', 'Segments seen more than once; the first copy was used.', { flags: ['retransmitted'] }),
+        c('retransmitted', 'Retransmissions', Math.floor(this.rows / 200), 'info', 'Segments seen more than once; the first copy was used. Only a copy that also carried new bytes marks a transaction.', { flags: ['retransmitted'] }),
         c('unanswered', 'Unanswered requests', Math.floor(this.rows / 500), 'warning', 'Requests with no response observed before the connection or the trace ended.', { statuses: ['unanswered'] }),
         c('role_guessed', 'Guessed roles', 0, 'info', 'Which side is the server was inferred from the traffic, not from the handshake.', { flags: ['role_guessed'] }),
       ],

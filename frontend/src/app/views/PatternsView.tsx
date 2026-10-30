@@ -3,7 +3,7 @@ import { Button, Chip } from '../components/ui';
 import { TimelineIcon } from '../icons';
 import type { Service } from '../service/service';
 import type { Filter, Pattern } from '../service/types';
-import { formatCount, formatDuration, formatFunction, formatLatency, formatTime, type TimeMode } from '../state/format';
+import { formatCount, formatDuration, formatFunction, formatLatency, formatRate, formatTime, type TimeMode } from '../state/format';
 import { DistributionView, Facts, Heading, SelectRow, Status, TABLE, Th, range, useLoad } from './common';
 
 interface Props {
@@ -83,6 +83,7 @@ export function PatternsView({ service, fileId, filter, timeMode, firstNs, onSho
               ['first', formatTime(p.first_ns, timeMode, firstNs)],
               ['last', formatTime(p.last_ns, timeMode, firstNs)],
               ['span', formatDuration(p.last_ns - p.first_ns)],
+              ['rate', formatRate(p.requests, p.last_ns - p.first_ns)],
               ['responses', formatCount(p.responses)],
               ['answer changed', `${formatCount(p.changed)} times (${Math.round(p.volatility * 100)}%)`],
             ]}

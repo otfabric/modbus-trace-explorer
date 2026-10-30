@@ -391,7 +391,14 @@ func (e *Engine) Quality(_ context.Context, id string) (service.Quality, error) 
 	if s == nil {
 		return q, nil
 	}
-	flag := func(f string) *service.Filter { return &service.Filter{Flags: []string{f}} }
+	// A counter is about segments or bytes; only rows that carry the flag can
+	// back "Show in timeline", so a counter with none offers no filter.
+	flag := func(f string) *service.Filter {
+		if s.TransactionFlags[f] == 0 {
+			return nil
+		}
+		return &service.Filter{Flags: []string{f}}
+	}
 	status := func(st string) *service.Filter { return &service.Filter{Statuses: []string{st}} }
 	var drops uint64
 	if s.CaptureDrop != nil {
@@ -405,10 +412,10 @@ func (e *Engine) Quality(_ context.Context, id string) (service.Quality, error) 
 		q.Conditions = append(q.Conditions, service.Condition{Code: code, Label: label, Count: n, Severity: severity, Meaning: meaning, Filter: f})
 	}
 	add("capture_drops", "Dropped by the capture host", "problem", "The capture tool reported packets it could not keep: reads may be missing.", drops, nil)
-	add("gaps", "Gaps", "problem", "Bytes of a connection the capture missed; transactions next to them are uncertain.", s.Quality.Gaps, &service.Filter{Flags: []string{"gap_adjacent"}})
+	add("gaps", "Gaps", "problem", "Bytes of a connection the capture missed; transactions next to them are uncertain.", s.Quality.Gaps, flag("gap_adjacent"))
 	add("resync_failed", "Lost framing", "problem", "Bytes that could not be framed as Modbus after a gap or junk.", s.Quality.ResyncFailed, nil)
 	add("resyncs", "Resyncs", "warning", "Framing was lost and recovered; the ADU after it may not be real.", s.Quality.Resyncs, flag("resynced"))
-	add("retransmitted", "Retransmissions", "info", "Segments seen more than once; the first copy was used.", s.Quality.Retransmitted, flag("retransmitted"))
+	add("retransmitted", "Retransmissions", "info", "Segments seen more than once; the first copy was used. Only a copy that also carried new bytes marks a transaction.", s.Quality.Retransmitted, flag("retransmitted"))
 	add("out_of_order", "Out of order", "info", "Segments that arrived before earlier bytes and were put back in order.", s.Quality.OutOfOrder, flag("out_of_order"))
 	add("overlap_conflict", "Overlap conflicts", "warning", "Retransmitted bytes that differ from the first copy.", s.Quality.OverlapConflicts, nil)
 	add("snaplen_truncated", "Cut by the snap length", "warning", "ADUs the capture cut short (capture with -s 0 to avoid it).", s.Quality.SnaplenTruncated, flag("snaplen_truncated"))

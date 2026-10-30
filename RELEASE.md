@@ -1,5 +1,25 @@
 # modbus-trace-explorer Releases
 
+## v0.5.0
+
+**Date:** 2026-10-30
+**Previous release:** v0.4.0
+
+### Summary
+
+Patterns states the request rate, and Addresses can show coverage as pies. "Show in timeline" is offered only when rows carry the condition.
+
+### Added
+
+- Patterns: the request rate of the selected pattern, per second and per minute.
+- Addresses: a bars/pie switch for coverage; the pies show the share of requests per address block.
+
+### Fixed
+
+- Quality: "Show in timeline" led to an empty timeline when a counter had no flagged rows, as with whole TCP segments seen twice.
+
+---
+
 ## v0.4.0
 
 **Date:** 2026-10-30

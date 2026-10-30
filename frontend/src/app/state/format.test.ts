@@ -1,7 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { formatBytes, formatCount, formatDuration, formatFunction, formatLatency, formatTime } from './format';
+import { formatBytes, formatCount, formatDuration, formatFunction, formatLatency, formatRate, formatTime } from './format';
 
 describe('formats', () => {
+  it('states a rate per second and per minute', () => {
+    expect(formatRate(1541, 800e9)).toBe('1.93/s · 116/min');
+    expect(formatRate(3, 600e9)).toBe('0.00333/s · 0.2/min');
+    expect(formatRate(1, 600e9)).toBe('–');
+    expect(formatRate(5, 0)).toBe('–');
+  });
+
   const t = Date.UTC(2026, 9, 14, 14, 2, 11, 384) * 1e6 + 210_123;
   it('times', () => {
     expect(formatTime(t, 'utc')).toBe('14:02:11.384210');

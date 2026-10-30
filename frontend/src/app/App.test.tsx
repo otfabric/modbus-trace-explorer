@@ -116,11 +116,17 @@ describe('App', () => {
     await user.click(within(nav).getByRole('button', { name: /Patterns/ }));
     const patterns = await screen.findByRole('table', { name: 'Patterns' });
     expect(within(patterns).getAllByRole('row').length).toBeGreaterThan(1);
+    expect(within(screen.getByRole('region', { name: 'Pattern detail' })).getByText(/\/s · .*\/min/)).toBeInTheDocument();
     await user.click(within(screen.getByRole('region', { name: 'Pattern detail' })).getByRole('button', { name: 'Show in timeline' }));
     expect(await screen.findByRole('button', { name: /Remove request:/ })).toBeInTheDocument();
 
     await user.click(within(nav).getByRole('button', { name: /Addresses/ }));
     expect(await screen.findByText(/Observed, not a complete register map/)).toBeInTheDocument();
+    await user.click(within(screen.getByRole('group', { name: 'Coverage chart' })).getByRole('button', { name: 'pie' }));
+    expect(await screen.findByRole('img', { name: 'Address coverage, read' })).toBeInTheDocument();
+    expect(screen.queryByRole('img', { name: 'Address coverage' })).toBeNull();
+    await user.click(within(screen.getByRole('group', { name: 'Coverage chart' })).getByRole('button', { name: 'bars' }));
+    expect(await screen.findByRole('img', { name: 'Address coverage' })).toBeInTheDocument();
     await user.type(screen.getByRole('textbox', { name: 'Address' }), '40');
     await user.click(screen.getByRole('button', { name: 'Show values' }));
     expect(await screen.findByRole('img', { name: 'Values over time' }, { timeout: 3000 })).toBeInTheDocument();
