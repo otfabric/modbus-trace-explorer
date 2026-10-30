@@ -5442,7 +5442,7 @@
         "label": "Retransmissions",
         "count": 0,
         "severity": "info",
-        "meaning": "Segments seen more than once; the first copy was used. Only a copy that also carried new bytes marks a transaction."
+        "meaning": "Segments seen more than once; the first copy was used. A copy that arrives after its transaction is complete marks no row."
       },
       {
         "code": "out_of_order",

@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -126,6 +127,9 @@ func decodeInto(d *service.Detail, reqADU, respADU []byte) {
 			continue
 		}
 		for _, w := range a.Warnings {
+			if slices.ContainsFunc(d.Notes, func(n service.Note) bool { return n.Kind == "warning" && n.Code == w }) {
+				continue
+			}
 			meaning := meaningOfWarning(w)
 			if w == mbtcp.WarnMismatch && len(reqADU) > mbtcp.HeaderLen && len(respADU) > mbtcp.HeaderLen {
 				meaning += readSizes(reqADU[mbtcp.HeaderLen:], respADU[mbtcp.HeaderLen:])

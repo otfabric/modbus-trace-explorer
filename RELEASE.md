@@ -7,7 +7,7 @@
 
 ### Summary
 
-Patterns states the request rate, and Addresses can show coverage as pies. "Show in timeline" is offered only when rows carry the condition.
+Patterns states the request rate, Addresses can show coverage as pies, and a button shows or hides the detail pane. Retransmitted requests now appear in the timeline, and invalid responses are stated as such.
 
 ### Added
 
@@ -19,7 +19,11 @@ Patterns states the request rate, and Addresses can show coverage as pies. "Show
 
 - Addresses: "Show values" read the bytes of invalid responses as register values. It now leaves those rows out; they stay in the timeline under `flag:invalid_pdu`.
 - Timeline: a read whose response breaks a rule or does not fit its request said "4 words", the count asked for. It now says `Invalid PDU`, and the Summary tab states the sizes.
-- Quality: "Show in timeline" led to an empty timeline when a counter had no flagged rows, as with whole TCP segments seen twice.
+- Quality: "Retransmissions" led to an empty timeline. A whole message sent again now marks its transaction (go-modbus-trace v0.4.0), unless the copy arrives after the transaction is complete; those are only counted. "Show in timeline" is offered only when rows carry the condition.
+
+### Dependencies
+
+- go-modbus-trace v0.3.0 → v0.4.0.
 
 ---
 

@@ -317,11 +317,13 @@ func TestDetailOfInvalidResponse(t *testing.T) {
 		t.Error(d.Text)
 	}
 	want := "It asked for 4 registers (8 bytes); the byte count says 178 and 2 data bytes follow."
-	found := false
+	found := 0
 	for _, n := range d.Notes {
-		found = found || strings.Contains(n.Meaning, want)
+		if strings.Contains(n.Meaning, want) {
+			found++
+		}
 	}
-	if !found {
+	if found != 1 {
 		t.Errorf("%+v", d.Notes)
 	}
 }
@@ -346,14 +348,16 @@ func TestHistorySkipsInvalidResponses(t *testing.T) {
 	}
 }
 
-// A whole segment seen twice is counted, but no transaction carries the flag:
-// the condition must not offer a filter that selects nothing.
-func TestQualityNoFilterWithoutFlaggedRows(t *testing.T) {
+// A copy of a request before its response marks the transaction; a copy after
+// the response is only counted, so the condition offers no filter that selects
+// nothing.
+func TestQualityRetransmissions(t *testing.T) {
 	e := newEngine(t)
 	path := writeTrace(t, "retransmit.pcap", tracetest.Options{}, func(b *tracetest.Builder) {
 		c := b.Conn(tracetest.ConnOptions{Server: srv1})
-		c.Write(tracetest.ToServer, tracetest.WriteOpts{Retransmit: []int{0}}, tracetest.Frame{TID: 1, Unit: 1, PDU: tracetest.ReadRequest(3, 0, 1)})
+		c.Request(1, 1, tracetest.ReadRequest(3, 0, 1))
 		c.Response(1, 1, tracetest.RegistersResponse(3, 1))
+		c.Resend(tracetest.ToClient)
 	})
 	id, _ := importTrace(t, e, nil, path)
 	q, err := e.Quality(context.Background(), id)
@@ -365,8 +369,24 @@ func TestQualityNoFilterWithoutFlaggedRows(t *testing.T) {
 			if c.Count == 0 || c.Filter != nil {
 				t.Errorf("%+v", c)
 			}
-			return
 		}
 	}
-	t.Error("no retransmitted condition")
+
+	path = writeTrace(t, "retransmit-request.pcap", tracetest.Options{}, func(b *tracetest.Builder) {
+		c := b.Conn(tracetest.ConnOptions{Server: srv1})
+		c.Write(tracetest.ToServer, tracetest.WriteOpts{Retransmit: []int{0}}, tracetest.Frame{TID: 1, Unit: 1, PDU: tracetest.ReadRequest(3, 0, 1)})
+		c.Response(1, 1, tracetest.RegistersResponse(3, 1))
+	})
+	id, _ = importTrace(t, e, nil, path)
+	q, err = e.Quality(context.Background(), id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, c := range q.Conditions {
+		if c.Code == "retransmitted" {
+			if c.Count == 0 || c.Filter == nil || len(txns(page(t, e, id, *c.Filter))) != 1 {
+				t.Errorf("%+v", c)
+			}
+		}
+	}
 }
