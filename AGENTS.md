@@ -19,8 +19,9 @@ It does **not** capture live (tcpdump and Wireshark do that better), does not ta
 3. `docs/UX.md`: screens, behaviors, summary-line grammar, keyboard map, empty and error states.
 4. `docs/BRANDING.md`: OT Fabric visual identity, tokens, icon rules, accessibility numbers.
 5. `docs/PROPOSAL-REVIEW.md`: why the original "Modbus Capture" proposal was replaced, what was verified, what is still unverified.
-6. `modbus-capture-claude-proposal.md` is the **superseded** original proposal (live capture, daemon, browser mode). Do not follow it; it is kept for history.
-7. Sibling checkouts to read (read-only): `sunspec-explorer/` (the reference application: frontend shell, Wails shell, CI, packaging; commit 915d2c3 / tag v0.0.3), `go-modbus-trace/` (the library: L0–L4 done, v0.1.0 pending), `go-modbus-capture/docs/` and `modbusctl/` (what the MBCAP export feeds), `website/` (branding source).
+6. `TESTING.md`: how to run each test tier. `docs/adr/`: the foundational decisions and why.
+7. `modbus-capture-claude-proposal.md` is the **superseded** original proposal (live capture, daemon, browser mode). Do not follow it; it is kept for history.
+8. Sibling checkouts to read (read-only): `sunspec-explorer/` (the reference application: frontend shell, Wails shell, CI, packaging; commit 915d2c3 / tag v0.0.3), `go-modbus-trace/` (the library: L0–L4 done, v0.1.0 pending), `go-modbus-capture/docs/` and `modbusctl/` (what the MBCAP export feeds), `website/` (branding source).
 
 ## Decisions that are settled (do not relitigate without asking the user)
 
