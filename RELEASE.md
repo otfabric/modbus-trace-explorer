@@ -1,5 +1,32 @@
 # modbus-trace-explorer Releases
 
+## v0.5.0
+
+**Date:** 2026-10-30
+**Previous release:** v0.4.0
+
+### Summary
+
+Patterns states the request rate, Addresses can show coverage as pies, and a button shows or hides the detail pane. Retransmitted requests now appear in the timeline, and invalid responses are stated as such.
+
+### Added
+
+- Patterns: the request rate of the selected pattern, per second and per minute.
+- Timeline and Conversations: a button at the right edge shows or hides the detail pane, which until now only `D` and the View menu could do.
+- Addresses: a bars/pie switch for coverage; the pies show the share of requests per address block.
+
+### Fixed
+
+- Addresses: "Show values" read the bytes of invalid responses as register values. It now leaves those rows out; they stay in the timeline under `flag:invalid_pdu`.
+- Timeline: a read whose response breaks a rule or does not fit its request said "4 words", the count asked for. It now says `Invalid PDU`, and the Summary tab states the sizes.
+- Quality: "Retransmissions" led to an empty timeline. A whole message sent again now marks its transaction (go-modbus-trace v0.4.0), unless the copy arrives after the transaction is complete; those are only counted. "Show in timeline" is offered only when rows carry the condition.
+
+### Dependencies
+
+- go-modbus-trace v0.3.0 → v0.4.0.
+
+---
+
 ## v0.4.0
 
 **Date:** 2026-10-30

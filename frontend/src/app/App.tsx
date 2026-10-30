@@ -20,6 +20,7 @@ import {
   ExportIcon,
   PatternIcon,
   PlugIcon,
+  PanelIcon,
   QualityIcon,
   TimelineIcon,
   WarningIcon,
@@ -572,6 +573,7 @@ export function App({ service, platform }: AppProps) {
   const cancelJob = (jobId: string) => () => void service.cancelJob(jobId);
 
   let body: ReactNode;
+  const hasDetail = view === 'timeline' || view === 'conversations';
   switch (phase.kind) {
     case 'empty':
       body = <EmptyState onOpen={() => void platform.chooseTraces().then(open)} onOpenRecent={(p) => void open(p)} recent={recent} error={error} />;
@@ -691,10 +693,8 @@ export function App({ service, platform }: AppProps) {
                 <QualityView service={service} fileId={fileId} onShow={show} />
               )}
             </main>
-            {showDetail && (view === 'timeline' || view === 'conversations') && (
-              <Resizer width={detailWidth} onWidth={setDetailWidth} />
-            )}
-            {showDetail && (view === 'timeline' || view === 'conversations') && (
+            {hasDetail && showDetail && <Resizer width={detailWidth} onWidth={setDetailWidth} />}
+            {hasDetail && showDetail && (
               <aside
                 ref={detailBox}
                 tabIndex={-1}
@@ -711,6 +711,20 @@ export function App({ service, platform }: AppProps) {
                   copy={(t) => void platform.copyText(t)}
                 />
               </aside>
+            )}
+            {hasDetail && (
+              <div className="flex w-8 shrink-0 flex-col items-center border-l border-line py-2">
+                <button
+                  type="button"
+                  aria-label={showDetail ? 'Hide the detail pane' : 'Show the detail pane'}
+                  aria-pressed={showDetail}
+                  title={`${showDetail ? 'Hide' : 'Show'} the detail pane (D)`}
+                  onClick={() => setShowDetail((v) => !v)}
+                  className={`rounded p-1 hover:text-accent ${showDetail ? 'text-accent' : 'text-muted'}`}
+                >
+                  <PanelIcon size={16} />
+                </button>
+              </div>
             )}
           </div>
         </>

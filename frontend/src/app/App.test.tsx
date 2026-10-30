@@ -116,11 +116,17 @@ describe('App', () => {
     await user.click(within(nav).getByRole('button', { name: /Patterns/ }));
     const patterns = await screen.findByRole('table', { name: 'Patterns' });
     expect(within(patterns).getAllByRole('row').length).toBeGreaterThan(1);
+    expect(within(screen.getByRole('region', { name: 'Pattern detail' })).getByText(/\/s · .*\/min/)).toBeInTheDocument();
     await user.click(within(screen.getByRole('region', { name: 'Pattern detail' })).getByRole('button', { name: 'Show in timeline' }));
     expect(await screen.findByRole('button', { name: /Remove request:/ })).toBeInTheDocument();
 
     await user.click(within(nav).getByRole('button', { name: /Addresses/ }));
     expect(await screen.findByText(/Observed, not a complete register map/)).toBeInTheDocument();
+    await user.click(within(screen.getByRole('group', { name: 'Coverage chart' })).getByRole('button', { name: 'pie' }));
+    expect(await screen.findByRole('img', { name: 'Address coverage, read' })).toBeInTheDocument();
+    expect(screen.queryByRole('img', { name: 'Address coverage' })).toBeNull();
+    await user.click(within(screen.getByRole('group', { name: 'Coverage chart' })).getByRole('button', { name: 'bars' }));
+    expect(await screen.findByRole('img', { name: 'Address coverage' })).toBeInTheDocument();
     await user.type(screen.getByRole('textbox', { name: 'Address' }), '40');
     await user.click(screen.getByRole('button', { name: 'Show values' }));
     expect(await screen.findByRole('img', { name: 'Values over time' }, { timeout: 3000 })).toBeInTheDocument();
@@ -329,6 +335,28 @@ describe('App', () => {
     render(<App service={new Broken({ rows: 10 })} platform={platform(['/x/broken.pcap'])} />);
     await user.click(screen.getByRole('button', { name: /Open/ }));
     expect(await screen.findByText(/not a pcap or pcapng file/)).toBeInTheDocument();
+  });
+
+  it('hides and shows the detail pane with its button and with D', async () => {
+    const user = userEvent.setup();
+    render(<App service={new MockService({ rows: 5000, analyzed: true, step: 1 })} platform={platform(['/x/site.pcapng'])} />);
+    await user.click(screen.getByRole('button', { name: /Open/ }));
+    const grid = await screen.findByRole('grid', { name: 'Timeline' });
+    await waitFor(() => expect(grid).toHaveAttribute('aria-rowcount', '5001'));
+    expect(screen.getByRole('complementary', { name: 'Detail' })).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Hide the detail pane' }));
+    expect(screen.queryByRole('complementary', { name: 'Detail' })).toBeNull();
+    expect(screen.queryByRole('separator', { name: 'Resize the detail pane' })).toBeNull();
+    await user.click(screen.getByRole('button', { name: 'Show the detail pane' }));
+    expect(screen.getByRole('complementary', { name: 'Detail' })).toBeInTheDocument();
+    grid.focus();
+    await user.keyboard('d');
+    expect(screen.getByRole('button', { name: 'Show the detail pane' })).toHaveAttribute('aria-pressed', 'false');
+    await user.keyboard('d');
+    expect(screen.getByRole('button', { name: 'Hide the detail pane' })).toHaveAttribute('aria-pressed', 'true');
+    await user.click(within(screen.getByRole('navigation', { name: 'Views' })).getByRole('button', { name: /Quality/ }));
+    await screen.findByRole('region', { name: 'Conditions' });
+    expect(screen.queryByRole('button', { name: 'Hide the detail pane' })).toBeNull();
   });
 
   it('resizes the detail pane, and shows background exports and the cache in the status bar', async () => {

@@ -172,7 +172,8 @@ func historyCandidates(ctx context.Context, ix *store.Index, q service.HistoryQu
 	var out []uint32
 	for k := range sel.Len() {
 		i := sel.At(k, false)
-		if c.Status[i] != ok || c.Space[i] != space {
+		// An invalid PDU's bytes cannot be trusted as values of its addresses.
+		if c.Status[i] != ok || c.Space[i] != space || c.Flags[i]&invalidPDU != 0 {
 			continue
 		}
 		if covers(c.Start[i], c.Count[i]) || covers(c.WStart[i], c.WCount[i]) {

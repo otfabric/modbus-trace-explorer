@@ -108,9 +108,10 @@ func TestTexts(t *testing.T) {
 	st := store.StatusNames[:]
 	cl := store.ClassNames[:]
 	cases := map[string]store.Row{
-		"16 bits": {Status: code(st, "ok"), Class: code(cl, "read"), FC: 1, Count: 16},
-		"3 words": {Status: code(st, "ok"), Class: code(cl, "read"), FC: 3, Count: 3},
-		"OK":      {Status: code(st, "ok"), Class: code(cl, "write"), FC: 6, Count: 1},
+		"16 bits":     {Status: code(st, "ok"), Class: code(cl, "read"), FC: 1, Count: 16},
+		"3 words":     {Status: code(st, "ok"), Class: code(cl, "read"), FC: 3, Count: 3},
+		"OK":          {Status: code(st, "ok"), Class: code(cl, "write"), FC: 6, Count: 1},
+		"Invalid PDU": {Status: code(st, "ok"), Class: code(cl, "read"), FC: 3, Count: 3, Flags: store.Flags([]string{"invalid_pdu"})},
 		"Exception 0B Gateway target device failed to respond": {Status: code(st, "exception"), Exc: 0x0B},
 		"Exception 09 Unknown exception":                       {Status: code(st, "exception"), Exc: 9},
 		"No response observed":                                 {Status: code(st, "unanswered")},

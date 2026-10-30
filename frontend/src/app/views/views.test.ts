@@ -1,7 +1,31 @@
 import { describe, expect, it } from 'vitest';
-import { compressedAxis, formatValue } from './AddressesView';
+import { compressedAxis, formatValue, pieBlocks, pieSlices } from './AddressesView';
 
 const iv = (start: number, end: number) => ({ start, end, count: 1, first_ns: 0, last_ns: 0 });
+
+describe('pie blocks', () => {
+  const counted = (start: number, count: number) => ({ start, end: start, count, first_ns: 0, last_ns: 0 });
+  const spans = [10, 20, 30, 40].map((a) => ({ start: a, end: a + 1 }));
+
+  it('keeps the blocks with the largest share of reads or of writes, in address order', () => {
+    const read = [counted(10, 1), counted(20, 90), counted(30, 9)];
+    const written = [counted(40, 2)];
+    expect(pieBlocks(read, written, spans, 2)).toEqual([spans[1], spans[3]]);
+    expect(pieBlocks(read, [], spans, 8)).toEqual(spans);
+  });
+
+  it('sums the requests per block and folds the rest into a last slice', () => {
+    expect(pieSlices([counted(30, 2), counted(31, 1), counted(10, 5), counted(40, 4)], [spans[0], spans[1], spans[2]] as typeof spans)).toEqual([
+      { block: spans[0], slot: 0, count: 5 },
+      { block: spans[2], slot: 2, count: 3 },
+      { block: null, slot: 3, count: 4 },
+    ]);
+  });
+
+  it('has no last slice when every request is in a block', () => {
+    expect(pieSlices([counted(10, 5)], spans)).toEqual([{ block: spans[0], slot: 0, count: 5 }]);
+  });
+});
 
 describe('compressedAxis', () => {
   it('collapses wide empty stretches and keeps near ranges together', () => {

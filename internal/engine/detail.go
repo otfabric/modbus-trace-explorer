@@ -4,10 +4,12 @@ package engine
 
 import (
 	"context"
+	"encoding/binary"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -125,9 +127,26 @@ func decodeInto(d *service.Detail, reqADU, respADU []byte) {
 			continue
 		}
 		for _, w := range a.Warnings {
-			d.Notes = append(d.Notes, service.Note{Kind: "warning", Code: w, Meaning: meaningOfWarning(w)})
+			if slices.ContainsFunc(d.Notes, func(n service.Note) bool { return n.Kind == "warning" && n.Code == w }) {
+				continue
+			}
+			meaning := meaningOfWarning(w)
+			if w == mbtcp.WarnMismatch && len(reqADU) > mbtcp.HeaderLen && len(respADU) > mbtcp.HeaderLen {
+				meaning += readSizes(reqADU[mbtcp.HeaderLen:], respADU[mbtcp.HeaderLen:])
+			}
+			d.Notes = append(d.Notes, service.Note{Kind: "warning", Code: w, Meaning: meaning})
 		}
 	}
+}
+
+// readSizes states the sizes of a register read that does not fit its
+// request, from the bytes themselves.
+func readSizes(req, resp []byte) string {
+	if len(req) < 5 || len(resp) < 2 || req[0] != resp[0] || (req[0] != 3 && req[0] != 4) {
+		return ""
+	}
+	n := int(binary.BigEndian.Uint16(req[3:]))
+	return fmt.Sprintf(" It asked for %d registers (%d bytes); the byte count says %d and %d data bytes follow.", n, 2*n, resp[1], len(resp)-2)
 }
 
 // captureDetail is the detail of a capture's sample (R24): its PDUs from

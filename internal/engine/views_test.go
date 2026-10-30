@@ -10,6 +10,7 @@ import (
 	"net/netip"
 	"os"
 	"slices"
+	"strings"
 	"testing"
 	"time"
 
@@ -293,4 +294,117 @@ func TestQualityView(t *testing.T) {
 	}
 	_ = bytes.MinRead
 	_ = netip.Addr{}
+}
+
+// A response that does not fit its request says so, not the count asked for.
+func TestDetailOfInvalidResponse(t *testing.T) {
+	e := newEngine(t)
+	path := writeTrace(t, "invalid.pcap", tracetest.Options{}, func(b *tracetest.Builder) {
+		c := b.Conn(tracetest.ConnOptions{Server: srv1})
+		c.Request(1, 1, tracetest.ReadRequest(3, 0, 4))
+		c.Response(1, 1, []byte{3, 178, 0x83, 2})
+	})
+	id, _ := importTrace(t, e, nil, path)
+	rows := txns(page(t, e, id, service.Filter{Flags: []string{"invalid_pdu"}}))
+	if len(rows) != 1 || rows[0].Result != "Invalid PDU" {
+		t.Fatalf("%+v", rows)
+	}
+	d, err := e.Detail(context.Background(), id, rows[0].Seq)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(d.Text, "Invalid PDU") {
+		t.Error(d.Text)
+	}
+	want := "It asked for 4 registers (8 bytes); the byte count says 178 and 2 data bytes follow."
+	found := 0
+	for _, n := range d.Notes {
+		if strings.Contains(n.Meaning, want) {
+			found++
+		}
+	}
+	if found != 1 {
+		t.Errorf("%+v", d.Notes)
+	}
+}
+
+// Show values leaves out a response that does not fit its request: its bytes
+// would read as the value of the address.
+func TestHistorySkipsInvalidResponses(t *testing.T) {
+	e := newEngine(t)
+	path := writeTrace(t, "invalid-values.pcap", tracetest.Options{}, func(b *tracetest.Builder) {
+		c := b.Conn(tracetest.ConnOptions{Server: srv1})
+		c.Request(1, 1, tracetest.ReadRequest(3, 10, 2))
+		c.Response(1, 1, []byte{3, 4, 0, 7, 0, 8})
+		c.Request(2, 1, tracetest.ReadRequest(3, 10, 2))
+		c.Response(2, 1, []byte{3, 178, 0x83, 2})
+		c.Request(3, 1, tracetest.ReadRequest(3, 10, 2))
+		c.Response(3, 1, []byte{3, 4, 0, 9, 0, 8})
+	})
+	id, _ := importTrace(t, e, nil, path)
+	points, _ := history(t, e, id, service.HistoryQuery{Server: srv1.String(), Unit: 1, Space: "holding", Address: 10, Every: true})
+	if len(points) != 2 || points[0].Value != 7 || points[1].Value != 9 {
+		t.Errorf("%+v", points)
+	}
+}
+
+func TestReadSizes(t *testing.T) {
+	read := []byte{3, 0, 0, 0, 4}
+	for name, c := range map[string]struct {
+		req, resp []byte
+		want      string
+	}{
+		"registers":      {read, []byte{3, 178, 0x83, 2}, " It asked for 4 registers (8 bytes); the byte count says 178 and 2 data bytes follow."},
+		"short request":  {[]byte{3, 0}, []byte{3, 2, 0, 0}, ""},
+		"short response": {read, []byte{3}, ""},
+		"other function": {read, []byte{4, 2, 0, 0}, ""},
+		"not registers":  {[]byte{1, 0, 0, 0, 4}, []byte{1, 1, 0}, ""},
+	} {
+		if got := readSizes(c.req, c.resp); got != c.want {
+			t.Errorf("%s: %q", name, got)
+		}
+	}
+}
+
+// A copy of a request before its response marks the transaction; a copy after
+// the response is only counted, so the condition offers no filter that selects
+// nothing.
+func TestQualityRetransmissions(t *testing.T) {
+	e := newEngine(t)
+	path := writeTrace(t, "retransmit.pcap", tracetest.Options{}, func(b *tracetest.Builder) {
+		c := b.Conn(tracetest.ConnOptions{Server: srv1})
+		c.Request(1, 1, tracetest.ReadRequest(3, 0, 1))
+		c.Response(1, 1, tracetest.RegistersResponse(3, 1))
+		c.Resend(tracetest.ToClient)
+	})
+	id, _ := importTrace(t, e, nil, path)
+	q, err := e.Quality(context.Background(), id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, c := range q.Conditions {
+		if c.Code == "retransmitted" {
+			if c.Count == 0 || c.Filter != nil {
+				t.Errorf("%+v", c)
+			}
+		}
+	}
+
+	path = writeTrace(t, "retransmit-request.pcap", tracetest.Options{}, func(b *tracetest.Builder) {
+		c := b.Conn(tracetest.ConnOptions{Server: srv1})
+		c.Write(tracetest.ToServer, tracetest.WriteOpts{Retransmit: []int{0}}, tracetest.Frame{TID: 1, Unit: 1, PDU: tracetest.ReadRequest(3, 0, 1)})
+		c.Response(1, 1, tracetest.RegistersResponse(3, 1))
+	})
+	id, _ = importTrace(t, e, nil, path)
+	q, err = e.Quality(context.Background(), id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, c := range q.Conditions {
+		if c.Code == "retransmitted" {
+			if c.Count == 0 || c.Filter == nil || len(txns(page(t, e, id, *c.Filter))) != 1 {
+				t.Errorf("%+v", c)
+			}
+		}
+	}
 }

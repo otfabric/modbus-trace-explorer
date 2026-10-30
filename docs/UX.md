@@ -28,7 +28,7 @@ The reader is an engineer who knows Modbus and probably Wireshark. They want to 
 - **Header** as `BRANDING.md`: Modbus protocol icon, product name, "powered by OT Fabric", theme toggle. There is no LOCAL/BROWSER badge (there is only one mode).
 - **File strip** (R4): the facts of the open trace and the Quality badge; the badge opens the Quality view. Export menu on the right.
 - **Filter bar** (R7): chips for active filters, a text box, a counter, Reset.
-- **Left rail**: the six views. **Center**: the active view. **Right**: the detail pane for the selected row (collapsible with `D`; resizable). The detail pane follows the selection in every view that has rows.
+- **Left rail**: the six views. **Center**: the active view. **Right**: the detail pane for the selected row (a button at the right edge, `D` or the View menu shows or hides it; resizable). The detail pane follows the selection in every view that has rows.
 - **Status bar**: row count, time display mode, cache state, running jobs with a cancel button.
 
 ## 2. Empty state and import
@@ -89,7 +89,7 @@ Write transactions have a copper left border **and** a "W" label (never color al
 | 43 / 14 | `Read device identification (basic, from object 0)` |
 | unknown | `Function 0x41 (user-defined), 12 bytes` |
 
-**Result** column: `62 words`, `16 bits`, `OK`, `Exception 02 Illegal data address`, `No response observed`, `Response without request`, `Ambiguous (2 candidates)`, `Malformed`, `Uncertain (gap)`. Latency in ms with one decimal (µs below 1 ms).
+**Result** column: `62 words`, `16 bits`, `OK`, `Invalid PDU` (the count alone would be the request's, not what came back), `Exception 02 Illegal data address`, `No response observed`, `Response without request`, `Ambiguous (2 candidates)`, `Malformed`, `Uncertain (gap)`. Latency in ms with one decimal (µs below 1 ms).
 
 Sorting: time (default) or latency, ascending/descending. Selecting a row loads the detail pane. Double-click on a row's connection cell filters to that connection; on a device cell, to that device.
 
@@ -109,11 +109,11 @@ Tabs: **Summary**, **Request**, **Response**, **Raw**, **Packets**, **Notes**.
 
 **Conversations** (R9): table of connections (client:port, server:port, epoch, opened, closed, duration, transactions, bytes, role source with a guessed marker, flags). Selecting shows the connection's action history in a compact list (the same rows as the timeline, filtered) and a thin time bar with markers for gaps, resyncs and write bursts.
 
-**Patterns** (R10): table of recurring requests per client > device > unit: function and range, count, median period, min/max, jitter, volatility chip (static, slow, noisy) with its meaning on hover ("share of polls whose response changed: 0.3%"), first/last. Selecting shows the period distribution (histogram) and "Show in timeline". Text explains that a pattern is a repeated identical request, as a poll plan is seen from the wire.
+**Patterns** (R10): table of recurring requests per client > device > unit: function and range, count, median period, min/max, jitter, volatility chip (static, slow, noisy) with its meaning on hover ("share of polls whose response changed: 0.3%"), first/last. Selecting shows the request rate (per second and per minute, over the span of the pattern), the period distribution (histogram) and "Show in timeline". Text explains that a pattern is a repeated identical request, as a poll plan is seen from the wire.
 
-**Addresses** (R11): choose device, unit, data space. Top: coverage strip, a horizontal map of the 0-65535 address space with the observed intervals (reads and writes in different patterns, not only colors), counts on hover, selectable. Bottom: for the selected address or interval, the value history as a step chart with a table below (time, client, raw value in hex/dec/bin, changed marker), write events as vertical marks with the written value and who wrote. Loading shows progress and "Showing 200,000 of at least 1.3 million points - load more". A permanent line: "Shows what was observed on the wire; addresses never read are unknown, not zero."
+**Addresses** (R11): choose device, unit, data space. Top: coverage strip, a horizontal map of the 0-65535 address space with the observed intervals (reads and writes in different patterns, not only colors), counts on hover, selectable. A switch shows the same coverage as pies instead: the share of requests per address block, one pie for reads and one for writes, both with the same eight blocks and colors (the rest fold into "other blocks"), each with a legend. Bottom: for the selected address or interval, the value history (without rows flagged `invalid_pdu`, whose bytes cannot be trusted as values) as a step chart with a table below (time, client, raw value in hex/dec/bin, changed marker), write events as vertical marks with the written value and who wrote. Loading shows progress and "Showing 200,000 of at least 1.3 million points - load more". A permanent line: "Shows what was observed on the wire; addresses never read are unknown, not zero."
 
-**Quality** (R12): a list of conditions with count, one-sentence meaning, severity (info, warning, problem), and "Show in timeline". Includes the capture-level facts (dropped packets reported by the capture, packets with snap length truncation, unsupported encapsulations) and the roles that were guessed. Nothing here is hidden when zero: a zero is shown as "none".
+**Quality** (R12): a list of conditions with count, one-sentence meaning, severity (info, warning, problem), and "Show in timeline" when rows carry the condition (a counter of segments may have none). Includes the capture-level facts (dropped packets reported by the capture, packets with snap length truncation, unsupported encapsulations) and the roles that were guessed. Nothing here is hidden when zero: a zero is shown as "none".
 
 ## 6. Filters and the text grammar (R7)
 

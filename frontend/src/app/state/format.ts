@@ -52,6 +52,14 @@ export function formatDuration(ns: number): string {
   return `${Math.floor(m / 60)} h ${m % 60} min`;
 }
 
+/** Requests per second and per minute over a span: n requests bound n-1 intervals. */
+export function formatRate(requests: number, spanNs: number): string {
+  if (requests < 2 || spanNs <= 0) return '–';
+  const perSecond = (requests - 1) / (spanNs / 1e9);
+  const short = (v: number) => String(Number(v.toPrecision(3)));
+  return `${short(perSecond)}/s · ${short(perSecond * 60)}/min`;
+}
+
 const FUNCTION_NAMES: Record<number, string> = {
   1: 'Read Coils',
   2: 'Read Discrete',

@@ -70,6 +70,8 @@ var flagMeaning = map[string]string{
 var warningMeaning = map[string]string{
 	mbtcp.WarnEmpty:     "The PDU is empty.",
 	mbtcp.WarnTruncated: "The PDU is shorter than its function needs.",
+	mbtcp.WarnMismatch:  "The response does not fit its request.",
+	mbtcp.WarnByteCount: "The byte count is zero, odd, or not the number of bytes that follow it.",
 }
 
 func meaningOfWarning(code string) string {

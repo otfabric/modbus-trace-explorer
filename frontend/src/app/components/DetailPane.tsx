@@ -222,6 +222,16 @@ export function DetailPane({ detail, error, loading, timeMode, firstNs, copy }: 
         {tab === 'Summary' && (
           <>
             <p className="text-fg-strong">{detail.text}</p>
+            {detail.notes
+              .filter((n) => n.kind === 'warning')
+              .map((n) => (
+                <p key={n.code} className="flex gap-2">
+                  <WarningIcon size={14} className="mt-0.5 shrink-0 text-wire" />
+                  <span>
+                    <b className="font-mono text-[12px]">{n.code}</b> {n.meaning}
+                  </span>
+                </p>
+              ))}
             <dl className="grid grid-cols-[max-content_1fr] gap-x-3 gap-y-1 font-mono text-[12px]">
               <dt className="text-muted">time</dt>
               <dd title={`${r.t_ns} ns`}>{formatTime(r.t_ns, timeMode, firstNs)}</dd>

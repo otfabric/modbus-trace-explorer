@@ -290,10 +290,16 @@ func rowDTO(ix *store.Index, i uint32, r store.Row) service.Row {
 	return out
 }
 
+var invalidPDU = store.Flags([]string{model.FlagInvalidPDU})
+
 // resultText is the Result column (UX.md section 3).
 func resultText(r store.Row) string {
 	switch store.StatusNames[r.Status] {
 	case model.StatusOK:
+		// The count is what was asked for, so it says nothing of such a PDU.
+		if r.Flags&invalidPDU != 0 {
+			return "Invalid PDU"
+		}
 		switch {
 		case store.ClassNames[r.Class] == "read" && (r.FC == 1 || r.FC == 2) && r.Count > 0:
 			return strconv.Itoa(int(r.Count)) + " bits"
