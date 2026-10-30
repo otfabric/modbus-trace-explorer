@@ -359,7 +359,7 @@
           "invalid_pdu"
         ],
         "summary": "Read 2 holding registers @ 0",
-        "result": "2 words"
+        "result": "Invalid PDU"
       },
       {
         "seq": 6,
@@ -2787,7 +2787,7 @@
           "invalid_pdu"
         ],
         "summary": "Read 2 holding registers @ 0",
-        "result": "2 words"
+        "result": "Invalid PDU"
       },
       "request": {
         "hex": "000b00000006010300000002",
@@ -2915,7 +2915,7 @@
           }
         ]
       },
-      "text": "10.0.0.10 asked 10.0.0.2:502 unit 1: read 2 holding registers @ 0. It answered in 5.1 ms: 2 words.",
+      "text": "10.0.0.10 asked 10.0.0.2:502 unit 1: read 2 holding registers @ 0. It answered in 5.1 ms: Invalid PDU.",
       "notes": [
         {
           "kind": "flag",
@@ -2930,17 +2930,17 @@
         {
           "kind": "warning",
           "code": "byte_count_mismatch",
-          "meaning": "A rule of the Modbus specification is broken (byte_count_mismatch)."
+          "meaning": "The byte count is zero, odd, or not the number of bytes that follow it."
         },
         {
           "kind": "warning",
           "code": "response_mismatch",
-          "meaning": "A rule of the Modbus specification is broken (response_mismatch)."
+          "meaning": "The response does not fit its request. It asked for 2 registers (4 bytes); the byte count says 9 and 4 data bytes follow."
         },
         {
           "kind": "warning",
           "code": "response_mismatch",
-          "meaning": "A rule of the Modbus specification is broken (response_mismatch)."
+          "meaning": "The response does not fit its request. It asked for 2 registers (4 bytes); the byte count says 9 and 4 data bytes follow."
         }
       ],
       "conn": {

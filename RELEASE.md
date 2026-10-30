@@ -12,10 +12,13 @@ Patterns states the request rate, and Addresses can show coverage as pies. "Show
 ### Added
 
 - Patterns: the request rate of the selected pattern, per second and per minute.
+- Timeline and Conversations: a button at the right edge shows or hides the detail pane, which until now only `D` and the View menu could do.
 - Addresses: a bars/pie switch for coverage; the pies show the share of requests per address block.
 
 ### Fixed
 
+- Addresses: "Show values" read the bytes of invalid responses as register values. It now leaves those rows out; they stay in the timeline under `flag:invalid_pdu`.
+- Timeline: a read whose response breaks a rule or does not fit its request said "4 words", the count asked for. It now says `Invalid PDU`, and the Summary tab states the sizes.
 - Quality: "Show in timeline" led to an empty timeline when a counter had no flagged rows, as with whole TCP segments seen twice.
 
 ---

@@ -337,6 +337,28 @@ describe('App', () => {
     expect(await screen.findByText(/not a pcap or pcapng file/)).toBeInTheDocument();
   });
 
+  it('hides and shows the detail pane with its button and with D', async () => {
+    const user = userEvent.setup();
+    render(<App service={new MockService({ rows: 5000, analyzed: true, step: 1 })} platform={platform(['/x/site.pcapng'])} />);
+    await user.click(screen.getByRole('button', { name: /Open/ }));
+    const grid = await screen.findByRole('grid', { name: 'Timeline' });
+    await waitFor(() => expect(grid).toHaveAttribute('aria-rowcount', '5001'));
+    expect(screen.getByRole('complementary', { name: 'Detail' })).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Hide the detail pane' }));
+    expect(screen.queryByRole('complementary', { name: 'Detail' })).toBeNull();
+    expect(screen.queryByRole('separator', { name: 'Resize the detail pane' })).toBeNull();
+    await user.click(screen.getByRole('button', { name: 'Show the detail pane' }));
+    expect(screen.getByRole('complementary', { name: 'Detail' })).toBeInTheDocument();
+    grid.focus();
+    await user.keyboard('d');
+    expect(screen.getByRole('button', { name: 'Show the detail pane' })).toHaveAttribute('aria-pressed', 'false');
+    await user.keyboard('d');
+    expect(screen.getByRole('button', { name: 'Hide the detail pane' })).toHaveAttribute('aria-pressed', 'true');
+    await user.click(within(screen.getByRole('navigation', { name: 'Views' })).getByRole('button', { name: /Quality/ }));
+    await screen.findByRole('region', { name: 'Conditions' });
+    expect(screen.queryByRole('button', { name: 'Hide the detail pane' })).toBeNull();
+  });
+
   it('resizes the detail pane, and shows background exports and the cache in the status bar', async () => {
     const user = userEvent.setup();
     localStorage.removeItem('modbus-trace-explorer.detail-width');

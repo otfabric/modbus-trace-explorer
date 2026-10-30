@@ -112,5 +112,6 @@ export const SettingsIcon = icon(
     <path d="M12 3v2.5M12 18.5V21M3 12h2.5M18.5 12H21M5.6 5.6l1.8 1.8M16.6 16.6l1.8 1.8M5.6 18.4l1.8-1.8M16.6 7.4l1.8-1.8" />
   </>,
 );
+export const PanelIcon = icon(<path d="M4 5h16v14H4V5ZM15 5v14" />);
 export const FrameIcon = icon(<path d="M5 4h14v16H5V4ZM5 9h14M9 4v5" />);
 export const HexIcon = icon(<path d="M8 7 4 12l4 5M16 7l4 5-4 5M13.5 5l-3 14" />);
