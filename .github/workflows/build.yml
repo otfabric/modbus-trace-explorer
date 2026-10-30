@@ -14,10 +14,13 @@ on:
         required: true
         type: string
 
+permissions:
+  contents: read
+
 # Go: every job uses the current stable release, not the version in go.mod.
 # go.mod names the oldest Go the code builds with; release binaries should
-# carry the newest standard library, and tools installed with "@latest"
-# (govulncheck) need a current Go.
+# carry the newest standard library, and govulncheck v1.9.0 needs Go 1.26
+# or later.
 env:
   GOWORK: "off"
   VERSION: ${{ inputs.version }}
@@ -83,6 +86,7 @@ jobs:
       - run: go vet ./...
       - run: make test
       - run: make coverage-check
+      - run: make fuzz FUZZTIME=10s
       # Coverage to Codecov the way the shared otfabric/.github go-ci.yml
       # does for the libraries (OIDC, no token secret), also when the gate
       # above fails, so the report shows what dropped.
@@ -121,8 +125,7 @@ jobs:
           version: latest
       - name: govulncheck
         run: |
-          go install golang.org/x/vuln/cmd/govulncheck@latest
-          govulncheck ./...
+          go run golang.org/x/vuln/cmd/govulncheck@v1.9.0 ./...
 
   gui:
     name: Desktop ${{ matrix.os }}/${{ matrix.arch }}
