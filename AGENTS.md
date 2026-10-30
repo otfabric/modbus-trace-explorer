@@ -4,7 +4,7 @@ Status (2026-10-18): **v0.2.0 is released; v0.3.0 is ready to release** (`RELEAS
 
 ## Organisation standards
 
-This repository follows **otfabric/engineering policy 1.0**, profile **application** (`.otfabric/policy.yaml`); local exceptions are in `.otfabric/exceptions.yaml`. Where this file and the organisation standards disagree, this file wins for this repository; say so in your report.
+This repository follows **otfabric/engineering policy 1.1**, profile **application** (`.otfabric/policy.yaml`); local exceptions are in `.otfabric/exceptions.yaml`. Where this file and the organisation standards disagree, this file wins for this repository; say so in your report.
 
 ## What this is
 
