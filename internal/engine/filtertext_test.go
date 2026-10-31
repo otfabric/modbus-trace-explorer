@@ -66,9 +66,7 @@ func TestParseFilter(t *testing.T) {
 
 func TestJobsAndEvents(t *testing.T) {
 	e := newEngine(t)
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	events, _ := e.Subscribe(ctx)
+	events, _ := e.Subscribe(t.Context())
 	path := writeTrace(t, "site.pcap", tracetestOptions(), site)
 	info, _ := e.Open(context.Background(), []string{path})
 	ref, err := e.Scan(context.Background(), info.ID)

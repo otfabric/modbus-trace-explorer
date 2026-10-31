@@ -1,4 +1,4 @@
-.PHONY: help all smoke smoke-corpus demo-server fuzz check test coverage coverage-check coverage-clean fmt fmt-check vet lint lint-ci vuln mod-check \
+.PHONY: help all e2e coverage-pkg-check smoke smoke-corpus demo-server fuzz check test coverage coverage-check coverage-clean fmt fmt-check vet lint lint-ci vuln mod-check \
 	frontend frontend-install frontend-check frontend-coverage frontend-urls golden scale build build-gui bundle-macos appicon winres spike dev clean
 
 help: ## This help
@@ -34,10 +34,17 @@ LDFLAGS  = -ldflags "-s -w -X github.com/otfabric/modbus-trace-explorer/internal
 # parts of internal/gui) needs a window and is covered by the frontend tests.
 TEST_PKGS    := ./internal/engine/... ./internal/service/... ./internal/store/... ./internal/buildinfo/... ./internal/applog/... ./internal/schemagen/...
 COVERAGE_MIN := 85
+# Per-package floor (TEST-012): what the weakest package measures now, rounded down.
+COVER_PKG_MIN := 85
 
 all: check build ## Run all checks and build
 
-check: fmt fmt-check mod-check vet lint lint-ci vuln test coverage-check frontend-check ## Run all checks (Go and frontend)
+coverage-pkg-check: coverage-check ## Fail when a package is below COVER_PKG_MIN
+	@awk -v m="$(COVER_PKG_MIN)" 'NR > 1 { n[$$1] = $$2; if ($$3 > 0) h[$$1] = 1 } \
+	END { for (k in n) { p = k; sub(/\/[^\/]*$$/, "", p); s[p] += n[k]; if (k in h) c[p] += n[k] } \
+	for (p in s) { v = 100 * c[p] / s[p]; if (v < m) { printf "%s: %.1f%% < %s%%\n", p, v, m; bad = 1 } } exit bad }' coverage.out
+
+check: fmt fmt-check mod-check vet lint lint-ci vuln test coverage-pkg-check frontend-check ## Run all checks (Go and frontend)
 
 test: ## Run the Go tests with the race detector
 	@echo "Running tests (race detector)"
@@ -124,6 +131,9 @@ winres: ## Regenerate the Windows resources (icon, manifest) linked into the des
 golden: ## Regenerate the test corpus, then the DTO schemas, the engine fixtures and the smoke trace
 	@MTE_UPDATE=1 go test -count=1 -run '^TestCorpus$$' ./internal/corpus
 	@MTE_UPDATE=1 go test -count=1 -run '^(TestSchemasUpToDate|TestEngineFixture|TestCorpusFixtures|TestSmokeTrace)$$' ./internal/engine
+
+e2e: ## The service interface end to end on trace files, as the window drives it
+	@go test -count=1 -race ./e2e/...
 
 fuzz: ## Fuzz the engine with mutated corpus files (FUZZTIME, default 5m)
 	@go test -run '^$$' -fuzz '^FuzzOpen$$' -fuzztime $${FUZZTIME:-5m} ./internal/engine
