@@ -1,0 +1,52 @@
+# Extended tier (otfabric/engineering standards/testing.md#ci-tiers): long
+# fuzzing of the engine, and the scale test and store spike that the fast tier
+# skips. Their make targets set MTE_SCALE and MTE_SPIKE_ROWS, so here those
+# tests cannot skip. A fuzz failure leaves its input in the artifact: commit it
+# with the fix.
+name: Nightly
+run-name: "Nightly on ${{ github.ref_name }}"
+
+on:
+  schedule:
+    - cron: "47 2 * * *"
+  workflow_dispatch:
+    inputs:
+      fuzz-time:
+        description: Fuzz duration
+        required: false
+        default: 10m
+
+permissions:
+  contents: read
+
+env:
+  GOWORK: "off"
+
+jobs:
+  fuzz:
+    name: Fuzz
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version: stable
+      - run: make fuzz FUZZTIME=${{ inputs.fuzz-time || '10m' }}
+      - if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: fuzz-corpus-nightly
+          path: "**/testdata/fuzz/"
+
+  scale:
+    name: Scale and store spike
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version: stable
+      - run: make scale
+      - run: make spike

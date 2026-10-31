@@ -532,7 +532,7 @@ func TestHostileFiles(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		events, _ := e.Subscribe(ctx)
+		events, _ := e.Subscribe(t.Context())
 		_ = events
 		e.wait(ref.ID)
 		res, err := e.ScanResult(ctx, info.ID)

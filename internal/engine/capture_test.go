@@ -31,7 +31,7 @@ func importCapture(t *testing.T, e *Engine, path string) (string, service.JobSta
 	if info.Kind != "capture" || info.Analyzed {
 		t.Fatalf("opened %+v", info)
 	}
-	events, _ := e.Subscribe(ctx)
+	events, _ := e.Subscribe(t.Context())
 	ref, err := e.ImportCapture(ctx, info.ID)
 	if err != nil {
 		t.Fatal(err)
@@ -297,7 +297,7 @@ func TestCaptureImportAndCache(t *testing.T) {
 	if d, err := e.Detail(ctx, cid, 1); err != nil || d.Request == nil {
 		t.Fatalf("detail: %v", err)
 	}
-	events, _ := e.Subscribe(ctx)
+	events, _ := e.Subscribe(t.Context())
 	ref, err = e.ImportCapture(ctx, cid)
 	if err != nil {
 		t.Fatal(err)
@@ -372,7 +372,7 @@ func TestHistoryOfAChangedTrace(t *testing.T) {
 			case "cut":
 				_ = os.WriteFile(path, raw[:len(raw)/3], 0o600)
 			}
-			events, _ := e.Subscribe(ctx)
+			events, _ := e.Subscribe(t.Context())
 			ref, err := e.AddressHistory(ctx, id, service.HistoryQuery{Server: srv1.String(), Unit: 1, Space: "holding", Address: 101})
 			if err != nil {
 				t.Fatal(err)
@@ -472,7 +472,7 @@ func TestQueriesDuringClose(t *testing.T) {
 	}
 	go func() {
 		defer close(done)
-		events, _ := e.Subscribe(ctx)
+		events, _ := e.Subscribe(t.Context())
 		for range 30 {
 			_ = e.Close(ctx, tid)
 			if _, err := e.Open(ctx, []string{path}); err != nil {

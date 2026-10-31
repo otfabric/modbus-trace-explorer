@@ -168,9 +168,7 @@ func key(client, server string, unit, fc uint8, summary string) string {
 // history runs an address history to the end and returns its points.
 func history(t *testing.T, e *Engine, id string, q service.HistoryQuery) ([]service.HistoryPoint, *service.HistoryChunk) {
 	t.Helper()
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	events, _ := e.Subscribe(ctx)
+	events, _ := e.Subscribe(t.Context())
 	ref, err := e.AddressHistory(context.Background(), id, q)
 	if err != nil {
 		t.Fatal(err)
