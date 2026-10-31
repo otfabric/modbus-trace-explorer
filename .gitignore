@@ -28,3 +28,10 @@ go.work.sum
 
 # Local tool settings
 /.claude/
+
+# Build artefacts live in /bin/ and /release/ (otfabric/engineering REPO-005)
+*.test
+coverage.out
+
+# Output of a bare `go build`, anchored so it can never hide a source folder
+/cmd/modbus-trace-explorer/modbus-trace-explorer
