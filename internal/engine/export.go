@@ -398,8 +398,7 @@ func (e *Engine) export(kind, id, path string, write func(ctx context.Context, f
 			if errors.Is(err, context.Canceled) {
 				return "", err
 			}
-			var se *service.Error
-			if errors.As(err, &se) {
+			if _, ok := errors.AsType[*service.Error](err); ok {
 				return "", err
 			}
 			return "", service.Wrap(service.CodeInternal, err, "the export failed")

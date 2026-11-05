@@ -63,8 +63,8 @@ func TestExportMBCAP(t *testing.T) {
 		{"everything", service.MBCAPExport{Exceptions: true, Format: "mbcap"}},
 		{"no exceptions, unit 1, labels", service.MBCAPExport{Filter: service.Filter{Units: []uint8{1}}, Format: "mbcap",
 			Labels: map[string]string{srv1.String() + "/1": "Meter"}}},
-		{"window", service.MBCAPExport{Exceptions: true, Format: "jsonl", Filter: service.Filter{FromNS: ptr(traceStart.Add(3500 * time.Millisecond).UnixNano()),
-			ToNS: ptr(traceStart.Add(8 * time.Second).UnixNano())}}},
+		{"window", service.MBCAPExport{Exceptions: true, Format: "jsonl", Filter: service.Filter{FromNS: new(traceStart.Add(3500 * time.Millisecond).UnixNano()),
+			ToNS: new(traceStart.Add(8 * time.Second).UnixNano())}}},
 		{"change-only csv", service.MBCAPExport{Exceptions: true, ChangeOnly: true, Format: "csv", TickNS: 1000}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -281,7 +281,7 @@ func TestExportRefusals(t *testing.T) {
 			return err
 		}(),
 		"range without space": func() error {
-			_, err := e.ExportTimeline(ctx, id, service.TimelineExport{Filter: service.Filter{Start: ptr[uint16](1)}, Format: "csv"}, out)
+			_, err := e.ExportTimeline(ctx, id, service.TimelineExport{Filter: service.Filter{Start: new(uint16(1))}, Format: "csv"}, out)
 			return err
 		}(),
 		"bad server": func() error {

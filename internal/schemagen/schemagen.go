@@ -12,6 +12,7 @@ import (
 	"encoding"
 	"encoding/json"
 	"fmt"
+	"maps"
 	"net/netip"
 	"reflect"
 	"sort"
@@ -20,12 +21,12 @@ import (
 )
 
 var (
-	timeType      = reflect.TypeOf(time.Time{})
-	addrPortType  = reflect.TypeOf(netip.AddrPort{})
-	addrType      = reflect.TypeOf(netip.Addr{})
-	textMarshaler = reflect.TypeOf((*encoding.TextMarshaler)(nil)).Elem()
+	timeType      = reflect.TypeFor[time.Time]()
+	addrPortType  = reflect.TypeFor[netip.AddrPort]()
+	addrType      = reflect.TypeFor[netip.Addr]()
+	textMarshaler = reflect.TypeFor[encoding.TextMarshaler]()
 	// A type that encodes itself declares its own schema.
-	schemaer = reflect.TypeOf((*Schemaer)(nil)).Elem()
+	schemaer = reflect.TypeFor[Schemaer]()
 )
 
 type gen struct {
@@ -49,9 +50,7 @@ func Generate(id, title, description string, v any) (_ []byte, err error) {
 	g := &gen{defs: map[string]any{}}
 	root := g.schema(reflect.TypeOf(v), false)
 	s := map[string]any{"$schema": "https://json-schema.org/draft/2020-12/schema", "$id": id, "title": title, "description": description}
-	for k, x := range root {
-		s[k] = x
-	}
+	maps.Copy(s, root)
 	if len(g.defs) > 0 {
 		s["$defs"] = g.defs
 	}
@@ -144,8 +143,7 @@ func (g *gen) object(t reflect.Type) map[string]any {
 }
 
 func (g *gen) fields(t reflect.Type, props map[string]any, req *[]string) {
-	for i := 0; i < t.NumField(); i++ {
-		f := t.Field(i)
+	for f := range t.Fields() {
 		tag := f.Tag.Get("json")
 		if tag == "-" {
 			continue

@@ -1,5 +1,17 @@
 # modbus-trace-explorer Releases
 
+## v0.6.0
+
+**Date:** 2026-11-05
+**Previous release:** v0.5.1
+
+### Changed
+
+- Go 1.26 or later is required to build from source (was 1.25). `go fix` modernised the code.
+- Built on go-modbus-trace v0.5.0 (Go 1.26 floor; no change in trace handling).
+
+---
+
 ## v0.5.1
 
 **Date:** 2026-10-31

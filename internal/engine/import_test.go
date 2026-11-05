@@ -340,8 +340,8 @@ func TestFilters(t *testing.T) {
 		"exception":   {service.Filter{Exceptions: []uint8{2}}, 1},
 		"class":       {service.Filter{Classes: []string{"write"}}, 1},
 		"space":       {service.Filter{Space: "coil"}, 3},
-		"address":     {service.Filter{Space: "holding", Start: ptr[uint16](101), End: ptr[uint16](101)}, 5},
-		"any space":   {service.Filter{Start: ptr[uint16](5), End: ptr[uint16](5)}, 4}, // the write @ 5 and the coil reads 0-15
+		"address":     {service.Filter{Space: "holding", Start: new(uint16(101)), End: new(uint16(101))}, 5},
+		"any space":   {service.Filter{Start: new(uint16(5)), End: new(uint16(5))}, 4}, // the write @ 5 and the coil reads 0-15
 		"two terms":   {service.Filter{Servers: []string{"10.0.0.2"}, Functions: []uint8{3}}, 5},
 		"nothing":     {service.Filter{Servers: []string{"10.9.9.9"}}, 0},
 		"no flag":     {service.Filter{NotFlags: []string{"retransmitted"}}, 10},
@@ -362,7 +362,7 @@ func TestFilters(t *testing.T) {
 		t.Errorf("server rows %d", p.Total)
 	}
 	for _, bad := range []service.Filter{{Statuses: []string{"fine"}}, {Classes: []string{"x"}}, {Flags: []string{"x"}},
-		{Space: "attic"}, {Start: ptr[uint16](9), End: ptr[uint16](1)}} {
+		{Space: "attic"}, {Start: new(uint16(9)), End: new(uint16(1))}} {
 		if _, err := e.Timeline(context.Background(), id, service.TimelineQuery{Filter: bad, Limit: 10}); err == nil {
 			t.Errorf("%+v accepted", bad)
 		}
@@ -375,8 +375,6 @@ func TestFilters(t *testing.T) {
 		t.Error("from")
 	}
 }
-
-func ptr[T any](v T) *T { return &v }
 
 // A11: an unchanged trace reopens from the cache; a changed one is new; a
 // moved one keeps its overview and timeline but not its bytes; clearing

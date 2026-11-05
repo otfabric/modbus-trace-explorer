@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"maps"
 	"math"
 	"os"
 	"path/filepath"
@@ -260,9 +261,7 @@ func (w *Writer) Finish(meta Meta, docs map[string]any) error {
 // writeDocs writes the dictionaries and the given JSON documents into dir.
 func (w *Writer) writeDocs(dir string, docs map[string]any) error {
 	all := map[string]any{"devices.json": w.devices, "clients.json": w.clients, "summaries.json": w.summaries, "extra.json": w.extra}
-	for k, v := range docs {
-		all[k] = v
-	}
+	maps.Copy(all, docs)
 	for name, v := range all {
 		if err := writeJSON(filepath.Join(dir, name), v); err != nil {
 			return err

@@ -15,10 +15,10 @@ import (
 // events), and every binding the frontend's Wails adapter calls exists, so
 // a method added on one side only fails here and not at run time.
 func TestBindings(t *testing.T) {
-	app := reflect.TypeOf(&App{})
-	svc := reflect.TypeOf((*service.Service)(nil)).Elem()
-	for i := range svc.NumMethod() {
-		name := svc.Method(i).Name
+	app := reflect.TypeFor[*App]()
+	svc := reflect.TypeFor[service.Service]()
+	for method := range svc.Methods() {
+		name := method.Name
 		if name == "Subscribe" {
 			continue
 		}
