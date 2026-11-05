@@ -168,9 +168,7 @@ func TestQueriesDuringLiveImport(t *testing.T) {
 		stop := make(chan struct{})
 		var wg sync.WaitGroup
 		for range 4 {
-			wg.Add(1)
-			go func() {
-				defer wg.Done()
+			wg.Go(func() {
 				for {
 					select {
 					case <-stop:
@@ -182,7 +180,7 @@ func TestQueriesDuringLiveImport(t *testing.T) {
 					}
 					_, _ = e.Patterns(ctx, info.ID, service.Filter{})
 				}
-			}()
+			})
 		}
 		ref, _ = e.Analyze(ctx, info.ID, service.AnalyzeConfig{Flows: res.Selected, ServerPorts: res.ServerPorts})
 		if cancel {

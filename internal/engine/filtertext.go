@@ -45,7 +45,7 @@ func parseFilter(text string, firstNS int64) service.FilterParse {
 	out := service.FilterParse{Errors: []service.TermError{}}
 	f := &out.Filter
 	fail := func(term, msg string) { out.Errors = append(out.Errors, service.TermError{Term: term, Message: msg}) }
-	for _, term := range strings.Fields(text) {
+	for term := range strings.FieldsSeq(text) {
 		neg := strings.HasPrefix(term, "-")
 		body := strings.TrimPrefix(term, "-")
 		key, val, hasKey := strings.Cut(body, ":")

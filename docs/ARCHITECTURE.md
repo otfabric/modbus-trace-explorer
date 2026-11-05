@@ -220,7 +220,7 @@ Seen working at run time on macOS (WKWebView) by the user on 2026-10-16: a `.pca
 
 | Item | Decision |
 |---|---|
-| Go | `go 1.25.0` as the Explorer (Wails v3 needs it); native runners. Dependencies are pinned at versions that keep 1.25: `golang.org/x/sys` v0.46.0 and `modernc.org/sqlite` v1.53.0 in the spike's test (v1.60 needs Go 1.26) |
+| Go | `go 1.26.0`, the OT Fabric minimum since 2026-11-05 (before: `go 1.25.0` as the Explorer, which Wails v3 needs); native runners. Dependencies were pinned at versions that kept 1.25: `golang.org/x/sys` v0.46.0 and `modernc.org/sqlite` v1.53.0 in the spike's test (v1.60 needs Go 1.26) |
 | Wails | `github.com/wailsapp/wails/v3 v3.0.0-beta.29` pinned (latest v3 tag on 2026-10-15 *(verified in the Explorer's go.mod and the proposal's check)*); `@wailsio/runtime` aligned |
 | Library | `github.com/otfabric/go-modbus-trace` at a tag (v0.1.0) or pseudo-version; `go-modbus-capture` arrives through it (direct import only if the `.mbcap` viewer, R24, is built) |
 | Index | own column files (section 5); `modernc.org/sqlite` v1.53.0 only in the spike's test, to keep the measurement repeatable |

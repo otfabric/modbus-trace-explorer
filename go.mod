@@ -1,6 +1,6 @@
 module github.com/otfabric/modbus-trace-explorer
 
-go 1.25.0
+go 1.26.0
 
 require (
 	github.com/otfabric/go-modbus-capture v0.0.3
