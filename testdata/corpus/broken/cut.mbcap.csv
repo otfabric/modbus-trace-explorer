@@ -1,5 +1,5 @@
 t,at,s,fc,req,resp,id,target,role,label,transport,host,port,unit,serial_device,baud,parity,data_bits,stop_bits,version,tick_ns,wall_start,producer,flags,tags
-header,,,,,,,,,,,,,,,,,,,0.1,1000,2026-10-14T06:58:00Z,modbus-trace-explorer corpus,exceptions,"{""export.admission"":""reads-only/1"",""export.capture_library"":""go-modbus-capture v0.0.3"",""export.library"":""go-modbus-trace 0.1.0"",""provenance"":""corpus export"",""trace.clock"":""packet timestamps"",""trace.file"":""plant.pcapng"",""trace.first_packet"":""2026-10-14T06:58:00Z"",""trace.format"":""pcapng"",""trace.last_packet"":""2026-10-14T07:13:09.74468Z"",""trace.link_types"":""ethernet"",""trace.sha256"":""677866685fab2e9efd9aa43c308655e2624f246996a8aaea6c6431bd7b1ee762""}"
+header,,,,,,,,,,,,,,,,,,,0.1,1000,2026-10-14T06:58:00Z,modbus-trace-explorer corpus,exceptions,"{""export.admission"":""reads-only/1"",""export.capture_library"":""go-modbus-capture v0.1.0"",""export.library"":""go-modbus-trace v0.5.1"",""provenance"":""corpus export"",""trace.clock"":""packet timestamps"",""trace.file"":""plant.pcapng"",""trace.first_packet"":""2026-10-14T06:58:00Z"",""trace.format"":""pcapng"",""trace.last_packet"":""2026-10-14T07:13:09.74468Z"",""trace.link_types"":""ethernet"",""trace.sha256"":""677866685fab2e9efd9aa43c308655e2624f246996a8aaea6c6431bd7b1ee762""}"
 target,,,,,,1,,,PV inverter,tcp,10.20.1.11,502,1,,,,,,,,,,,"{""trace.role_source"":""syn""}"
 stream,,,,,,1,1,passive,client 10.20.0.10,,,,,,,,,,,,,,,
 target,,,,,,2,,,Energy meter,tcp,10.20.1.21,502,1,,,,,,,,,,,"{""trace.role_source"":""syn""}"
@@ -1043,4 +1043,4 @@ s,445839760,1,03,030064000a,03140c4c09150088138901df00030000000008340001,,,,,,,,
 s,445847840,2,03,0320000014,0328090c0910090808fe0905090d090f09160912090a090d0913090d09080919090f091709180908091e,,,,,,,,,,,,,,,,,,,
 s,446825920,1,03,030064000a,03140c2109030087138c01e500030000000008340001,,,,,,,,,,,,,,,,,,,
 s,447816000,1,03,030064000a,03140c2e08fd0087138c01e600030000000008340001,,,,,,,,,,,,,,,,,,,
-s,447846080,2,03,0320000014,03280907090208f808fc0911090a090f090a08fb090b09
+s,447846080,2,03,0320000014,03280907090208f808fc0911090a090f090a08fb090b0

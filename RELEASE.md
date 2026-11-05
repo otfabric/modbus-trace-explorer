@@ -1,5 +1,16 @@
 # modbus-trace-explorer Releases
 
+## v0.6.1
+
+**Date:** 2026-11-05
+**Previous release:** v0.6.0
+
+### Changed
+
+- Built on go-modbus-trace v0.5.1 and go-modbus-capture v0.1.0: MBCAP exports record the go-modbus-trace version actually linked in, instead of `go-modbus-trace 0.1.0` for every version. No other change.
+
+---
+
 ## v0.6.0
 
 **Date:** 2026-11-05
