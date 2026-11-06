@@ -357,6 +357,10 @@ describe('App', () => {
     expect(screen.getByRole('region', { name: `Timeline of connection ${conn}` })).toBeInTheDocument();
     expect(within(screen.getByRole('complementary', { name: 'Detail' })).getByText(/asked/)).toBeInTheDocument();
 
+    // The open connection again keeps the selected row.
+    await user.click(picked);
+    expect(within(screen.getByRole('complementary', { name: 'Detail' })).getByText(/asked/)).toBeInTheDocument();
+
     // Another connection does not show the selected row: the pane lets it go.
     const other = within(conns)
       .getAllByRole('row')

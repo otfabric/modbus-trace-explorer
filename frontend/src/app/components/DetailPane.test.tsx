@@ -45,6 +45,18 @@ describe('DetailPane follows the selected row', () => {
     expect(screen.getByRole('tabpanel', { name: 'Notes' })).toHaveTextContent('Nothing to note.');
   });
 
+  it('highlights a response field in Raw', async () => {
+    const user = userEvent.setup();
+    const d = await service.detail('f', 3);
+    const response = { ...d.response!, hex: '6302000000050003020001', fields: [{ name: 'byte_count', offset: 8, length: 1, value: 2 }] };
+    render(pane({ ...d, response }));
+    await user.click(screen.getByRole('tab', { name: 'Response' }));
+    await user.click(screen.getByText('byte count'));
+    const raw = screen.getByRole('tabpanel', { name: 'Raw' });
+    expect(within(raw).getByRole('button', { name: 'Response byte 8' })).toHaveClass('bg-accent-soft');
+    expect(within(raw).getByRole('button', { name: 'Response byte 9' })).not.toHaveClass('bg-accent-soft');
+  });
+
   it('drops the byte selection of the previous row', async () => {
     const user = userEvent.setup();
     const { rerender } = render(pane(await service.detail('f', 3)));
