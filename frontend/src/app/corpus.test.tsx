@@ -90,7 +90,7 @@ describe.each(Object.entries(fixtures))('corpus fixture %s', (_name, fx) => {
 
   it("renders every row's detail on every tab", () => {
     for (const d of Object.values(fx.details)) {
-      render(<DetailPane detail={d} error={null} loading={false} timeMode="relative" firstNs={fx.overview.first_ns} copy={() => {}} />);
+      render(<DetailPane detail={d} seq={d.row.seq} error={null} loading={false} timeMode="relative" firstNs={fx.overview.first_ns} copy={() => {}} />);
       const tabs = screen.getAllByRole('tab');
       for (const tab of tabs) {
         fireEvent.click(tab);

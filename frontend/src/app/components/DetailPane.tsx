@@ -5,6 +5,8 @@ import { formatLatency, formatTime, type TimeMode } from '../state/format';
 
 interface Props {
   detail: Detail | null;
+  /** The selected row; a detail of another row is the previous one, still loading. */
+  seq: number | null;
   error: string | null;
   loading: boolean;
   timeMode: TimeMode;
@@ -187,8 +189,8 @@ function Packets({ label, adu, timeMode, firstNs, copy }: { label: string; adu: 
 }
 
 /** R6: the selected row in words, fields, bytes, packets and notes. */
-export function DetailPane({ detail, error, loading, timeMode, firstNs, copy }: Props) {
-  const [tab, setTab] = useState<Tab>('Summary');
+export function DetailPane({ detail, seq, error, loading, timeMode, firstNs, copy }: Props) {
+  const [chosen, setTab] = useState<Tab>('Summary');
   const [field, setField] = useState<Field | null>(null);
   if (error) {
     return (
@@ -202,10 +204,19 @@ export function DetailPane({ detail, error, loading, timeMode, firstNs, copy }: 
   }
   const r = detail.row;
   const isTxn = r.kind === 'txn';
+  const stale = seq !== null && r.seq !== seq;
+  const tabs = TABS.filter((t) => isTxn || t === 'Summary' || t === 'Notes');
+  // A tab the row does not have, such as Request on an event, falls back to Summary.
+  const tab = tabs.includes(chosen) ? chosen : 'Summary';
   return (
-    <div className="flex min-h-0 flex-1 flex-col">
-      <div role="tablist" aria-label="Detail" className="flex flex-wrap gap-1 border-b border-line px-2 pt-2">
-        {TABS.filter((t) => isTxn || t === 'Summary' || t === 'Notes').map((t) => (
+    <div className={`flex min-h-0 flex-1 flex-col ${stale ? 'opacity-60' : ''}`} aria-busy={stale}>
+      <p className="px-4 pt-2 font-mono text-[12px] text-muted">
+        row {r.seq}
+        {r.tid !== undefined && ` · TID ${r.tid}`}
+        {stale && ' · loading…'}
+      </p>
+      <div role="tablist" aria-label="Detail" className="flex flex-wrap gap-1 border-b border-line px-2 pt-1">
+        {tabs.map((t) => (
           <button
             key={t}
             role="tab"
@@ -264,8 +275,8 @@ export function DetailPane({ detail, error, loading, timeMode, firstNs, copy }: 
         {tab === 'Response' && <Fields adu={detail.response} selected={field} onSelect={(f) => { setField(f); setTab('Raw'); }} />}
         {tab === 'Raw' && (
           <>
-            <HexDump label="Request" adu={detail.request} highlight={detail.request?.fields.includes(field as Field) ? field : null} copy={copy} />
-            <HexDump label="Response" adu={detail.response} highlight={detail.response?.fields.includes(field as Field) ? field : null} copy={copy} />
+            <HexDump key={`req-${r.seq}`} label="Request" adu={detail.request} highlight={detail.request?.fields.includes(field as Field) ? field : null} copy={copy} />
+            <HexDump key={`resp-${r.seq}`} label="Response" adu={detail.response} highlight={detail.response?.fields.includes(field as Field) ? field : null} copy={copy} />
             {!detail.request?.hex && !detail.response?.hex && <p className="text-muted">The bytes are not available.</p>}
           </>
         )}

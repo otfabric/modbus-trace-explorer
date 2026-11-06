@@ -14,13 +14,16 @@ interface Props {
   firstNs: number;
   fetchPage: (q: TimelineQuery, signal: AbortSignal) => Promise<TimelinePage>;
   selectedSeq: number | null;
-  onSelect: (row: Row) => void;
+  /** The connection of the selected row, which the view opens on. */
+  selectedConn?: number | null;
+  /** A row, or null when another connection is picked and the selected row is no longer shown. */
+  onSelect: (row: Row | null) => void;
 }
 
 /** R9: the TCP connections, and the timeline of the selected one. */
-export function ConversationsView({ service, fileId, filter, timeMode, firstNs, fetchPage, selectedSeq, onSelect }: Props) {
+export function ConversationsView({ service, fileId, filter, timeMode, firstNs, fetchPage, selectedSeq, selectedConn = null, onSelect }: Props) {
   const { data, error, loading } = useLoad(() => service.connections(fileId, filter), [service, fileId, JSON.stringify(filter)]);
-  const [sel, setSel] = useState<number | null>(null);
+  const [sel, setSel] = useState<number | null>(selectedConn);
   if (!data) return <Status loading={loading} error={error} />;
   if (data.length === 0) return <Status loading={false} error={null} empty="No connections match the filter." />;
   const c = data.find((x) => x.id === sel) ?? data[0];
@@ -46,7 +49,14 @@ export function ConversationsView({ service, fileId, filter, timeMode, firstNs, 
           </thead>
           <tbody>
             {data.map((x) => (
-              <SelectRow key={x.id} selected={x === c} onSelect={() => setSel(x.id)}>
+              <SelectRow
+                key={x.id}
+                selected={x === c}
+                onSelect={() => {
+                  setSel(x.id);
+                  if (x !== c) onSelect(null);
+                }}
+              >
                 <td className="text-right">{x.id}</td>
                 <td>{x.client}</td>
                 <td>{x.server}</td>

@@ -1,5 +1,20 @@
 # modbus-trace-explorer Releases
 
+## v0.6.2
+
+**Date:** 2026-11-06
+**Previous release:** v0.6.1
+
+### Fixed
+
+- Detail pane: it names the row it shows (`row 946 · TID 26287`) and dims the previous row until the new one arrives, so a slow detail no longer passes for the selected row.
+- Detail pane: a tab the new row does not have, such as Request after selecting a connection event, left the pane empty. It shows Summary instead.
+- Detail pane: a byte selection in Raw carried over to the next row. It is dropped.
+- Conversations: the view opened on the first connection while the pane showed a row of another one. It opens on the connection of the selected row, and picking another connection clears the selection.
+- Filter bar: the row count kept the timeline's last count when the filter changed on another view, such as "27 rows" after Reset on Addresses. It now counts on every view.
+
+---
+
 ## v0.6.1
 
 **Date:** 2026-11-05
