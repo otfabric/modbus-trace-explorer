@@ -516,6 +516,17 @@ export function App({ service, platform }: AppProps) {
     };
   }, [service, fileId, selected]);
 
+  // The other views do not count rows, so the filter bar's count comes from here.
+  useEffect(() => {
+    if (!fileId || view === 'timeline') return;
+    const ctl = new AbortController();
+    service.timeline(fileId, { filter, order: 'time', desc: false, offset: 0, limit: 1 }, ctl.signal).then(
+      (page) => !ctl.signal.aborted && setTotal(page.total),
+      () => {},
+    );
+    return () => ctl.abort();
+  }, [service, fileId, filter, view, viewsVersion]);
+
   // What the key handler reads without being bound again on every change.
   const keyState = useRef({ selected, detail, locate });
   keyState.current = { selected, detail, locate };
@@ -683,7 +694,8 @@ export function App({ service, platform }: AppProps) {
                   firstNs={firstNs}
                   fetchPage={fetchPage}
                   selectedSeq={selected}
-                  onSelect={(row) => setSelected(row.seq)}
+                  selectedConn={detail !== null && detail.row.seq === selected ? detail.row.conn : null}
+                  onSelect={(row) => setSelected(row?.seq ?? null)}
                 />
               ) : view === 'patterns' ? (
                 <PatternsView service={service} fileId={fileId} filter={filter} timeMode={timeMode} firstNs={firstNs} onShow={show} />
@@ -704,6 +716,7 @@ export function App({ service, platform }: AppProps) {
               >
                 <DetailPane
                   detail={detail}
+                  seq={selected}
                   error={detailError}
                   loading={selected !== null}
                   timeMode={timeMode}

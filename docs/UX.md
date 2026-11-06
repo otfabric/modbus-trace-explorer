@@ -97,17 +97,19 @@ Sorting: time (default) or latency, ascending/descending. Selecting a row loads 
 
 Tabs: **Summary**, **Request**, **Response**, **Raw**, **Packets**, **Notes**.
 
+Above the tabs, the row the pane shows (`row 946 · TID 26287`). Until the detail of a newly selected row arrives, the previous one is dimmed and marked loading. The open tab stays open from row to row; a row without it, such as a connection event without Request, shows Summary. A byte selection in *Raw* belongs to its row and is dropped on the next.
+
 - *Summary*: one paragraph in words ("10.0.3.5 asked 10.0.3.21 unit 1 to read 62 holding registers from address 4096. It answered in 4.2 ms with 62 words."), times (request first/last packet, response first/last), the first values for reads (hex and decimal, up to 16, then "show all" opens the Raw tab at the data).
 - *Request* / *Response*: a table of named fields (name, value, raw bytes, meaning), validation warnings in the warning style. Selecting a field highlights its bytes in *Raw*.
 - *Raw*: hex dump of the whole ADU (MBAP header, then PDU) with offsets and ASCII; header and PDU visually separated; field highlight; click and shift-click select bytes; copy as hex, as space-separated hex or as a C/Python byte string.
 - *Packets*: list of packets that carried the request and the response: frame number (as Wireshark counts), time, interface, file offset, payload range; buttons "Copy frame number" and "Copy Wireshark filter (`frame.number == N`)". Retransmissions that were folded away are mentioned.
-- *Notes*: quality flags with their one-sentence meaning, validation warnings, connection (epoch, how it opened, role source and confidence), and **MBCAP status**: "Will be exported" or "Not exported because: writes are not part of replay data" (reason text from `MBCAP-EXPORT.md`).
+- *Notes*: quality flags with their one-sentence meaning (connection flags such as `midstream` repeat on every row of their connection), validation warnings, connection (epoch, how it opened, role source and confidence), and **MBCAP status**: "Will be exported" or "Not exported because: writes are not part of replay data" (reason text from `MBCAP-EXPORT.md`).
 
 ## 5. Other views
 
 **Devices** (R8): left a tree (server endpoint > unit with transaction counts), right a table for the selection: by-function counts with read/write/exception shares, clients seen (clickable), first/last, rate, bytes, unanswered, latency p50/p95/p99/max with a small histogram. A "Show in timeline" button applies the device as a filter.
 
-**Conversations** (R9): table of connections (client:port, server:port, epoch, opened, closed, duration, transactions, bytes, role source with a guessed marker, flags). Selecting shows the connection's action history in a compact list (the same rows as the timeline, filtered) and a thin time bar with markers for gaps, resyncs and write bursts.
+**Conversations** (R9): table of connections (client:port, server:port, epoch, opened, closed, duration, transactions, bytes, role source with a guessed marker, flags). The view opens on the connection of the selected row; picking another connection clears the selection, since its row is no longer shown. Selecting shows the connection's action history in a compact list (the same rows as the timeline, filtered) and a thin time bar with markers for gaps, resyncs and write bursts.
 
 **Patterns** (R10): table of recurring requests per client > device > unit: function and range, count, median period, min/max, jitter, volatility chip (static, slow, noisy) with its meaning on hover ("share of polls whose response changed: 0.3%"), first/last. Selecting shows the request rate (per second and per minute, over the span of the pattern), the period distribution (histogram) and "Show in timeline". Text explains that a pattern is a repeated identical request, as a poll plan is seen from the wire.
 

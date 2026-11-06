@@ -337,6 +337,47 @@ describe('App', () => {
     expect(await screen.findByText(/not a pcap or pcapng file/)).toBeInTheDocument();
   });
 
+  it('keeps the detail pane and the row count in step with the view', async () => {
+    const user = userEvent.setup();
+    render(<App service={new MockService({ rows: 3000, analyzed: true, step: 0 })} platform={platform(['/x/site.pcapng'])} />);
+    await user.click(screen.getByRole('button', { name: /Open/ }));
+    const grid = await screen.findByRole('grid', { name: 'Timeline' });
+    await waitFor(() => expect(grid).toHaveAttribute('aria-rowcount', '3001'));
+    await user.click(within(grid).getAllByRole('row')[3] as HTMLElement);
+    const pane = screen.getByRole('complementary', { name: 'Detail' });
+    await within(pane).findByText(/asked/);
+    const conn = within(pane).getByText('connection').nextElementSibling?.textContent;
+
+    // Conversations opens on the connection of the selected row.
+    const nav = screen.getByRole('navigation', { name: 'Views' });
+    await user.click(within(nav).getByRole('button', { name: /Conversations/ }));
+    const conns = await screen.findByRole('table', { name: 'Connections' });
+    const picked = conns.querySelector('tr[aria-selected=true]') as HTMLElement;
+    expect(within(picked).getAllByRole('cell')[0]).toHaveTextContent(conn ?? '');
+    expect(screen.getByRole('region', { name: `Timeline of connection ${conn}` })).toBeInTheDocument();
+    expect(within(screen.getByRole('complementary', { name: 'Detail' })).getByText(/asked/)).toBeInTheDocument();
+
+    // The open connection again keeps the selected row.
+    await user.click(picked);
+    expect(within(screen.getByRole('complementary', { name: 'Detail' })).getByText(/asked/)).toBeInTheDocument();
+
+    // Another connection does not show the selected row: the pane lets it go.
+    const other = within(conns)
+      .getAllByRole('row')
+      .find((r) => r.getAttribute('aria-selected') === 'false') as HTMLElement;
+    await user.click(other);
+    expect(await within(screen.getByRole('complementary', { name: 'Detail' })).findByText('Select a row.')).toBeInTheDocument();
+
+    // A filter set on another view updates the row count in the filter bar.
+    await user.click(within(nav).getByRole('button', { name: /Devices/ }));
+    await screen.findByRole('table', { name: 'Devices' });
+    expect(screen.getAllByText('3,000 rows')).toHaveLength(2);
+    await user.type(screen.getByRole('textbox', { name: 'Filter' }), 'class:write{Enter}');
+    // Both the filter bar and the status bar.
+    await waitFor(() => expect(screen.queryAllByText('3,000 rows')).toHaveLength(0));
+    expect(screen.getAllByText(/^[\d,]+ rows$/)).toHaveLength(2);
+  });
+
   it('hides and shows the detail pane with its button and with D', async () => {
     const user = userEvent.setup();
     render(<App service={new MockService({ rows: 5000, analyzed: true, step: 1 })} platform={platform(['/x/site.pcapng'])} />);
