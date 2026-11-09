@@ -15,7 +15,7 @@ Thank you for your interest in contributing. Read [`AGENTS.md`](AGENTS.md) first
 ### Build & Test
 
 ```sh
-make frontend-install       # once: npm ci
+make frontend-install       # optional: the build and check targets run npm ci when needed
 make check                  # format, vet, lint, vulnerability scan, race tests, coverage gate, frontend checks
 make build-gui               # ./bin/modbus-trace-explorer
 cd frontend && npm run dev  # the user interface over the mock Service, in a browser

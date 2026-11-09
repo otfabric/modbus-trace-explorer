@@ -210,7 +210,7 @@ Settings (`Ctrl/Cmd+,`) hold the time display, extra server ports for the Flows 
 Start with [AGENTS.md](AGENTS.md), then [docs/REQUIREMENTS.md](docs/REQUIREMENTS.md), [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), [docs/UX.md](docs/UX.md), [docs/BRANDING.md](docs/BRANDING.md) and [docs/PROPOSAL-REVIEW.md](docs/PROPOSAL-REVIEW.md). `modbus-capture-claude-proposal.md` is the superseded original proposal. Releases are described in [RELEASE.md](RELEASE.md).
 
 ```sh
-make frontend-install    # once: npm ci
+make frontend-install    # optional: the build and check targets run npm ci when needed
 make check               # Go and frontend checks
 make build-gui           # ./bin/modbus-trace-explorer (cgo; the platform's webview)
 make bundle-macos        # macOS: bin/Modbus Trace Explorer.app with its icon, ad-hoc signed;
