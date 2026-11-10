@@ -1,5 +1,24 @@
 # modbus-trace-explorer Releases
 
+## v0.6.3
+
+**Date:** 2026-11-10
+**Previous release:** v0.6.2
+
+### Fixed
+
+- **Traces captured on the sending host keep all their Modbus traffic** (go-modbus-trace v0.8.1). With TCP segmentation offload, a capture taken on the host that sends (a SCADA or HMI client recording its own traffic) holds IPv4 packets whose total length is 0; they were dropped as `bad_header`, so the timeline showed gaps, unanswered requests or orphan responses that were not on the wire. They are now read at their captured length, as Wireshark does, and the capture facts list them under *offload* (not a problem).
+
+### Changed
+
+- The scan and overview schemas and the trace summary carry `tso_segments`. MBCAP exports record go-modbus-trace v0.8.1.
+
+### Dependencies
+
+go-modbus-trace v0.8.1 (was v0.5.1; its other changes since v0.5.1 concern `mbtracectl` only).
+
+---
+
 ## v0.6.2
 
 **Date:** 2026-11-06

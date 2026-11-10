@@ -107,6 +107,14 @@ function CaptureFacts({ ov }: { ov: Overview }) {
             <dd>{truncated ? formatCount(truncated) : 'none'}</dd>
             <dt className="text-muted">capture drops</dt>
             <dd>{s.capture_drops ? formatCount(s.capture_drops) : 'none reported'}</dd>
+            {s.tso_segments ? (
+              <>
+                <dt className="text-muted">offload</dt>
+                <dd title="Captured on the sending host before TCP segmentation offload filled in the IPv4 length; read at their captured length, as Wireshark does. Not a problem.">
+                  {formatCount(s.tso_segments)} packets without IPv4 length
+                </dd>
+              </>
+            ) : null}
             <dt className="text-muted">unsupported</dt>
             <dd>{unsupported.length ? unsupported.map(([k, n]) => `${k} ${formatCount(n)}`).join(', ') : 'none'}</dd>
             <dt className="text-muted">SHA-256</dt>

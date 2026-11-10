@@ -102,7 +102,8 @@
         "foreign_protocol": 0,
         "snaplen_truncated": 0
       },
-      "time_backwards": 0
+      "time_backwards": 0,
+      "tso_segments": 0
     },
     "flows": [
       {
@@ -292,6 +293,7 @@
         "snaplen_truncated": 0
       },
       "time_backwards": 0,
+      "tso_segments": 0,
       "transactions": {
         "exception": 1,
         "ok": 9
@@ -2804,7 +2806,7 @@
     "format": "mbcap",
     "report": {
       "schema_version": 1,
-      "library": "go-modbus-trace v0.5.1",
+      "library": "go-modbus-trace v0.8.1",
       "capture_library": "go-modbus-capture v0.1.0",
       "format": "MBCAP draft 0.1",
       "inputs": [

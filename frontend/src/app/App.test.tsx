@@ -280,6 +280,17 @@ describe('App', () => {
     expect(document.activeElement).toBe(pane);
   });
 
+  it('lists no offload row in the capture facts of a trace without such packets', async () => {
+    const user = userEvent.setup();
+    render(<App service={new MockService({ rows: 100, analyzed: true, step: 1, tso: 0 })} platform={platform(['/x/site.pcapng'])} />);
+    await user.click(screen.getByRole('button', { name: /Open/ }));
+    await screen.findByRole('grid', { name: 'Timeline' });
+    await user.click(screen.getByRole('button', { name: 'Capture facts' }));
+    const facts = await screen.findByRole('dialog', { name: 'Capture facts' });
+    expect(within(facts).getByText(/not_tcp 12/)).toBeInTheDocument();
+    expect(within(facts).queryByText('offload')).not.toBeInTheDocument();
+  });
+
   it('filters with the controls, shows capture facts, selects raw bytes, and answers the menu', async () => {
     const user = userEvent.setup();
     render(<App service={new MockService({ rows: 3000, analyzed: true, step: 1 })} platform={platform(['/x/site.pcapng'])} />);
@@ -298,6 +309,7 @@ describe('App', () => {
     const facts = await screen.findByRole('dialog', { name: 'Capture facts' });
     expect(within(facts).getByText(/9f2c4e0d/)).toBeInTheDocument();
     expect(within(facts).getByText(/not_tcp 12/)).toBeInTheDocument();
+    expect(within(facts).getByText('15 packets without IPv4 length')).toBeInTheDocument();
     await user.keyboard('{Escape}');
 
     await user.click(within(grid).getAllByRole('row')[2] as HTMLElement);
