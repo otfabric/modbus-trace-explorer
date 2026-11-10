@@ -359,7 +359,7 @@ export class MockService implements Service {
         file: this.paths[0]?.split('/').pop() ?? '', format: 'pcapng', gzip: false, input_bytes: this.rows * 190, bytes: this.rows * 170,
         packets: this.rows * 2 + 40,
         interfaces: [{ ...(sum.interfaces[0] as FileSummary['interfaces'][number]), id: 0, part: 0, link: 'ethernet', snaplen: 262144, name: 'eth0', packets: this.rows * 2 }],
-        connections: { ...sum.connections, total: 4, midstream: 0, evicted: 0 }, unsupported: { not_tcp: 12 },
+        connections: { ...sum.connections, total: 4, midstream: 0, evicted: 0 }, unsupported: { not_tcp: 12 }, tso_segments: 15,
         sha256: '9f2c4e0d7a1b3c5e8f6a2d4b1c3e5f7a9b0c2d4e6f8a1b3c5d7e9f0a2b4c6d8e',
       },
       flows: [

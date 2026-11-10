@@ -100,7 +100,8 @@
         "foreign_protocol": 1,
         "snaplen_truncated": 0
       },
-      "time_backwards": 0
+      "time_backwards": 0,
+      "tso_segments": 0
     },
     "flows": [
       {
@@ -247,6 +248,7 @@
         "snaplen_truncated": 0
       },
       "time_backwards": 0,
+      "tso_segments": 0,
       "transactions": {
         "ambiguous": 2,
         "exception": 1,

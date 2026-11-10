@@ -103,6 +103,8 @@ export interface FileSummary {
   unsupported: Record<string, number>;
   transactions?: Record<string, number>;
   capture_drops?: number;
+  /** IPv4 packets with a total length of 0 (captured before segmentation offload filled it in), taken at their captured length. */
+  tso_segments?: number;
   sha256: string;
   error?: string;
 }

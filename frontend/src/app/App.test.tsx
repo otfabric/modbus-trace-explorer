@@ -298,6 +298,7 @@ describe('App', () => {
     const facts = await screen.findByRole('dialog', { name: 'Capture facts' });
     expect(within(facts).getByText(/9f2c4e0d/)).toBeInTheDocument();
     expect(within(facts).getByText(/not_tcp 12/)).toBeInTheDocument();
+    expect(within(facts).getByText('15 packets without IPv4 length')).toBeInTheDocument();
     await user.keyboard('{Escape}');
 
     await user.click(within(grid).getAllByRole('row')[2] as HTMLElement);
