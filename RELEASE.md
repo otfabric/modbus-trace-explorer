@@ -1,5 +1,23 @@
 # modbus-trace-explorer Releases
 
+## v0.7.0
+
+**Date:** 2026-11-14
+**Previous release:** v0.6.4
+
+Moves to go-modbus-trace v0.9.0 (was v0.8.5) and go-modbus-capture v0.2.2 (was v0.2.1). Some analysis results change; the application's own functions do not.
+
+### Changed
+
+- Built on go-modbus-trace v0.9.0 (go-modbus-trace RELEASE.md, v0.9.0, and v0.8.6 and v0.8.7 before it). For the application this means:
+  - A response after a gap in the request direction that pairs with a request waiting from before the gap is marked uncertain (`gap_adjacent`), where it was shown as answered.
+  - A read whose address range ends beyond 65535 is shown as an invalid PDU.
+  - An analysis keeps at most 64 MiB of state for requests that wait for a response; past it the oldest are decided unanswered earlier. At most 65,536 interfaces and 65,536 sections of one file are read, and at most 1,000,000 flows are listed. The summary counts what a limit left out.
+  - The time to analyse a trace with many IP fragments or out-of-order segments grows with their bytes, not with the square of their number.
+- Built on go-modbus-capture v0.2.2 (go-modbus-capture RELEASE.md, v0.2.2). An exported MBCAP capture names these versions in its header, and a data block of an exported file ends after 65,536 samples at the latest.
+
+---
+
 ## v0.6.4
 
 **Date:** 2026-11-14
