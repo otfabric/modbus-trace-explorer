@@ -76,7 +76,8 @@
         "unknown_blocks": 0,
         "bad_options": 0,
         "other_frames": 0,
-        "truncated_tail": false
+        "truncated_tail": false,
+        "bad_timestamps": 0
       },
       "connections": {
         "total": 2,
@@ -84,7 +85,8 @@
         "evicted": 0,
         "superseded": 0,
         "max_tracked": 2,
-        "packets_after_close": 2
+        "packets_after_close": 2,
+        "flows_dropped": 0
       },
       "quality": {
         "retransmitted": 0,
@@ -96,6 +98,7 @@
         "gap_bytes": 0,
         "reassembly_overflow": 0,
         "reassembly_budget": 0,
+        "analysis_budget": 0,
         "resyncs": 0,
         "resync_failed": 0,
         "junk_bytes": 0,
@@ -266,7 +269,8 @@
         "unknown_blocks": 0,
         "bad_options": 0,
         "other_frames": 0,
-        "truncated_tail": false
+        "truncated_tail": false,
+        "bad_timestamps": 0
       },
       "connections": {
         "total": 2,
@@ -274,7 +278,8 @@
         "evicted": 0,
         "superseded": 0,
         "max_tracked": 2,
-        "packets_after_close": 2
+        "packets_after_close": 2,
+        "flows_dropped": 0
       },
       "quality": {
         "retransmitted": 0,
@@ -286,6 +291,7 @@
         "gap_bytes": 0,
         "reassembly_overflow": 0,
         "reassembly_budget": 0,
+        "analysis_budget": 0,
         "resyncs": 0,
         "resync_failed": 0,
         "junk_bytes": 0,
@@ -2806,8 +2812,8 @@
     "format": "mbcap",
     "report": {
       "schema_version": 1,
-      "library": "go-modbus-trace v0.8.5",
-      "capture_library": "go-modbus-capture v0.2.1",
+      "library": "go-modbus-trace v0.9.0",
+      "capture_library": "go-modbus-capture v0.2.2",
       "format": "MBCAP draft 0.1",
       "inputs": [
         {
