@@ -1,5 +1,20 @@
 # modbus-trace-explorer Releases
 
+## v0.6.4
+
+**Date:** 2026-11-14
+**Previous release:** v0.6.3
+
+No change to the application.
+
+### Changed
+
+- Built on go-modbus-trace v0.8.5 (was v0.8.1) and go-modbus-capture v0.2.1 (was v0.1.0). An exported MBCAP capture names these versions in its header.
+- The test corpus (`testdata/corpus/`) and the engine fixture of the frontend tests are regenerated with `make golden`: only those two versions in the export headers differ.
+- CI: otfabric/engineering policy 1.6, the shared actions v3.8.0, and one pull request workflow with a single required check.
+
+---
+
 ## v0.6.3
 
 **Date:** 2026-11-10
