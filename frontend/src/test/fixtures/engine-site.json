@@ -2806,8 +2806,8 @@
     "format": "mbcap",
     "report": {
       "schema_version": 1,
-      "library": "go-modbus-trace v0.8.1",
-      "capture_library": "go-modbus-capture v0.1.0",
+      "library": "go-modbus-trace v0.8.5",
+      "capture_library": "go-modbus-capture v0.2.1",
       "format": "MBCAP draft 0.1",
       "inputs": [
         {

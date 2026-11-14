@@ -40,3 +40,15 @@ No devices and no network: Go tests build their traces with go-modbus-trace's `t
 ## Replaying a failure
 
 A failing fuzz input lands in `internal/engine/testdata/fuzz/FuzzOpen/`. Commit it with the fix: `go test ./internal/engine` replays it. `scripts/smoke_corpus.py` prints the application's whole output on failure and takes `--only SUBSTRING` and `--repeat N`.
+
+## When CI runs
+
+| Event | Workflow | What runs |
+|---|---|---|
+| Pull request | `pr.yml` | `policy.yml` (otfabric-policy) always; `ci.yml` unless every changed file is documentation; then `OT Fabric Required Checks` |
+| Push to a branch | none | nothing; dispatch `ci.yml` to test a branch without a pull request |
+| Push to `main` | `policy.yml` | the light checks; the merged commit was tested as the pull request's merge commit |
+| Schedule | `nightly.yml` | the scheduled runs, on `main` |
+| Release | `release.yml` | the release workflow tests the release commit again |
+
+Documentation means an added or modified `*.md` file outside `.github/`, `testdata/` and `vendor/`, other than `AGENTS.md` and `CLAUDE.md`. A deleted or renamed document, or any other file, runs everything. `OT Fabric Required Checks` fails unless every job that applies succeeded; its summary lists them.
