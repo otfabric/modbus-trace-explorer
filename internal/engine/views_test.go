@@ -406,3 +406,26 @@ func TestQualityRetransmissions(t *testing.T) {
 		}
 	}
 }
+
+// A histogram counts every duration once, and each bucket ends after it
+// starts, up to the largest duration.
+func TestDistributionBounds(t *testing.T) {
+	for _, maxNS := range []int64{1, 2, 1<<62 - 1, 1 << 62, 1<<62 + 1, math.MaxInt64 - 1, math.MaxInt64} {
+		for _, ns := range [][]int64{{maxNS}, {1, maxNS}, {0, 1000, maxNS / 2, maxNS}} {
+			d := distribution(slices.Clone(ns))
+			var n uint64
+			for _, b := range d.Histogram {
+				if b.HiNS <= b.LoNS {
+					t.Errorf("max %d: bucket %+v ends before it starts", maxNS, b)
+				}
+				n += b.Count
+			}
+			if n != d.Count || d.Count != uint64(len(ns)) {
+				t.Errorf("max %d: the buckets hold %d of %d durations: %+v", maxNS, n, d.Count, d.Histogram)
+			}
+			if last := d.Histogram[len(d.Histogram)-1]; last.HiNS < maxNS {
+				t.Errorf("max %d: the last bucket ends at %d", maxNS, last.HiNS)
+			}
+		}
+	}
+}

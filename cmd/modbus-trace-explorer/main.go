@@ -177,7 +177,9 @@ func run(args []string) error {
 			g.Width, g.Height = geo.Width, geo.Height // keep the size it restores to
 		}
 		if err := gui.SaveGeometry(config, g); err != nil {
-			log.Warn("cannot remember the window size", "err", err)
+			// No path at info level (R23): the error's paths are in the debug line.
+			log.Warn("cannot remember the window size", applog.Err(err))
+			log.Debug("cannot remember the window size", "err", err)
 		}
 	})
 	if err := app.Run(); err != nil {

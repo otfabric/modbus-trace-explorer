@@ -5,6 +5,7 @@ package engine
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -13,6 +14,7 @@ import (
 	"time"
 
 	"github.com/otfabric/modbus-trace-explorer/internal/service"
+	"github.com/otfabric/modbus-trace-explorer/internal/store"
 )
 
 const corpusDir = "../../testdata/corpus"
@@ -178,10 +180,132 @@ func runCorpusFile(t testing.TB, e *Engine, paths ...string) outcome {
 	if _, err := e.Diagnostics(ctx, info.ID); err != nil {
 		return fail("diagnostics", err)
 	}
+	if err := invariants(ctx, e, info.ID, ov); err != nil {
+		t.Errorf("%s: %v", strings.Join(paths, ", "), err)
+	}
 	if err := e.Close(ctx, info.ID); err != nil {
 		return fail("close", err)
 	}
 	return out
+}
+
+// invariants checks what holds for the index of any input: the overview,
+// the index and the timeline agree on the row count in every order; each
+// order is a permutation of the rows, sorted by its key and then by row;
+// the timeline's totals of a status, in time and in latency order and from
+// either end, are the numbers of its rows and of those with a latency; a
+// time split parts the rows; and every frame reference of a trace decodes
+// and names a frame of one of its files.
+func invariants(ctx context.Context, e *Engine, id string, ov service.Overview) error {
+	_, ix, release, err := e.index(id)
+	if err != nil {
+		return err
+	}
+	defer release()
+	n := ix.Rows()
+	if ov.Rows != n {
+		return fmt.Errorf("the overview has %d rows, the index %d", ov.Rows, n)
+	}
+	key := [...]func(r store.Row) int64{
+		store.ByTime:    func(r store.Row) int64 { return r.TimeNS },
+		store.ByLatency: func(r store.Row) int64 { return int64(r.LatUS) },
+	}
+	for order, key := range key {
+		sel, err := ix.Select(ctx, &store.Filter{}, store.Order(order))
+		if err != nil {
+			return err
+		}
+		if sel.Len() != n {
+			return fmt.Errorf("order %d holds %d of %d rows", order, sel.Len(), n)
+		}
+		seen := make([]bool, n)
+		var prev uint32
+		for k := range n {
+			i := sel.At(k, false)
+			if uint64(i) >= n || seen[i] {
+				return fmt.Errorf("order %d: rank %d is row %d, past the end or again", order, k, i)
+			}
+			seen[i] = true
+			if k > 0 {
+				a, b := key(ix.Row(prev)), key(ix.Row(i))
+				if a > b || a == b && prev > i {
+					return fmt.Errorf("order %d: row %d (%d) before row %d (%d)", order, prev, a, i, b)
+				}
+			}
+			prev = i
+		}
+	}
+	// The rows of each status, and of those the ones with a latency (the
+	// latency order holds only transactions with one); index 0 counts
+	// every row and every transaction with a latency.
+	var rows, timed [len(store.StatusNames)]uint64
+	for i := range n {
+		r := ix.Row(uint32(i))
+		rows[0]++
+		if r.Kind != store.KindTxn || int(r.Status) >= len(rows) {
+			continue
+		}
+		lat := uint64(0)
+		if r.LatUS != store.NoLatency {
+			lat = 1
+		}
+		timed[0] += lat
+		if r.Status != 0 {
+			rows[r.Status]++
+			timed[r.Status] += lat
+		}
+	}
+	// totals returns the timeline's totals of a filter in time and in
+	// latency order, the same from either end.
+	totals := func(f service.Filter) (byTime, byLatency uint64, err error) {
+		var got [4]uint64
+		for k, q := range []service.TimelineQuery{{Order: "time"}, {Order: "time", Desc: true}, {Order: "latency"}, {Order: "latency", Desc: true}} {
+			q.Filter, q.Limit = f, 1
+			p, err := e.Timeline(ctx, id, q)
+			if err != nil {
+				return 0, 0, err
+			}
+			got[k] = p.Total
+		}
+		if got[0] != got[1] || got[2] != got[3] {
+			return 0, 0, fmt.Errorf("filter %+v: totals %v ascending and descending", f, got)
+		}
+		return got[0], got[2], nil
+	}
+	for s, name := range store.StatusNames {
+		f := service.Filter{}
+		if name != "" {
+			f.Statuses = []string{name}
+		}
+		byTime, byLatency, err := totals(f)
+		if err != nil || byTime != rows[s] || byLatency != timed[s] {
+			return fmt.Errorf("status %q: timeline totals %d and %d, rows %d and %d: %v", name, byTime, byLatency, rows[s], timed[s], err)
+		}
+	}
+	if n > 0 {
+		mid := ix.Row(uint32(n / 2)).TimeNS
+		before, _, err1 := totals(service.Filter{ToNS: &mid})
+		after, _, err2 := totals(service.Filter{FromNS: &mid})
+		if err := errors.Join(err1, err2); err != nil || before+after != n {
+			return fmt.Errorf("a time split at %d parts %d rows into %d and %d: %v", mid, n, before, after, err)
+		}
+	}
+	if ov.Summary == nil {
+		return nil // a capture: no frame references
+	}
+	parts := max(1, len(ov.Summary.Inputs))
+	for i := range n {
+		req, resp, err := ix.Refs(ix.Row(uint32(i)))
+		if err != nil {
+			return fmt.Errorf("row %d: %v", i, err)
+		}
+		for _, f := range append(req, resp...) {
+			if f.Frame < 1 || f.Frame > ov.Summary.Packets || int(f.Part) >= parts {
+				return fmt.Errorf("row %d names frame %d of part %d; the trace has %d packets in %d files", i, f.Frame, f.Part, ov.Summary.Packets, parts)
+			}
+		}
+	}
+	return nil
 }
 
 // The corpus (testdata/corpus): every file is taken as its manifest says,

@@ -161,7 +161,7 @@ func (e *Engine) ImportCapture(_ context.Context, id string) (service.JobRef, er
 }
 
 func (e *Engine) importCapture(ctx context.Context, t *openTrace, j *job) (string, error) {
-	path := t.data[0]
+	path := t.paths()[0]
 	enc := captureEncoding(path)
 	r, closer, cnt, err := openCapture(path, enc)
 	if err != nil {
@@ -234,11 +234,23 @@ read:
 		case capture.End:
 			facts.EndKnown = x.Known
 		case capture.Sample:
+			// A sample's time is the header's start plus its ticks; the
+			// timeline holds times as nanoseconds since 1970 in 64 bits
+			// (1678 to 2262). A sample past that range cannot be placed on
+			// it: it is left out, counted, and the import says so.
+			at := h.Time(x.At)
+			if at.Before(minTime) || at.After(maxTime) {
+				facts.OutOfRange++
+				continue
+			}
 			// The readers check that a sample's stream and target were
 			// defined before it (a capture's invariants).
 			st := streams[x.Stream]
 			tg := targets[st.Target]
 			row, err := sampleRow(w, h, tg, st, x)
+			if le := limitError(err); le != nil {
+				return fail(le)
+			}
 			if err != nil {
 				return fail(service.Wrap(service.CodeInternal, err, "cannot write the analysis cache"))
 			}
@@ -246,6 +258,9 @@ read:
 				return fail(service.Wrap(service.CodeUnavailable, err, "cannot write the analysis cache"))
 			}
 			if err := w.Append(row, nil, nil); err != nil {
+				if le := limitError(err); le != nil {
+					return fail(le)
+				}
 				return fail(service.Wrap(service.CodeInternal, err, "cannot write the analysis cache"))
 			}
 			facts.Samples++
@@ -261,7 +276,6 @@ read:
 				conns[x.Stream] = c
 				order = append(order, x.Stream)
 			}
-			at := h.Time(x.At)
 			if c.First == nil {
 				c.First = &at
 			}
@@ -273,6 +287,16 @@ read:
 	if err := pd.close(); err != nil {
 		_ = w.Abort()
 		return "", service.Wrap(service.CodeUnavailable, err, "cannot write the analysis cache")
+	}
+	if facts.OutOfRange > 0 {
+		left := fmt.Sprintf("%d samples lie after the last time the timeline can show (2262-04-11) and are left out", facts.OutOfRange)
+		if facts.OutOfRange == 1 {
+			left = "1 sample lies after the last time the timeline can show (2262-04-11) and is left out"
+		}
+		if warning != "" {
+			left = warning + "; " + left
+		}
+		warning = left
 	}
 	j.progress("index", total, total, w.Rows())
 	list := make([]model.Connection, 0, len(order))
@@ -297,7 +321,14 @@ read:
 	return warning, nil
 }
 
+// The times a row can hold: nanoseconds since 1970 in an int64.
+var (
+	minTime = time.Unix(0, math.MinInt64)
+	maxTime = time.Unix(0, math.MaxInt64)
+)
+
 // sampleRow is the index row of a sample: a transaction of its stream.
+// The sample's time lies within minTime..maxTime.
 func sampleRow(w *store.Writer, h capture.Header, tg capture.Target, st capture.Stream, s capture.Sample) (store.Row, error) {
 	r := store.Row{Kind: store.KindTxn, TimeNS: h.Time(s.At).UnixNano(), Conn: s.Stream, Sub: store.NoSub, LatUS: store.NoLatency}
 	var err error

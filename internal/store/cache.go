@@ -173,7 +173,8 @@ func (c *Cache) LiveDir(fp string, k int) string {
 }
 
 // Hold marks an entry (a fingerprint's index and its decompressed trace)
-// as in use until the returned release is called: it is not evicted.
+// as in use until the returned release is called: it is not evicted or
+// cleared, also when it is larger than the cap.
 func (c *Cache) Hold(fp string) func() {
 	c.mu.Lock()
 	c.inUse[fp]++
@@ -242,11 +243,36 @@ func (c *Cache) entries() []entry {
 		if name == "index.json" || strings.HasSuffix(name, ".partial") || strings.Contains(name, ".live-") {
 			continue
 		}
-		fp := strings.TrimPrefix(strings.TrimPrefix(name, "ix-"), "gz-")
-		fp = strings.TrimSuffix(fp, filepath.Ext(fp))
-		out = append(out, entry{name: name, fp: fp, size: diskSize(filepath.Join(c.root, name)), used: idx.Entries[name].LastUsed})
+		out = append(out, entry{name: name, fp: entryKey(name), size: diskSize(filepath.Join(c.root, name)), used: idx.Entries[name].LastUsed})
 	}
 	return out
+}
+
+// entryKey is the fingerprint an entry is held by (Hold): ix-<fp> for an
+// index, gz-<fp>-<part>.<ext> for the decompressed copy of part <part> of
+// trace <fp> (Decompress).
+func entryKey(name string) string {
+	if fp, ok := strings.CutPrefix(name, "ix-"); ok {
+		return fp
+	}
+	fp := strings.TrimPrefix(name, "gz-")
+	fp = strings.TrimSuffix(fp, filepath.Ext(fp))
+	if i := strings.LastIndexByte(fp, '-'); i > 0 && digits(fp[i+1:]) {
+		fp = fp[:i]
+	}
+	return fp
+}
+
+func digits(s string) bool {
+	if s == "" {
+		return false
+	}
+	for _, r := range s {
+		if r < '0' || r > '9' {
+			return false
+		}
+	}
+	return true
 }
 
 func diskSize(path string) int64 {
@@ -360,8 +386,9 @@ func (c *Cache) RemoveCopy(path string) error {
 }
 
 // Decompress writes the decompressed copy of a gzip trace into the cache
-// (an entry of its own, named by fp) and returns its path; an existing
-// copy is reused. Before it starts it checks that the expected size (from
+// and returns its path; an existing copy is reused. fp names the copy:
+// <fingerprint>-<part> for part <part> of a trace, so that Hold of the
+// trace's fingerprint holds it with the trace's index (entryKey). Before it starts it checks that the expected size (from
 // the gzip trailer, at least four times the compressed size) leaves
 // FreeMargin free; while it writes it stops as soon as the disk's free
 // space would fall below FreeMargin (a gzip bomb ends there).

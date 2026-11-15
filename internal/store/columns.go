@@ -19,7 +19,11 @@ import (
 
 // FormatVersion changes whenever the layout of an index directory changes;
 // a directory of another version is rebuilt.
-const FormatVersion = 2 // 2: bytes and resp_hash columns (M2)
+//
+//	2: the bytes and resp_hash columns (M2)
+//	3: a frame reference's time apart from the bit that says it is there,
+//	   so a time of any distance from its row's reads back (v0.8.0)
+const FormatVersion = 3
 
 // ErrFormat is wrapped by the error Open returns for a directory that is
 // not a complete index of this version.

@@ -41,3 +41,7 @@ func mapPrefix(path string, n int64) ([]byte, func() error, error) {
 	}
 	return b, func() error { return syscall.Munmap(b) }, nil
 }
+
+// MovesMapped reports whether a directory can be renamed or removed while
+// files in it are memory-mapped.
+const MovesMapped = true

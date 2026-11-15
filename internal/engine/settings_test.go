@@ -3,14 +3,21 @@
 package engine
 
 import (
+	"bytes"
 	"context"
+	"errors"
+	"log/slog"
 	"os"
 	"path/filepath"
+	"runtime"
 	"slices"
+	"strings"
+	"sync"
 	"testing"
 
 	"github.com/otfabric/go-modbus-trace/trace/tracetest"
 
+	"github.com/otfabric/modbus-trace-explorer/internal/applog"
 	"github.com/otfabric/modbus-trace-explorer/internal/service"
 	"github.com/otfabric/modbus-trace-explorer/internal/store"
 )
@@ -86,4 +93,86 @@ func ports(n int) []uint16 {
 		out[i] = uint16(1000 + i)
 	}
 	return out
+}
+
+// logBuf collects log lines written from the job goroutines.
+type logBuf struct {
+	mu sync.Mutex
+	b  bytes.Buffer
+}
+
+func (l *logBuf) Write(p []byte) (int, error) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	return l.b.Write(p)
+}
+
+func (l *logBuf) String() string {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	return l.b.String()
+}
+
+// R23: the warnings of a failed live snapshot and of a failed eviction
+// say what failed, at info level without the paths of the cache.
+func TestWarningsHaveNoPaths(t *testing.T) {
+	ctx := context.Background()
+	t.Run("live snapshot", func(t *testing.T) {
+		paceLive(t)
+		var log logBuf
+		root := t.TempDir()
+		e, err := New(Options{CacheDir: filepath.Join(root, "cache"), ConfigDir: filepath.Join(root, "config"), Logger: applog.New(&log, slog.LevelInfo)})
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Cleanup(func() { _ = e.Shutdown() })
+		info, _ := e.Open(ctx, []string{bigTrace(t, 10_000)})
+		events, _ := e.Subscribe(t.Context())
+		ref, _ := e.Scan(ctx, info.ID)
+		waitJob(t, events, ref.ID)
+		res, _ := e.ScanResult(ctx, info.ID)
+		if err := os.WriteFile(e.cache.LiveDir(info.ID, 1), nil, 0o600); err != nil {
+			t.Fatal(err)
+		}
+		ref, _ = e.Analyze(ctx, info.ID, service.AnalyzeConfig{Flows: res.Selected, ServerPorts: res.ServerPorts})
+		if j := waitJob(t, events, ref.ID); j.State != service.JobDone {
+			t.Fatalf("analysis %+v", j)
+		}
+		if got := log.String(); !strings.Contains(got, "live snapshot failed") || !strings.Contains(got, "<path>") || strings.Contains(got, root) {
+			t.Errorf("the log:\n%s", got)
+		}
+	})
+	t.Run("eviction", func(t *testing.T) {
+		if runtime.GOOS == "windows" || os.Geteuid() == 0 {
+			t.Skip("needs a directory whose files cannot be removed: Unix permissions, not as root")
+		}
+		var log logBuf
+		root := t.TempDir()
+		cache := filepath.Join(root, "cache")
+		e, err := New(Options{CacheDir: cache, ConfigDir: filepath.Join(root, "config"), Logger: applog.New(&log, slog.LevelInfo)})
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Cleanup(func() { _ = e.Shutdown() })
+		// An entry over the smallest cap that cannot be removed: a sparse file
+		// in a directory without write permission.
+		locked := filepath.Join(cache, "ix-0123456789abcdef0123456789abcdef", "locked")
+		if err := os.MkdirAll(locked, 0o700); err != nil {
+			t.Fatal(err)
+		}
+		f, err := os.Create(filepath.Join(locked, "col.bin"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := errors.Join(f.Truncate(MinCacheCap+1), f.Close(), os.Chmod(locked, 0o500)); err != nil {
+			t.Fatal(err)
+		}
+		t.Cleanup(func() { _ = os.Chmod(locked, 0o700) })
+		if _, err := e.SaveSettings(ctx, service.Settings{TimeMode: "local", ServerPorts: []uint16{}, CacheCap: MinCacheCap}); err != nil {
+			t.Fatal(err)
+		}
+		if got := log.String(); !strings.Contains(got, "cache eviction failed") || !strings.Contains(got, "<path>") || strings.Contains(got, root) {
+			t.Errorf("the log:\n%s", got)
+		}
+	})
 }

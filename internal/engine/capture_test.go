@@ -5,6 +5,7 @@ package engine
 import (
 	"bytes"
 	"context"
+	"math"
 	"os"
 	"path/filepath"
 	"slices"
@@ -14,6 +15,7 @@ import (
 	"time"
 
 	"github.com/otfabric/go-modbus-capture/capture"
+	"github.com/otfabric/go-modbus-capture/mbcap"
 
 	"github.com/otfabric/go-modbus-trace/trace/tracetest"
 
@@ -491,4 +493,78 @@ func TestQueriesDuringClose(t *testing.T) {
 	}
 	close(stop)
 	workers.Wait()
+}
+
+// timeCapture writes an MBCAP capture of one stream whose samples are one
+// tick (1 µs) apart, the first at start.
+func timeCapture(t *testing.T, start time.Time, samples int) string {
+	t.Helper()
+	var buf bytes.Buffer
+	w, err := mbcap.NewWriter(&buf, capture.Header{TickNS: 1000, WallStart: start, Producer: "test"}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := w.WriteTarget(capture.Target{ID: 1, Transport: capture.TransportTCP, Host: "10.0.0.2", Port: 502, Unit: 1}); err != nil {
+		t.Fatal(err)
+	}
+	if err := w.WriteStream(capture.Stream{ID: 1, Target: 1, Role: capture.RolePoll, Label: "client 10.0.0.10"}); err != nil {
+		t.Fatal(err)
+	}
+	for i := range samples {
+		s := capture.Sample{Stream: 1, At: capture.Ticks(i), Request: tracetest.ReadRequest(3, 0, 1), Response: tracetest.RegistersResponse(3, uint16(i))}
+		if err := w.WriteSample(s); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := w.Close(capture.End{Known: true, At: capture.Ticks(samples)}); err != nil {
+		t.Fatal(err)
+	}
+	p := filepath.Join(t.TempDir(), "time.mbcap")
+	if err := os.WriteFile(p, buf.Bytes(), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	return p
+}
+
+// R24: a capture's samples keep their times up to the last nanosecond the
+// timeline holds; a sample after it is left out, counted and named in the
+// import's warning, and the others keep their order.
+func TestCaptureTimeRange(t *testing.T) {
+	last := time.Unix(0, math.MaxInt64)
+	for _, c := range []struct {
+		name  string
+		start time.Time // of 5 samples one tick apart
+		out   uint64
+	}{
+		{"the last sample on the last nanosecond", last.Add(-4 * time.Microsecond), 0},
+		{"the last sample one tick after it", last.Add(-3 * time.Microsecond), 1},
+		{"two samples after it", last.Add(-2 * time.Microsecond), 2},
+		{"the first sample on the last nanosecond", last, 4},
+		{"from 1970", time.Unix(0, 0), 0},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			e := newEngine(t)
+			id, job := importCapture(t, e, timeCapture(t, c.start, 5))
+			if job.State != service.JobDone {
+				t.Fatalf("import %+v", job)
+			}
+			if c.out > 0 && !strings.Contains(job.Warning, "left out") {
+				t.Errorf("warning %q", job.Warning)
+			}
+			if c.out == 0 && job.Warning != "" {
+				t.Errorf("an unexpected warning %q", job.Warning)
+			}
+			ov, err := e.Overview(context.Background(), id)
+			if err != nil || ov.Capture.OutOfRange != c.out || ov.Capture.Samples != 5-c.out || ov.Rows != 5-c.out {
+				t.Fatalf("overview %+v %+v %v", ov, ov.Capture, err)
+			}
+			p := page(t, e, id, service.Filter{})
+			for k, r := range p.Rows {
+				want := c.start.UnixNano() + int64(k)*1000
+				if r.TimeNS != want {
+					t.Errorf("row %d at %d, want %d", k, r.TimeNS, want)
+				}
+			}
+		})
+	}
 }

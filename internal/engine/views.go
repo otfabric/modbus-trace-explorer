@@ -42,7 +42,8 @@ func (e *Engine) selection(ctx context.Context, id string, f service.Filter) (*s
 }
 
 // distribution summarises durations: exact quantiles and a histogram of
-// buckets a power of two apart.
+// buckets a power of two apart. The last bucket takes every duration left:
+// from 2^62 ns it ends at the largest duration (2^63 does not fit).
 func distribution(ns []int64) *service.Distribution {
 	if len(ns) == 0 {
 		return nil
@@ -55,8 +56,12 @@ func distribution(ns []int64) *service.Distribution {
 	hi := bits.Len64(uint64(max(ns[len(ns)-1], 1)))
 	k := 0
 	for b := lo; b < hi; b++ {
-		bucket := service.Bucket{LoNS: 1 << b, HiNS: 1 << (b + 1)}
-		for k < len(ns) && ns[k] < bucket.HiNS {
+		bucket := service.Bucket{LoNS: 1 << b, HiNS: math.MaxInt64}
+		if b < 62 {
+			bucket.HiNS = 1 << (b + 1)
+		}
+		last := b == hi-1
+		for k < len(ns) && (last || ns[k] < bucket.HiNS) {
 			bucket.Count++
 			k++
 		}

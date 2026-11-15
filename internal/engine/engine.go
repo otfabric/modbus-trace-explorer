@@ -18,6 +18,7 @@ import (
 	"slices"
 	"strconv"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/otfabric/go-modbus-trace/model"
@@ -57,6 +58,8 @@ type Engine struct {
 
 	results     map[string]service.ExportResult // finished exports, the last maxResults
 	resultOrder []string
+
+	liveSeq atomic.Int64 // numbers the live snapshots (live.go)
 }
 
 var _ service.Service = (*Engine)(nil)
@@ -64,12 +67,15 @@ var _ service.Service = (*Engine)(nil)
 // openTrace is a trace the user has open.
 type openTrace struct {
 	info    service.FileInfo
-	data    []string // what the library reads: the paths, or decompressed copies
-	release func()   // lets the cache evict this trace's entries again
+	release func() // lets the cache evict this trace's entries again
 	// removeCopy deletes a decompressed copy when the trace closes (A16).
 	removeCopy func(path string) error
 
-	mu    sync.Mutex
+	mu sync.Mutex
+	// data is what the library reads: the paths, or their decompressed
+	// copies. It is replaced, never changed in place (setData), so the
+	// slice paths returns stays as it was.
+	data  []string
 	lib   *trace.File // random access for Detail, opened on first use
 	scan  *service.ScanResult
 	ix    *store.Index
@@ -149,6 +155,23 @@ func (e *Engine) Shutdown() error {
 	return err
 }
 
+// paths returns what the library reads: the trace's files, or their
+// decompressed copies once Prepare or the scan has made them.
+func (t *openTrace) paths() []string {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	return t.data
+}
+
+// setData makes p what the library reads of the trace's file i.
+func (t *openTrace) setData(i int, p string) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	d := slices.Clone(t.data)
+	d[i] = p
+	t.data = d
+}
+
 func (t *openTrace) close() error {
 	t.mu.Lock()
 	ix := t.ix
@@ -190,7 +213,8 @@ func (e *Engine) About(context.Context) (service.About, error) {
 }
 
 // Open prepares a trace: its fingerprint, and the cached analysis if there
-// is one.
+// is one. A trace that is open already is replaced: its jobs are cancelled
+// and have ended when Open returns.
 func (e *Engine) Open(ctx context.Context, paths []string) (service.FileInfo, error) {
 	if len(paths) == 0 {
 		return service.FileInfo{}, service.Errorf(service.CodeInvalidArgument, "no trace file")
@@ -255,8 +279,18 @@ func (e *Engine) Open(ctx context.Context, paths []string) (service.FileInfo, er
 	e.mu.Lock()
 	old := e.files[fp]
 	e.files[fp] = t
+	// The jobs of a trace opened again write the same cache entry as the
+	// new one's: they end before it is used, as Close ends them.
+	var mine []*job
+	if old != nil {
+		mine = e.jobsOf(fp)
+	}
 	e.mu.Unlock()
 	if old != nil {
+		for _, j := range mine {
+			j.cancel()
+			<-j.done
+		}
 		_ = old.close()
 	}
 	e.remember(paths)
@@ -296,12 +330,23 @@ func (t *openTrace) attach(ix *store.Index) error {
 		t.conns[c.ID] = c
 	}
 	t.mu.Unlock()
-	// The index replaced is closed once the queries still reading it are
-	// done (outside the lock, which they may need).
+	// The index replaced is closed once the queries and jobs still reading
+	// it are done; this does not wait for them.
 	if old != nil {
-		_ = old.Close()
+		old.Retire(nil)
 	}
 	return nil
+}
+
+// jobsOf returns the running jobs of a trace; e.mu is held.
+func (e *Engine) jobsOf(id string) []*job {
+	var mine []*job
+	for _, j := range e.jobs {
+		if j.state.File == id {
+			mine = append(mine, j)
+		}
+	}
+	return mine
 }
 
 // Close releases an open trace and cancels its jobs.
@@ -309,12 +354,7 @@ func (e *Engine) Close(_ context.Context, id string) error {
 	e.mu.Lock()
 	t := e.files[id]
 	delete(e.files, id)
-	var mine []*job
-	for _, j := range e.jobs {
-		if j.state.File == id {
-			mine = append(mine, j)
-		}
-	}
+	mine := e.jobsOf(id)
 	e.mu.Unlock()
 	if t == nil {
 		return service.Errorf(service.CodeNotFound, "no open trace %s", id)
@@ -344,13 +384,25 @@ func (e *Engine) index(id string) (t *openTrace, ix *store.Index, release func()
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	t.mu.Lock()
-	ix = t.ix
-	t.mu.Unlock()
-	if ix == nil || !ix.Acquire() {
-		return nil, nil, nil, service.Errorf(service.CodeNotFound, "the trace is not analysed yet")
+	for {
+		t.mu.Lock()
+		ix = t.ix
+		t.mu.Unlock()
+		if ix == nil {
+			return nil, nil, nil, service.Errorf(service.CodeNotFound, "the trace is not analysed yet")
+		}
+		if ix.Acquire() {
+			return t, ix, ix.Release, nil
+		}
+		// Retired meanwhile: a newer snapshot or the finished index
+		// replaced it, unless the trace has none now.
+		t.mu.Lock()
+		same := t.ix == ix
+		t.mu.Unlock()
+		if same {
+			return nil, nil, nil, service.Errorf(service.CodeNotFound, "the trace is not analysed yet")
+		}
 	}
-	return t, ix, ix.Release, nil
 }
 
 const maxRecent = 10

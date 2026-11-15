@@ -18,6 +18,10 @@
         "exceptions": {
           "type": "boolean"
         },
+        "out_of_range": {
+          "minimum": 0,
+          "type": "integer"
+        },
         "producer": {
           "type": "string"
         },

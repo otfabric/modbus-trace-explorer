@@ -30,7 +30,7 @@ import type {
   TimelineQuery,
 } from './types';
 
-export type ErrorCode = 'invalid_argument' | 'not_found' | 'canceled' | 'unavailable' | 'internal';
+export type ErrorCode = 'invalid_argument' | 'not_found' | 'canceled' | 'unavailable' | 'internal' | 'limit';
 
 /** The error of a Service call, as the Go side reports it (service.Error). */
 export class ServiceError extends Error {

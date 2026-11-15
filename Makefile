@@ -147,8 +147,12 @@ golden: ## Regenerate the test corpus, then the DTO schemas, the engine fixtures
 e2e: ## The service interface end to end on trace files, as the window drives it
 	@go test -count=1 -race ./e2e/...
 
-fuzz: ## Fuzz the engine with mutated corpus files (FUZZTIME, default 5m)
-	@go test -run '^$$' -fuzz '^FuzzOpen$$' -fuzztime $${FUZZTIME:-5m} ./internal/engine
+# The target of make fuzz: FuzzOpen (corpus files through the engine) or
+# FuzzParseFilter (the filter box's text).
+FUZZ ?= FuzzOpen
+
+fuzz: ## Fuzz the engine (FUZZ: FuzzOpen or FuzzParseFilter, default FuzzOpen; FUZZTIME, default 5m)
+	@go test -run '^$$' -fuzz '^$(FUZZ)$$' -fuzztime $${FUZZTIME:-5m} ./internal/engine
 
 smoke-corpus: build-gui ## Run the built application on every file of testdata/corpus and check how it takes each
 	@python3 scripts/smoke_corpus.py bin/$(GUI_NAME)

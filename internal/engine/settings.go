@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"slices"
 
+	"github.com/otfabric/modbus-trace-explorer/internal/applog"
 	"github.com/otfabric/modbus-trace-explorer/internal/service"
 	"github.com/otfabric/modbus-trace-explorer/internal/store"
 )
@@ -87,7 +88,9 @@ func (e *Engine) SaveSettings(ctx context.Context, s service.Settings) (service.
 	if s.CacheCap != e.cache.Cap() {
 		e.cache.SetCap(s.CacheCap)
 		if err := e.cache.Evict(); err != nil {
-			e.log.Warn("cache eviction failed", "err", err)
+			// No path at info level (R23): the error's paths are in the debug line.
+			e.log.Warn("cache eviction failed", applog.Err(err))
+			e.log.Debug("cache eviction failed", "err", err)
 		}
 	}
 	return e.Settings(ctx)
