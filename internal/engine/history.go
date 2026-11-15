@@ -21,6 +21,11 @@ const DefaultHistoryLimit = 200_000
 // two chunks (and two checks for cancellation).
 const historyBatch = 2_000
 
+// historyGate, when set (tests only), is called with the job's context
+// once a history has its index and its candidates, before it reads them:
+// a test holds the history there, holding the index, until it returns.
+var historyGate func(ctx context.Context)
+
 // AddressHistory starts a job that reads the observed values of one
 // address from the trace: every read that covers it and every write to
 // it, in time order. Points arrive in "history" events; a capped history
@@ -82,6 +87,9 @@ func (e *Engine) AddressHistory(_ context.Context, id string, q service.HistoryQ
 		cands, err := historyCandidates(ctx, ix, q, space)
 		if err != nil {
 			return "", err
+		}
+		if gate := historyGate; gate != nil {
+			gate(ctx)
 		}
 		chunk := service.HistoryChunk{Job: j.state.ID, Points: []service.HistoryPoint{}, Candidates: uint64(len(cands)),
 			Scanned: min(q.After, uint64(len(cands)))}

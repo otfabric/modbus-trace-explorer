@@ -90,10 +90,10 @@ type Index struct {
 	extra     []json.RawMessage
 	dir       string
 
-	cols  *mapped
-	refs  []byte
-	perms [2][]uint32 // by time, by latency
-	unmap []func() error
+	cols   *mapped
+	refs   []byte
+	perms  [2][]uint32 // by time, by latency
+	unmaps []func() error
 
 	// typed views of the columns a filter reads
 	kind, fc, class, status, space, mbcap, exc []uint8
@@ -104,26 +104,45 @@ type Index struct {
 	mu    sync.Mutex
 	cache []cached // most recently used first
 
-	// life keeps the mapping alive while queries read it: each holds a
-	// read lock (Acquire, Release); Close takes the write lock, so it waits
-	// for the queries in flight and none starts on an unmapped index.
-	life   sync.RWMutex
-	closed bool
+	// life keeps the mapping alive while queries read it: Acquire counts a
+	// reader, Release drops it. Close and Retire refuse new readers; the
+	// files are unmapped once the last reader has gone (Close waits for
+	// that, Retire does not), and then done is closed.
+	life     sync.Mutex
+	readers  int
+	closing  bool
+	unmapped bool // the unmapping has started
+	after    []func()
+	done     chan struct{}
+	closeErr error // the unmapping's, set before done is closed
 }
 
 // Acquire keeps the index mapped until Release; it reports false when the
-// index is closed (the caller must not use it then).
+// index is closed or retired (the caller must not use it then).
 func (ix *Index) Acquire() bool {
-	ix.life.RLock()
-	if ix.closed {
-		ix.life.RUnlock()
+	ix.life.Lock()
+	defer ix.life.Unlock()
+	if ix.closing {
 		return false
 	}
+	ix.readers++
 	return true
 }
 
-// Release ends what Acquire started.
-func (ix *Index) Release() { ix.life.RUnlock() }
+// Release ends what Acquire started. The last reader of a closed or
+// retired index unmaps it.
+func (ix *Index) Release() {
+	ix.life.Lock()
+	ix.readers--
+	last := ix.readers == 0 && ix.closing && !ix.unmapped
+	if last {
+		ix.unmapped = true
+	}
+	ix.life.Unlock()
+	if last {
+		ix.unmap()
+	}
+}
 
 // Open opens a complete index directory of this format version.
 func Open(dir string) (*Index, error) { return open(dir, dir, false) }
@@ -135,7 +154,7 @@ func Open(dir string) (*Index, error) { return open(dir, dir, false) }
 func OpenLive(data, snap string) (*Index, error) { return open(data, snap, true) }
 
 func open(data, dir string, live bool) (*Index, error) {
-	ix := &Index{dir: dir}
+	ix := &Index{dir: dir, done: make(chan struct{})}
 	if err := readJSON(filepath.Join(dir, "meta.json"), &ix.Meta); err != nil {
 		return nil, fmt.Errorf("%w: %v", ErrFormat, err)
 	}
@@ -162,7 +181,7 @@ func open(data, dir string, live bool) (*Index, error) {
 			_ = ix.Close()
 			return nil, err
 		}
-		ix.unmap = append(ix.unmap, un)
+		ix.unmaps = append(ix.unmaps, un)
 		if uint64(len(b)) != 4*ix.Meta.Rows {
 			_ = ix.Close()
 			return nil, fmt.Errorf("%w: permutation %s", ErrFormat, name)
@@ -178,7 +197,7 @@ func open(data, dir string, live bool) (*Index, error) {
 		_ = ix.Close()
 		return nil, err
 	}
-	ix.unmap = append(ix.unmap, un)
+	ix.unmaps = append(ix.unmaps, un)
 	ix.refs = b
 	ix.kind, ix.fc, ix.class, ix.status, ix.space, ix.mbcap = cols.uint8s("kind"), cols.uint8s("fc"), cols.uint8s("class"),
 		cols.uint8s("status"), cols.uint8s("space"), cols.uint8s("mbcap")
@@ -189,25 +208,68 @@ func open(data, dir string, live bool) (*Index, error) {
 	return ix, nil
 }
 
-// Close unmaps the files once no query holds the index (Acquire); later
-// Acquires fail. Closing twice is harmless.
+// Close unmaps the files once no query holds the index (Acquire), and
+// waits for that; later Acquires fail. Closing twice, or after Retire, is
+// harmless.
 func (ix *Index) Close() error {
+	ix.retire(nil)
+	<-ix.done
+	return ix.closeErr
+}
+
+// Retire is Close without the wait: later Acquires fail at once, and the
+// last reader's Release unmaps the files (now when there is none). after,
+// if not nil, runs once they are unmapped, for example to remove the
+// index's directory.
+func (ix *Index) Retire(after func()) { ix.retire(after) }
+
+func (ix *Index) retire(after func()) {
 	ix.life.Lock()
-	defer ix.life.Unlock()
-	if ix.closed {
-		return nil
+	if ix.unmapped {
+		ix.life.Unlock()
+		if after != nil {
+			<-ix.done
+			after()
+		}
+		return
 	}
-	ix.closed = true
+	if after != nil {
+		ix.after = append(ix.after, after)
+	}
+	ix.closing = true
+	now := ix.readers == 0
+	if now {
+		ix.unmapped = true
+	}
+	ix.life.Unlock()
+	if now {
+		ix.unmap()
+	}
+}
+
+// Closed is closed once the index's files are unmapped.
+func (ix *Index) Closed() <-chan struct{} { return ix.done }
+
+// unmap runs once, by the one that set unmapped.
+func (ix *Index) unmap() {
 	if ix.cols != nil {
 		ix.cols.close()
 		ix.cols = nil
 	}
 	var err error
-	for _, un := range ix.unmap {
+	for _, un := range ix.unmaps {
 		err = errors.Join(err, un())
 	}
-	ix.unmap = nil
-	return err
+	ix.unmaps = nil
+	ix.closeErr = err
+	ix.life.Lock()
+	after := ix.after
+	ix.after = nil
+	ix.life.Unlock()
+	close(ix.done)
+	for _, f := range after {
+		f()
+	}
 }
 
 // Columns are the index's columns as slices indexed by row, for scans
@@ -313,9 +375,10 @@ func decodeRefs(b []byte, rowNS int64, prev *refBase) ([]model.FrameRef, []byte,
 		f.Frame = prev.frame + uint64(sv())
 		f.Offset = prev.offset + sv()
 		prev.frame, prev.offset = f.Frame, f.Offset
-		f.Iface = uint32(uv())
-		if t := uv(); t&1 == 1 {
-			z := t >> 1
+		iface := uv()
+		f.Iface = uint32(iface >> 1)
+		if iface&1 == 1 {
+			z := uv()
 			d := int64(z>>1) ^ -int64(z&1)
 			tt := time.Unix(0, rowNS+d).UTC()
 			f.Time = &tt
@@ -481,9 +544,16 @@ type cached struct {
 	sel   *Selection
 }
 
-// maxCached bounds the selection cache by count; each selection holds at
-// most 4 bytes per row.
+// The selection cache keeps the most recent selections, at most maxCached,
+// while together they hold at most selectionCacheBytes (4 bytes a selected
+// row); the newest is kept whatever its size, so paging through it does
+// not scan again (SECURITY.md, "Limits").
 const maxCached = 6
+
+var selectionCacheBytes = 64 << 20
+
+// bytes returns the heap a selection holds.
+func (s *Selection) bytes() int { return 4 * cap(s.rows) }
 
 // Select returns the rows that pass f in order, from the cache when the
 // same filter and order were asked for recently. ctx cancels a scan.
@@ -514,8 +584,13 @@ func (ix *Index) Select(ctx context.Context, f *Filter, order Order) (*Selection
 	if f.Key != "" {
 		ix.mu.Lock()
 		ix.cache = append([]cached{{f.Key, order, sel}}, ix.cache...)
-		if len(ix.cache) > maxCached {
-			ix.cache = ix.cache[:maxCached]
+		n := sel.bytes()
+		for k := 1; k < len(ix.cache); k++ {
+			if n += ix.cache[k].sel.bytes(); k >= maxCached || n > selectionCacheBytes {
+				clear(ix.cache[k:])
+				ix.cache = ix.cache[:k]
+				break
+			}
 		}
 		ix.mu.Unlock()
 	}

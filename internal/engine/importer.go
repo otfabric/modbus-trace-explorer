@@ -10,6 +10,7 @@ import (
 	"hash/fnv"
 	"math"
 	"slices"
+	"strconv"
 	"strings"
 
 	"github.com/otfabric/go-modbus-trace/export/mbcapexport"
@@ -39,7 +40,7 @@ func (e *Engine) Scan(_ context.Context, id string) (service.JobRef, error) {
 		if err := e.decompress(ctx, t, j); err != nil {
 			return "", err
 		}
-		f, err := trace.OpenFiles(t.data...)
+		f, err := trace.OpenFiles(t.paths()...)
 		if err != nil {
 			return "", service.Wrap(service.CodeUnavailable, err, "cannot open the trace")
 		}
@@ -90,7 +91,7 @@ func (t *openTrace) unclaim() {
 // cache (once per open).
 func (e *Engine) decompress(ctx context.Context, t *openTrace, j *job) error {
 	for i, p := range t.info.Paths {
-		if t.data[i] != p {
+		if t.paths()[i] != p {
 			continue // done earlier
 		}
 		gz, err := store.IsGzip(p)
@@ -119,7 +120,7 @@ func (e *Engine) decompress(ctx context.Context, t *openTrace, j *job) error {
 			}
 			return service.Wrap(service.CodeUnavailable, err, "cannot decompress %s", t.info.Name)
 		}
-		t.data[i] = out
+		t.setData(i, out) // under the lock: queries read the paths meanwhile
 	}
 	return nil
 }
@@ -238,7 +239,7 @@ func (e *Engine) Analyze(_ context.Context, id string, cfg service.AnalyzeConfig
 }
 
 func (e *Engine) analyze(ctx context.Context, t *openTrace, j *job, opts trace.Options, cfg service.AnalyzeConfig) (string, error) {
-	f, err := trace.OpenFiles(t.data...)
+	f, err := trace.OpenFiles(t.paths()...)
 	if err != nil {
 		return "", service.Wrap(service.CodeUnavailable, err, "cannot open the trace")
 	}
@@ -249,6 +250,9 @@ func (e *Engine) analyze(ctx context.Context, t *openTrace, j *job, opts trace.O
 	b := newBuilder(w)
 	lv := newLive(e, t, j, w, b.connList)
 	b.onRows = lv.maybe
+	if gate := analyzeGate; gate != nil {
+		b.onRows = func() { lv.maybe(); gate(ctx) }
+	}
 	defer lv.end()
 	var read, total int64
 	opts.Progress = func(r, tot int64) {
@@ -260,6 +264,9 @@ func (e *Engine) analyze(ctx context.Context, t *openTrace, j *job, opts trace.O
 		lv.end()
 		_ = w.Abort()
 		if b.err != nil {
+			if le := limitError(b.err); le != nil {
+				return "", le
+			}
 			return "", service.Wrap(service.CodeInternal, b.err, "cannot write the analysis cache")
 		}
 		return "", traceError(err)
@@ -289,6 +296,11 @@ func (e *Engine) analyze(ctx context.Context, t *openTrace, j *job, opts trace.O
 	t.mu.Unlock()
 	return warning, nil
 }
+
+// analyzeGate, when set (tests only), is called with the job's context
+// each time the analysis has written another 4096 rows, after a live
+// snapshot that was due: a test holds the analysis there until it returns.
+var analyzeGate func(ctx context.Context)
 
 // builder turns the library's events into index rows.
 type builder struct {
@@ -447,6 +459,35 @@ func (b *builder) connList() []model.Connection {
 		out = append(out, b.conns[id])
 	}
 	return out
+}
+
+// limitError is the refusal of a trace or capture that passes a limit of
+// the index (store.LimitError, SECURITY.md "Limits"), naming the limit;
+// nil for another error. In a trace's index the device and client
+// dictionaries start with an entry for "none", so 65,535 are left.
+func limitError(err error) *service.Error {
+	var le *store.LimitError
+	if !errors.As(err, &le) {
+		return nil
+	}
+	what, n := "rows", le.Max
+	switch le.What {
+	case "devices":
+		what, n = "servers and units", le.Max-1
+	case "clients":
+		what, n = "client addresses", le.Max-1
+	}
+	return &service.Error{Code: service.CodeLimit, Err: err,
+		Message: fmt.Sprintf("the trace has more %s than one analysis can index (%s)", what, thousands(n))}
+}
+
+// thousands writes n with a comma every three digits.
+func thousands(n uint64) string {
+	s := strconv.FormatUint(n, 10)
+	for i := len(s) - 3; i > 0; i -= 3 {
+		s = s[:i] + "," + s[i:]
+	}
+	return s
 }
 
 // reasonCode stores an export classification: 0 for exported, else the

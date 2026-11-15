@@ -382,7 +382,7 @@ func (e *Engine) export(kind, id, path string, write func(ctx context.Context, f
 		return service.JobRef{}, err
 	}
 	return e.start(kind, id, func(ctx context.Context, j *job) (string, error) {
-		f, err := trace.OpenFiles(t.data...)
+		f, err := trace.OpenFiles(t.paths()...)
 		if err != nil {
 			return "", service.Wrap(service.CodeUnavailable, err, "cannot open the trace")
 		}
@@ -419,7 +419,7 @@ func checkTarget(path string, t *openTrace) error {
 	if fi, err := os.Stat(filepath.Dir(path)); err != nil || !fi.IsDir() {
 		return service.Errorf(service.CodeInvalidArgument, "the folder %s does not exist", filepath.Base(filepath.Dir(path)))
 	}
-	for _, p := range append(slices.Clone(t.info.Paths), t.data...) {
+	for _, p := range append(slices.Clone(t.info.Paths), t.paths()...) {
 		if same(p, path) {
 			return service.Errorf(service.CodeInvalidArgument, "the export would overwrite the trace")
 		}

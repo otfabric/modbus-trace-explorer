@@ -81,7 +81,7 @@ func (t *openTrace) preparing() bool {
 }
 
 func (t *openTrace) present() bool {
-	for _, p := range t.data {
+	for _, p := range t.paths() {
 		if fi, err := os.Stat(p); err != nil || !fi.Mode().IsRegular() {
 			return false
 		}

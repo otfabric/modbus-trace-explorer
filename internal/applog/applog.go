@@ -6,10 +6,14 @@
 package applog
 
 import (
+	"cmp"
 	"io"
+	"io/fs"
 	"log/slog"
 	"os"
 	"path/filepath"
+	"slices"
+	"strings"
 	"sync"
 )
 
@@ -86,4 +90,51 @@ func (l *File) Close() error {
 // New returns a logger writing text to w at the given level.
 func New(w io.Writer, level slog.Level) *slog.Logger {
 	return slog.New(slog.NewTextHandler(w, &slog.HandlerOptions{Level: level}))
+}
+
+// Err is err as the "err" attribute of a line logged at info level or
+// above: the operation and what went wrong, without the file paths a file
+// system error carries (R23). Each path of an *fs.PathError or
+// *os.LinkError in err's chain is replaced by "<path>"; log the error
+// itself at debug level for the paths.
+func Err(err error) slog.Attr {
+	if err == nil {
+		return slog.String("err", "")
+	}
+	msg := err.Error()
+	paths := pathsOf(err, nil)
+	// The longest first: a path that is a prefix of another must not cut it.
+	slices.SortFunc(paths, func(a, b string) int { return cmp.Compare(len(b), len(a)) })
+	for _, p := range paths {
+		msg = strings.ReplaceAll(msg, p, "<path>")
+	}
+	return slog.String("err", msg)
+}
+
+// pathsOf appends the paths of the file system errors in err's chain.
+func pathsOf(err error, out []string) []string {
+	switch x := err.(type) {
+	case *fs.PathError:
+		out = appendPath(out, x.Path)
+	case *os.LinkError:
+		out = appendPath(appendPath(out, x.Old), x.New)
+	}
+	switch u := err.(type) {
+	case interface{ Unwrap() error }:
+		if w := u.Unwrap(); w != nil {
+			out = pathsOf(w, out)
+		}
+	case interface{ Unwrap() []error }:
+		for _, w := range u.Unwrap() {
+			out = pathsOf(w, out)
+		}
+	}
+	return out
+}
+
+func appendPath(out []string, p string) []string {
+	if p == "" {
+		return out
+	}
+	return append(out, p)
 }

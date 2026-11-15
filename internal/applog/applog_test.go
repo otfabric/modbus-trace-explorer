@@ -4,6 +4,9 @@ package applog
 
 import (
 	"bytes"
+	"errors"
+	"fmt"
+	"io/fs"
 	"log/slog"
 	"os"
 	"path/filepath"
@@ -103,5 +106,34 @@ func TestWriteAfterCloseFails(t *testing.T) {
 	}
 	if _, err := l.Write([]byte("late\n")); err == nil {
 		t.Error("a write to a closed log succeeded")
+	}
+}
+
+// R23: an error logged at info level keeps its operation and cause but
+// not the paths of the file system errors in it, wrapped or joined.
+func TestErrHasNoPaths(t *testing.T) {
+	dir := t.TempDir()
+	_, open := os.Open(filepath.Join(dir, "home", "user", "trace.pcapng"))
+	rename := os.Rename(filepath.Join(dir, "a"), filepath.Join(dir, "a", "b"))
+	mkdir := os.Mkdir(dir, 0o700)
+	for name, c := range map[string]struct {
+		err  error
+		want string
+	}{
+		"path":   {open, "open <path>: "},
+		"link":   {rename, "rename <path> <path>: "},
+		"wrap":   {fmt.Errorf("store: col: %w", open), "store: col: open <path>: "},
+		"join":   {errors.Join(open, fmt.Errorf("evict: %w", mkdir)), "open <path>: "},
+		"prefix": {&fs.PathError{Op: "remove", Path: dir, Err: errors.Join(&fs.PathError{Op: "unlinkat", Path: filepath.Join(dir, "x"), Err: fs.ErrPermission})}, "remove <path>: unlinkat <path>: "},
+		"none":   {errors.New("store: more than 65535 client addresses"), "store: more than 65535 client addresses"},
+	} {
+		var buf bytes.Buffer
+		New(&buf, slog.LevelInfo).Warn("failed", Err(c.err))
+		if c.err == nil || strings.Contains(buf.String(), dir) || !strings.Contains(buf.String(), c.want) {
+			t.Errorf("%s: %q, want %q and no %s", name, buf.String(), c.want, dir)
+		}
+	}
+	if a := Err(nil); a.Value.String() != "" {
+		t.Errorf("nil: %v", a)
 	}
 }

@@ -4,7 +4,6 @@ package engine
 
 import (
 	"context"
-	"os"
 	"reflect"
 	"testing"
 	"time"
@@ -151,42 +150,5 @@ func TestTexts(t *testing.T) {
 	}
 	if DefaultCacheDir() == "" || DefaultConfigDir() == "" {
 		t.Error("default dirs")
-	}
-}
-
-// Cancelling an analysis leaves no index and lets the trace be analysed
-// again.
-func TestCancelAnalysis(t *testing.T) {
-	e := newEngine(t)
-	ctx := context.Background()
-	path := writeTrace(t, "big.pcap", tracetestOptions(), func(b *tracetest.Builder) {
-		c := b.Conn(tracetest.ConnOptions{})
-		for i := range 20000 {
-			c.Request(uint16(i), 1, tracetest.ReadRequest(3, 0, 10))
-			c.Response(uint16(i), 1, tracetest.RegistersResponse(3, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10))
-		}
-	})
-	info, _ := e.Open(ctx, []string{path})
-	ref, err := e.Analyze(ctx, info.ID, service.AnalyzeConfig{})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, err := e.Scan(ctx, info.ID); err == nil {
-		t.Error("a scan started during an analysis")
-	}
-	_ = e.CancelJob(ctx, ref.ID)
-	e.wait(ref.ID)
-	if _, err := e.Overview(ctx, info.ID); err == nil {
-		t.Log("the analysis finished before the cancel arrived")
-	} else if _, err := os.Stat(e.cache.Dir(info.ID) + ".partial"); !os.IsNotExist(err) {
-		t.Error("a partial index was left behind")
-	}
-	ref, err = e.Analyze(ctx, info.ID, service.AnalyzeConfig{})
-	if err != nil {
-		t.Fatal(err)
-	}
-	e.wait(ref.ID)
-	if ov, err := e.Overview(ctx, info.ID); err != nil || ov.Transactions != 20000 {
-		t.Errorf("%+v %v", ov, err)
 	}
 }

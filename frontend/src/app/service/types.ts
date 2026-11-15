@@ -164,6 +164,8 @@ export interface CaptureFacts {
   samples: number;
   end_known: boolean;
   truncated: boolean;
+  /** Samples left out: their time lies after 2262-04-11, the last time the timeline can show. */
+  out_of_range?: number;
   provenance: string[];
   source?: string;
 }

@@ -1,5 +1,36 @@
 # modbus-trace-explorer Releases
 
+## v0.8.0
+
+**Date:** 2026-11-15
+**Previous release:** v0.7.0
+
+Fixes in the analysis cache, the live timeline, the time arithmetic of traces and captures, and the logs; a limits table in SECURITY.md and a clear refusal at the limits of the index. The index format changes, so every trace is analysed again the first time it is opened.
+
+### Breaking
+
+- **Each trace is analysed again the first time it is opened** (index format version 3: a frame reference's time is stored apart from the bit that says it is there). The cache entries of v0.7.0 are not read; they stay until eviction or "Clear cache" removes them. To keep using them, stay on v0.7.0.
+- **A trace with more than 65,535 client addresses, or more than 65,535 servers and units, is refused with the error code `limit`** and a message that names the limit, and no index is kept. Before, such a trace was refused with the code `internal` and "cannot write the analysis cache", and the limit was 65,534. A caller that matched `internal` for this case matches `limit`.
+- **A capture sample whose time lies after 2262-04-11 23:47:16.854775807 UTC is left out**, counted in the capture's facts (`out_of_range`) and named in the import's warning; that is the last time the timeline holds. There is no way back: such a time cannot be shown.
+
+### Fixed
+
+- The decompressed copy of an open gzip trace stays in the cache while the trace is open: "Clear cache" and eviction no longer remove it, also when it is larger than the cache's cap, so the detail's bytes and the exports keep working. It is removed when the trace is closed.
+- A frame's time in the detail and the exports reads back as recorded, however far it lies from its row's time.
+- The interval and latency histograms count every interval: the last bucket ends at the largest duration.
+- The live timeline: a snapshot that a query or an address history still reads is released when its last reader is done, so the import goes on and its Cancel takes effect at once (on Windows the end of the import still waits for them).
+- Opening a trace that is already open cancels its running scan or analysis and waits for it, as closing it does, so the two never write the same index (the window closes a trace before it opens another).
+- The data paths of a gzip trace are set under the trace's lock while queries read them.
+- Warnings in the log name no file paths; the paths are logged at debug level.
+
+### Changed
+
+- The cached filter results hold at most 64 MiB together, as `docs/ARCHITECTURE.md` says (the most recent is kept whatever its size); an older filter is scanned again when it is asked for again.
+- SECURITY.md lists the limits of a trace, a capture and the cache, and what happens at each. The overview schema and the TypeScript types carry the capture's `out_of_range`, and the service's error codes include `limit`.
+- Tests: the cancel paths are held at a fixed point by a test gate instead of a sleep; `FuzzOpen` checks invariants of the index (row counts, both orders, totals by status, time splits, frame references); `FuzzParseFilter` checks that filter text round-trips; `make fuzz` takes `FUZZ`; TESTING.md has the lifecycle contract matrix.
+
+---
+
 ## v0.7.0
 
 **Date:** 2026-11-14

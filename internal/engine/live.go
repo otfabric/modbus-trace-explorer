@@ -8,6 +8,7 @@ import (
 
 	"github.com/otfabric/go-modbus-trace/model"
 
+	"github.com/otfabric/modbus-trace-explorer/internal/applog"
 	"github.com/otfabric/modbus-trace-explorer/internal/store"
 )
 
@@ -17,8 +18,10 @@ import (
 // details before the end. Snapshots are taken at growing intervals: a
 // second apart at least, and only once the rows have grown by half since
 // the last, so sorting them stays a small share of the import. Each
-// replaces the previous one; queries still reading the previous one
-// finish first (store.Index.Close waits for them).
+// replaces the previous one without waiting for the readers of the
+// previous one: an address history can read one for as long as it runs.
+// A snapshot replaced is retired (store.Index.Retire): it is unmapped, and
+// its directory removed, when its last reader releases it.
 
 // liveEvery and liveMinRows pace the snapshots (variables for the tests).
 var (
@@ -33,11 +36,10 @@ type live struct {
 	j        *job
 	w        *store.Writer
 	conns    func() []model.Connection
-	k        int
 	last     time.Time
 	lastRows uint64
-	dirs     []string
-	off      bool // a snapshot failed: the import goes on without them
+	off      bool           // a snapshot failed: the import goes on without them
+	retired  []*store.Index // without store.MovesMapped: the indexes this import replaced, for end
 }
 
 func newLive(e *Engine, t *openTrace, j *job, w *store.Writer, conns func() []model.Connection) *live {
@@ -57,8 +59,9 @@ func (l *live) maybe() {
 }
 
 func (l *live) publish() {
-	l.k++
-	dir := l.e.cache.LiveDir(l.t.info.ID, l.k)
+	// Numbered across the engine's imports: a snapshot of an import that
+	// ended can outlive it while a reader holds it.
+	dir := l.e.cache.LiveDir(l.t.info.ID, int(l.e.liveSeq.Add(1)))
 	meta := store.Meta{Library: l.e.lib, Semantics: model.EventSemanticsVersion, Fingerprint: l.t.info.ID}
 	var ix *store.Index
 	err := l.w.Snapshot(dir, meta)
@@ -66,12 +69,13 @@ func (l *live) publish() {
 		ix, err = store.OpenLive(l.w.Dir(), dir)
 	}
 	if err != nil {
-		l.e.log.Warn("live snapshot failed; the timeline appears at the end", "err", err)
+		// No path at info level (R23): the error's paths are in the debug line.
+		l.e.log.Warn("live snapshot failed; the timeline appears at the end", applog.Err(err))
+		l.e.log.Debug("live snapshot failed", "err", err)
 		_ = os.RemoveAll(dir)
 		l.off = true
 		return
 	}
-	l.dirs = append(l.dirs, dir)
 	conns := map[uint32]model.Connection{}
 	for _, c := range l.conns() {
 		conns[c.ID] = c
@@ -82,27 +86,30 @@ func (l *live) publish() {
 	t.ix, t.sum, t.capture, t.conns = ix, nil, nil, conns
 	t.mu.Unlock()
 	if old != nil {
-		_ = old.Close() // waits for the queries still reading it
+		l.retire(old)
 	}
-	l.removeOld()
 	l.last, l.lastRows = l.e.now(), ix.Rows()
 	l.j.setReady()
 }
 
-// removeOld removes the snapshots before the current one.
-func (l *live) removeOld() {
-	if len(l.dirs) < 2 {
-		return
+// retire lets go of an index this import replaced: it closes when its
+// last reader releases it, and a snapshot's directory is removed then.
+func (l *live) retire(ix *store.Index) {
+	var after func()
+	if ix.Meta.Live {
+		dir := ix.Dir()
+		after = func() { _ = os.RemoveAll(dir) }
 	}
-	for _, d := range l.dirs[:len(l.dirs)-1] {
-		_ = os.RemoveAll(d)
+	ix.Retire(after)
+	if !store.MovesMapped {
+		l.retired = append(l.retired, ix) // end waits for it
 	}
-	l.dirs = l.dirs[len(l.dirs)-1:]
 }
 
-// end closes the published snapshot and removes the snapshots, before
-// the index is committed or abandoned (a directory with mapped files in it
-// cannot be renamed on Windows).
+// end retires the published snapshot before the index is committed or
+// abandoned. Where a directory with mapped files in it cannot be renamed
+// or removed (Windows, store.MovesMapped), it then waits for the readers
+// of every index the import replaced; elsewhere they finish on their own.
 func (l *live) end() {
 	t := l.t
 	t.mu.Lock()
@@ -114,10 +121,12 @@ func (l *live) end() {
 	}
 	t.mu.Unlock()
 	if ix != nil {
-		_ = ix.Close()
+		l.retire(ix)
 	}
-	for _, d := range l.dirs {
-		_ = os.RemoveAll(d)
+	if !store.MovesMapped {
+		for _, r := range l.retired {
+			<-r.Closed()
+		}
+		l.retired = nil
 	}
-	l.dirs = nil
 }

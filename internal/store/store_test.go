@@ -5,8 +5,11 @@ package store
 import (
 	"context"
 	"errors"
+	"math"
 	"os"
 	"path/filepath"
+	"strconv"
+	"strings"
 	"testing"
 	"time"
 
@@ -183,6 +186,62 @@ func TestSelectAndPage(t *testing.T) {
 	}
 }
 
+// cachedBytes returns the heap the selection cache holds.
+func (ix *Index) cachedBytes() (n, entries int) {
+	ix.mu.Lock()
+	defer ix.mu.Unlock()
+	for _, c := range ix.cache {
+		n += 4 * cap(c.sel.rows)
+	}
+	return n, len(ix.cache)
+}
+
+// SECURITY.md "Limits": the cached selections hold at most the cache's
+// bytes together, and at most six; the newest is kept whatever its size,
+// so asking again for it does not scan.
+func TestSelectionCacheBytes(t *testing.T) {
+	ix, _ := build(t, 50_000)
+	all := func(k int) *Filter { return &Filter{Kinds: []bool{true}, Key: "k" + strconv.Itoa(k)} }
+	if _, err := ix.Select(context.Background(), all(-1), ByTime); err != nil {
+		t.Fatal(err)
+	}
+	one, _ := ix.cachedBytes() // every selection below holds the same
+	for _, c := range []struct {
+		name   string
+		budget int
+		want   int // entries kept
+	}{
+		{"no room", 0, 1},
+		{"room for one", one, 1},
+		{"room for one and a byte less than two", 2*one - 1, 1},
+		{"room for two", 2 * one, 2},
+		{"room for three", 3 * one, 3},
+		{"room for many", 1 << 30, maxCached},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			was := selectionCacheBytes
+			selectionCacheBytes = c.budget
+			t.Cleanup(func() { selectionCacheBytes = was })
+			ix.mu.Lock()
+			ix.cache = nil
+			ix.mu.Unlock()
+			for k := range 8 {
+				sel, err := ix.Select(context.Background(), all(k), ByTime)
+				if err != nil || sel.Len() != 50_000 {
+					t.Fatalf("select %d: %v", k, err)
+				}
+				n, entries := ix.cachedBytes()
+				if entries != min(k+1, c.want) || (entries > 1 && n > c.budget) {
+					t.Fatalf("after %d selections: %d cached, %d bytes, budget %d", k+1, entries, n, c.budget)
+				}
+				if again, _ := ix.Select(context.Background(), all(k), ByTime); again != sel {
+					t.Fatalf("selection %d is not the cached one", k)
+				}
+			}
+		})
+	}
+}
+
 func TestOpenRefusesIncomplete(t *testing.T) {
 	dir := filepath.Join(t.TempDir(), "ix")
 	w, err := Create(dir)
@@ -226,5 +285,167 @@ func TestEmptyIndex(t *testing.T) {
 	sel, _ := ix.Select(context.Background(), &Filter{Classes: []bool{true}, Key: "x"}, ByTime)
 	if ix.Rows() != 0 || sel.Len() != 0 {
 		t.Error("not empty")
+	}
+}
+
+// SECURITY.md "Limits": the device and client dictionaries hold 65,536
+// entries each (index 0 to 65,535), an index MaxRows rows; one more is
+// refused with a LimitError that names the limit, and an entry already in
+// a full dictionary is still found.
+func TestLimits(t *testing.T) {
+	for _, c := range []struct {
+		what string
+		max  int
+		add  func(w *Writer, i int) (uint16, error)
+	}{
+		{"devices", MaxDevices, func(w *Writer, i int) (uint16, error) {
+			return w.Device("10.0.0.1:"+strconv.Itoa(i>>8), uint8(i))
+		}},
+		{"clients", MaxClients, func(w *Writer, i int) (uint16, error) {
+			return w.Client("10.1." + strconv.Itoa(i>>8) + "." + strconv.Itoa(i&0xFF) + "/" + strconv.Itoa(i>>16))
+		}},
+	} {
+		t.Run(c.what, func(t *testing.T) {
+			w, err := Create(filepath.Join(t.TempDir(), "ix"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer func() { _ = w.Abort() }()
+			for i := range c.max {
+				if k, err := c.add(w, i); err != nil || int(k) != i {
+					t.Fatalf("entry %d: %d, %v", i, k, err)
+				}
+			}
+			_, err = c.add(w, c.max)
+			var le *LimitError
+			if !errors.As(err, &le) || le.What != c.what || le.Max != uint64(c.max) || !errors.Is(err, ErrTooMany) {
+				t.Fatalf("entry %d: %v", c.max, err)
+			}
+			if !strings.Contains(err.Error(), strconv.Itoa(c.max)) {
+				t.Errorf("message %q", err)
+			}
+			if k, err := c.add(w, c.max-1); err != nil || int(k) != c.max-1 {
+				t.Errorf("the last entry again: %d, %v", k, err)
+			}
+		})
+	}
+	t.Run("rows", func(t *testing.T) {
+		w, err := Create(filepath.Join(t.TempDir(), "ix"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer func() { _ = w.Abort() }()
+		r := Row{Kind: KindTxn, Sub: NoSub, LatUS: NoLatency}
+		w.n = MaxRows - 1
+		if err := w.Append(r, nil, nil); err != nil || w.Rows() != MaxRows {
+			t.Fatalf("row %d: %v", uint64(MaxRows), err)
+		}
+		err = w.Append(r, nil, nil)
+		var le *LimitError
+		if !errors.As(err, &le) || le.What != "rows" || le.Max != MaxRows || w.Rows() != MaxRows {
+			t.Fatalf("row %d: %v", uint64(MaxRows)+1, err)
+		}
+	})
+}
+
+// A frame's time reads back as written, however far it is from its row's
+// time: the difference takes all 64 bits.
+func TestFrameTimeRoundTrip(t *testing.T) {
+	const lim = math.MaxInt64
+	cases := []struct{ row, frame int64 }{
+		{0, 0}, {0, 1}, {1, 0}, {0, -1},
+		{0, 1<<62 - 1}, {0, 1 << 62}, {0, 1<<62 + 1}, {0, -(1 << 62)}, {0, -(1<<62 + 1)},
+		{1<<62 - 1, 0}, {1 << 62, 0}, {-(1 << 62), 0},
+		{0, lim}, {0, -lim}, {0, math.MinInt64}, {lim, 0}, {math.MinInt64, 0},
+		{math.MinInt64, lim}, {lim, math.MinInt64}, {-lim, lim}, {lim, -lim}, {lim - 1, lim}, {math.MinInt64 + 1, math.MinInt64},
+	}
+	dir := filepath.Join(t.TempDir(), "ix")
+	w, err := Create(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for i, c := range cases {
+		tm := time.Unix(0, c.frame)
+		refs := []model.FrameRef{{Frame: uint64(i + 1), Iface: 7, Time: &tm, PayOff: 54, PayLen: 12}, {Frame: uint64(i + 2), Iface: 1 << 31}}
+		if err := w.Append(Row{Kind: KindTxn, TimeNS: c.row, Sub: NoSub, LatUS: NoLatency}, refs, nil); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := w.Finish(Meta{Fingerprint: "fp"}, nil); err != nil {
+		t.Fatal(err)
+	}
+	ix, err := Open(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = ix.Close() }()
+	for i, c := range cases {
+		req, _, err := ix.Refs(ix.Row(uint32(i)))
+		if err != nil || len(req) != 2 {
+			t.Fatalf("row %d: %v %+v", i, err, req)
+		}
+		if req[0].Time == nil || req[0].Time.UnixNano() != c.frame || req[0].Iface != 7 || req[0].PayLen != 12 {
+			t.Errorf("row time %d, frame time %d: read back %v (interface %d)", c.row, c.frame, req[0].Time, req[0].Iface)
+		}
+		if req[1].Time != nil || req[1].Iface != 1<<31 || req[1].Frame != uint64(i+2) {
+			t.Errorf("row %d: the reference without a time reads back as %+v", i, req[1])
+		}
+	}
+}
+
+// L1, L2, L11: Retire refuses new readers at once without waiting for
+// those in flight; the last one's Release unmaps the index and runs the
+// callback. Close waits for them; closing again, from two goroutines or
+// after Retire, is harmless.
+func TestRetire(t *testing.T) {
+	ix, _ := build(t, 100)
+	if !ix.Acquire() {
+		t.Fatal("a new index refused a reader")
+	}
+	if !ix.Acquire() {
+		t.Fatal("a second reader was refused")
+	}
+	var ran int
+	ix.Retire(func() { ran++ })
+	if ix.Acquire() {
+		t.Error("a retired index took a reader")
+	}
+	select {
+	case <-ix.Closed():
+		t.Fatal("unmapped with two readers")
+	default:
+	}
+	if r := ix.Row(99); r.TID != 99 || ran != 0 {
+		t.Errorf("a reader of a retired index: %+v, callback ran %d times", r, ran)
+	}
+	ix.Release()
+	if ran != 0 {
+		t.Error("the callback ran with a reader left")
+	}
+	closed := make(chan error, 2)
+	for range 2 {
+		go func() { closed <- ix.Close() }()
+	}
+	ix.Release()
+	for range 2 {
+		if err := <-closed; err != nil {
+			t.Error(err)
+		}
+	}
+	<-ix.Closed()
+	if ran != 1 {
+		t.Errorf("the callback ran %d times", ran)
+	}
+	ix.Retire(func() { ran++ })
+	if err := ix.Close(); err != nil || ran != 2 {
+		t.Errorf("after closing: %v, callback ran %d times", err, ran)
+	}
+
+	// Without readers, Retire unmaps at once.
+	other, _ := build(t, 10)
+	other.Retire(nil)
+	<-other.Closed()
+	if other.Acquire() {
+		t.Error("a retired index took a reader")
 	}
 }

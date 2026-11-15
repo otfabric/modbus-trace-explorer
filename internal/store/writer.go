@@ -58,8 +58,30 @@ type Writer struct {
 }
 
 // ErrTooMany is returned when a dictionary or the row count would exceed
-// what the columns can address.
+// what the columns can address; the error is a *LimitError that names the
+// limit.
 var ErrTooMany = errors.New("store: more devices, clients or rows than the index can hold")
+
+// Limits of an index (SECURITY.md): the device and client columns hold a
+// dictionary index of 16 bits, a permutation a row number of 32 bits.
+const (
+	MaxDevices = math.MaxUint16 + 1 // entries of the device dictionary (server and unit pairs, and servers)
+	MaxClients = math.MaxUint16 + 1 // entries of the client dictionary (client addresses)
+	MaxRows    = math.MaxUint32     // rows of an index
+)
+
+// LimitError is the ErrTooMany of one limit.
+type LimitError struct {
+	What string // "devices", "clients" or "rows"
+	Max  uint64 // the entries or rows an index holds at most
+}
+
+func (e *LimitError) Error() string {
+	return fmt.Sprintf("store: an index holds at most %d %s", e.Max, e.What)
+}
+
+// Is makes a LimitError match ErrTooMany.
+func (e *LimitError) Is(target error) bool { return target == ErrTooMany }
 
 // Create starts an index in dir, which must not exist yet.
 func Create(dir string) (*Writer, error) {
@@ -109,8 +131,8 @@ func (w *Writer) Device(server string, unit uint8) (uint16, error) {
 	if i, ok := w.deviceIx[k]; ok {
 		return i, nil
 	}
-	if len(w.devices) >= math.MaxUint16 {
-		return 0, ErrTooMany
+	if len(w.devices) >= MaxDevices {
+		return 0, &LimitError{What: "devices", Max: MaxDevices}
 	}
 	i := uint16(len(w.devices))
 	w.devices = append(w.devices, k)
@@ -123,8 +145,8 @@ func (w *Writer) Client(addr string) (uint16, error) {
 	if i, ok := w.clientIx[addr]; ok {
 		return i, nil
 	}
-	if len(w.clients) >= math.MaxUint16 {
-		return 0, ErrTooMany
+	if len(w.clients) >= MaxClients {
+		return 0, &LimitError{What: "clients", Max: MaxClients}
 	}
 	i := uint16(len(w.clients))
 	w.clients = append(w.clients, addr)
@@ -163,8 +185,8 @@ func (w *Writer) Append(r Row, req, resp []model.FrameRef) error {
 	if w.err != nil {
 		return w.err
 	}
-	if w.n >= math.MaxUint32 {
-		return ErrTooMany
+	if w.n >= MaxRows {
+		return &LimitError{What: "rows", Max: MaxRows}
 	}
 	r.Refs = w.refOff
 	var prev refBase
@@ -192,8 +214,12 @@ type refBase struct {
 }
 
 // writeRefs appends a list of frame references to refs.bin: a count, then
-// per reference the part, the frame and offset deltas, the interface, the
-// time (delta<<1|1, or 0 for none), the payload offset and length.
+// per reference the part, the frame and offset deltas, the interface with
+// a bit that says whether a time follows (iface<<1|1), the time when there
+// is one, the payload offset and length. The time is the zigzag of its
+// difference to the row's time, which takes all 64 bits: the subtraction
+// wraps for times far apart, and the reader's addition wraps back to the
+// same time.
 func (w *Writer) writeRefs(refs []model.FrameRef, rowNS int64, prev *refBase) {
 	var b [binary.MaxVarintLen64]byte
 	put := func(n int) {
@@ -209,13 +235,15 @@ func (w *Writer) writeRefs(refs []model.FrameRef, rowNS int64, prev *refBase) {
 		put(binary.PutVarint(b[:], int64(f.Frame-prev.frame)))
 		put(binary.PutVarint(b[:], f.Offset-prev.offset))
 		prev.frame, prev.offset = f.Frame, f.Offset
-		put(binary.PutUvarint(b[:], uint64(f.Iface)))
-		var t uint64
+		iface := uint64(f.Iface) << 1
+		if f.Time != nil {
+			iface |= 1
+		}
+		put(binary.PutUvarint(b[:], iface))
 		if f.Time != nil {
 			d := f.Time.UnixNano() - rowNS
-			t = uint64(d<<1^d>>63)<<1 | 1 // zigzag, then the "present" bit
+			put(binary.PutUvarint(b[:], uint64(d<<1^d>>63)))
 		}
-		put(binary.PutUvarint(b[:], t))
 		put(binary.PutVarint(b[:], int64(f.PayOff)))
 		put(binary.PutVarint(b[:], int64(f.PayLen)))
 	}

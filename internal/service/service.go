@@ -25,7 +25,9 @@ type Service interface {
 
 	// Open prepares the trace made of paths (several files are one trace,
 	// in the order given) and says whether an analysis of it is cached.
-	// Nothing is read beyond the fingerprint.
+	// Nothing is read beyond the fingerprint. Opening a trace that is
+	// already open replaces it: its jobs are cancelled and waited for
+	// first, as Close does.
 	Open(ctx context.Context, paths []string) (FileInfo, error)
 	// Close releases an open trace and cancels its jobs.
 	Close(ctx context.Context, fileID string) error
@@ -563,6 +565,9 @@ const (
 	CodeCanceled        = "canceled"
 	CodeUnavailable     = "unavailable" // the trace is missing or cannot be read
 	CodeInternal        = "internal"
+	// CodeLimit: the input passes a limit of the application (SECURITY.md,
+	// "Limits"); the message names it.
+	CodeLimit = "limit"
 )
 
 // Error is the error of a Service method, as the frontend receives it.
@@ -768,7 +773,11 @@ type CaptureFacts struct {
 	Truncated   bool   `json:"truncated"` // the file ends inside a record; what came before is shown
 	// Damage: the file is damaged after its first samples (a bad block,
 	// a broken line); what came before is shown, and this says what.
-	Damage     string   `json:"damage,omitempty"`
+	Damage string `json:"damage,omitempty"`
+	// OutOfRange counts the samples left out because their time lies after
+	// the last one the timeline can show (2262-04-11, the end of
+	// nanoseconds since 1970 in 64 bits); Samples does not count them.
+	OutOfRange uint64   `json:"out_of_range,omitempty"`
 	Provenance []string `json:"provenance"` // the tools that made and changed it, oldest first
 	Source     string   `json:"source,omitempty"`
 }

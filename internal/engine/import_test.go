@@ -11,6 +11,7 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -554,3 +555,182 @@ func TestHostileFiles(t *testing.T) {
 }
 
 func tracetestOptions() tracetest.Options { return tracetest.Options{} }
+
+// gzipFile writes path's bytes gzip-compressed and returns the file and
+// the size decompressed.
+func gzipFile(t *testing.T, path string) (string, int64) {
+	t.Helper()
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var z bytes.Buffer
+	zw := gzip.NewWriter(&z)
+	_, _ = zw.Write(raw)
+	_ = zw.Close()
+	gz := filepath.Join(t.TempDir(), filepath.Base(path)+".gz")
+	if err := os.WriteFile(gz, z.Bytes(), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	return gz, int64(len(raw))
+}
+
+// A16 and R3: an open gzip trace's decompressed copy is held with its
+// index: "Clear cache" and the cap leave it while the trace is open, also
+// when the copy is larger than the cap, so its bytes and exports work.
+func TestGzipCopyHeldWhileOpen(t *testing.T) {
+	ctx := context.Background()
+	gz, size := gzipFile(t, writeTrace(t, "site.pcapng", tracetest.Options{Format: tracetest.PcapNG}, site))
+	for _, c := range []struct {
+		name     string
+		capBytes int64
+	}{{"cleared", 0}, {"larger than the cap", size - 1}, {"cap of one byte", 1}} {
+		t.Run(c.name, func(t *testing.T) {
+			e, err := New(Options{CacheDir: filepath.Join(t.TempDir(), "cache"), ConfigDir: t.TempDir(), CacheCap: c.capBytes})
+			if err != nil {
+				t.Fatal(err)
+			}
+			t.Cleanup(func() { _ = e.Shutdown() })
+			info, err := e.Open(ctx, []string{gz})
+			if err != nil {
+				t.Fatal(err)
+			}
+			events, _ := e.Subscribe(t.Context())
+			ref, _ := e.Scan(ctx, info.ID)
+			if j := waitJob(t, events, ref.ID); j.State != service.JobDone {
+				t.Fatalf("scan %+v %+v", j, j.Error)
+			}
+			res, _ := e.ScanResult(ctx, info.ID)
+			ref, _ = e.Analyze(ctx, info.ID, service.AnalyzeConfig{Flows: res.Selected, ServerPorts: res.ServerPorts})
+			if j := waitJob(t, events, ref.ID); j.State != service.JobDone {
+				t.Fatalf("analysis %+v %+v", j, j.Error)
+			}
+			if _, err := e.ClearCache(ctx); err != nil {
+				t.Fatal(err)
+			}
+			rows := txns(page(t, e, info.ID, service.Filter{}))
+			d, err := e.Detail(ctx, info.ID, rows[0].Seq)
+			if err != nil || d.Request == nil || d.Request.Hex == "" {
+				t.Fatalf("detail after clearing the cache: %v %+v %+v", err, d.Request, d.Notes)
+			}
+			ref, err = e.ExportTimeline(ctx, info.ID, service.TimelineExport{Format: "csv"}, filepath.Join(t.TempDir(), "t.csv"))
+			if res := runExport(t, e, ref, err); res.Rows == 0 {
+				t.Errorf("export %+v", res)
+			}
+			tr, _ := e.trace(info.ID)
+			cp := tr.paths()[0]
+			if err := e.Close(ctx, info.ID); err != nil {
+				t.Fatal(err)
+			}
+			if _, err := os.Stat(cp); !os.IsNotExist(err) {
+				t.Errorf("closed, the copy is still there: %v", err)
+			}
+		})
+	}
+}
+
+// Queries while Prepare decompresses a gzip trace again read its paths
+// under the trace's lock (go test -race).
+func TestQueriesDuringPrepare(t *testing.T) {
+	e := newEngine(t)
+	ctx := context.Background()
+	gz, _ := gzipFile(t, bigTrace(t, 20_000))
+	id, _ := importTrace(t, e, nil, gz)
+	seq := txns(page(t, e, id, service.Filter{}))[0].Seq
+	if err := e.Close(ctx, id); err != nil {
+		t.Fatal(err)
+	}
+	info, err := e.Open(ctx, []string{gz})
+	if err != nil || !info.Prepare {
+		t.Fatalf("%+v %v", info, err)
+	}
+	stop := make(chan struct{})
+	done := make(chan struct{})
+	started := make(chan struct{})
+	go func() {
+		defer close(done)
+		for k := 0; ; k++ {
+			if k == 1 {
+				close(started)
+			}
+			select {
+			case <-stop:
+				return
+			default:
+			}
+			_, _ = e.Overview(ctx, id)
+			_, _ = e.Detail(ctx, id, seq)
+		}
+	}()
+	<-started
+	ref, err := e.Prepare(ctx, id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	e.wait(ref.ID)
+	close(stop)
+	<-done
+	if d, err := e.Detail(ctx, id, seq); err != nil || d.Request == nil || d.Request.Hex == "" {
+		t.Errorf("detail after Prepare: %v %+v", err, d.Request)
+	}
+}
+
+// SECURITY.md "Limits": a trace of 65,535 client addresses is analysed; one
+// more is refused with the code limit and a message that names it, and
+// leaves no index behind. The two traces are large, so the cases run in
+// parallel, each with its own engine, after the package's other tests.
+func TestClientLimit(t *testing.T) {
+	t.Parallel()
+	for _, c := range []struct {
+		clients int
+		state   string
+	}{
+		{65_535, service.JobDone},
+		{65_536, service.JobFailed},
+	} {
+		t.Run(strconv.Itoa(c.clients), func(t *testing.T) {
+			t.Parallel()
+			path := writeTrace(t, "clients.pcap", tracetest.Options{CountOnly: true}, func(b *tracetest.Builder) {
+				for i := range c.clients {
+					cl := netip.AddrPortFrom(netip.AddrFrom4([4]byte{10, byte(i >> 16), byte(i >> 8), byte(i)}), 40000)
+					conn := b.Conn(tracetest.ConnOptions{Client: cl, Server: srv1, Midstream: true})
+					conn.Request(1, 1, tracetest.ReadRequest(3, 0, 1))
+					conn.Response(1, 1, tracetest.RegistersResponse(3, 7))
+				}
+			})
+			e := newEngine(t)
+			ctx := context.Background()
+			info, err := e.Open(ctx, []string{path})
+			if err != nil {
+				t.Fatal(err)
+			}
+			events, _ := e.Subscribe(t.Context())
+			ref, _ := e.Scan(ctx, info.ID)
+			if j := waitJob(t, events, ref.ID); j.State != service.JobDone {
+				t.Fatalf("scan %+v", j)
+			}
+			res, _ := e.ScanResult(ctx, info.ID)
+			ref, err = e.Analyze(ctx, info.ID, service.AnalyzeConfig{Flows: res.Selected, ServerPorts: res.ServerPorts})
+			if err != nil {
+				t.Fatal(err)
+			}
+			j := waitJob(t, events, ref.ID)
+			if j.State != c.state {
+				t.Fatalf("analysis %s %+v", j.State, j.Error)
+			}
+			if c.state == service.JobDone {
+				return
+			}
+			if j.Error == nil || j.Error.Code != service.CodeLimit || !strings.Contains(j.Error.Message, "client addresses") ||
+				!strings.Contains(j.Error.Message, "65,535") {
+				t.Fatalf("error %+v", j.Error)
+			}
+			if _, err := e.Overview(ctx, info.ID); err == nil {
+				t.Error("an index after the refusal")
+			}
+			if l := leftovers(e); len(l) > 0 {
+				t.Errorf("left behind: %v", l)
+			}
+		})
+	}
+}

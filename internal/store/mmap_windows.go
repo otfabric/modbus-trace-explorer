@@ -55,3 +55,7 @@ func mapPrefix(path string, n int64) ([]byte, func() error, error) {
 		return err
 	}, nil
 }
+
+// MovesMapped reports whether a directory can be renamed or removed while
+// files in it are memory-mapped: not on Windows.
+const MovesMapped = false

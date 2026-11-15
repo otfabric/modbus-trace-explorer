@@ -9,6 +9,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -305,5 +306,61 @@ func TestDecompressCut(t *testing.T) {
 	}
 	if _, err := c.Decompress(context.Background(), head, "head", nil); err == nil || errors.Is(err, ErrGzipCut) {
 		t.Errorf("a gzip with no data: %v", err)
+	}
+}
+
+// A trace's decompressed copies (Decompress with <fp>-<part>) are held with
+// its index by Hold(fp): neither Clear nor Evict removes them while it is
+// open, also when a copy is larger than the cap; once released they go.
+func TestHoldKeepsDecompressedCopies(t *testing.T) {
+	c := newCache(t, 1) // every entry is over the cap
+	data := bytes.Repeat([]byte("pcap"), 100_000)
+	p := gz(t, data)
+	const fp = "0123456789abcdef0123456789abcdef"
+	release := c.Hold(fp)
+	var copies []string
+	for part := range 2 {
+		out, err := c.Decompress(context.Background(), p, fp+"-"+strconv.Itoa(part), nil)
+		if err != nil {
+			t.Fatalf("part %d: %v", part, err)
+		}
+		copies = append(copies, out)
+	}
+	commit(t, c, fp, 10)
+	other := "fedcba9876543210fedcba9876543210"
+	if _, err := c.Decompress(context.Background(), p, other+"-0", nil); err != nil {
+		t.Fatal(err)
+	}
+	if err := c.Evict(); err != nil {
+		t.Fatal(err)
+	}
+	if err := c.Clear(); err != nil {
+		t.Fatal(err)
+	}
+	for _, cp := range copies {
+		if got, err := os.ReadFile(cp); err != nil || !bytes.Equal(got, data) {
+			t.Errorf("the held copy %s: %d bytes, %v", filepath.Base(cp), len(got), err)
+		}
+	}
+	if _, err := os.Stat(c.Dir(fp)); err != nil {
+		t.Errorf("the held index: %v", err)
+	}
+	if _, ok := c.Decompressed(p, other+"-0"); ok {
+		t.Error("a copy no trace holds was kept")
+	}
+	release()
+	if err := c.Clear(); err != nil {
+		t.Fatal(err)
+	}
+	for _, cp := range copies {
+		if _, err := os.Stat(cp); !os.IsNotExist(err) {
+			t.Errorf("released, the copy %s is still there: %v", filepath.Base(cp), err)
+		}
+	}
+	for name, want := range map[string]string{"ix-" + fp: fp, "gz-" + fp + "-0.pcapng": fp, "gz-" + fp + "-12.pcap": fp,
+		"gz-fp1.pcapng": "fp1", "gz-a-b.pcap": "a-b", "gz-ab-.pcap": "ab-"} {
+		if got := entryKey(name); got != want {
+			t.Errorf("entryKey(%s) = %s, want %s", name, got, want)
+		}
 	}
 }
