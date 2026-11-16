@@ -1,5 +1,19 @@
 # modbus-trace-explorer Releases
 
+## v0.8.1
+
+**Date:** 2026-11-16
+**Previous release:** v0.8.0
+
+No feature is added or changed.
+
+### Changed
+
+- Built on go-modbus-trace v0.9.2 (was v0.9.1) (go-modbus-trace RELEASE.md, v0.9.2).
+- The test corpus and the engine fixture are regenerated with `make golden`: they record the library that wrote them (`export.library`), which is now go-modbus-trace v0.9.2. Nothing else in them changes, apart from the header checksum of the binary traces, which covers that tag.
+
+---
+
 ## v0.8.0
 
 **Date:** 2026-11-15
