@@ -2812,7 +2812,7 @@
     "format": "mbcap",
     "report": {
       "schema_version": 1,
-      "library": "go-modbus-trace v0.9.3",
+      "library": "go-modbus-trace v0.9.4",
       "capture_library": "go-modbus-capture v0.2.2",
       "format": "MBCAP draft 0.1",
       "inputs": [
